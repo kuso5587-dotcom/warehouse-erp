@@ -551,22 +551,24 @@ function showAdvanced(){
   if(keyEl&&key) keyEl.value=key;
 }
 function saveAdvanced(){
-  const url=document.getElementById('supaUrl')?.value?.trim();
+  const url=document.getElementById('supaUrl')?.value?.trim()||'https://nqwjisztneznwihoozjq.supabase.co';
   const key=document.getElementById('supaKey')?.value?.trim();
-  if(!url||!key){toast('請填入 URL 和 Key','err');return;}
+  if(!key){toast('請填入 Service Role Key','err');return;}
   localStorage.setItem('erp_url',url);
   localStorage.setItem('erp_key',key);
-  toast('設定已儲存，請重新整理頁面','ok');
+  toast('設定已儲存！重新整理後生效','ok');
+  setTimeout(()=>location.reload(),1500);
 }
 async function connectSupabase(){
   const name=document.getElementById('userName').value.trim()||'使用者';
   const st=document.getElementById('setupStatus');
   const btn=document.getElementById('btnConnect');
-  // 從 localStorage 讀取 URL 和 Key
-  const url=localStorage.getItem('erp_url')||'';
+  if(!name||name.length<1){st.textContent='請輸入你的名稱';st.className='sstatus err';return;}
+  // 從 localStorage 讀取，或使用預設值
+  const url=localStorage.getItem('erp_url')||'https://nqwjisztneznwihoozjq.supabase.co';
   const key=localStorage.getItem('erp_key')||'';
-  if(!url||!key){
-    st.textContent='請點下方「進階設定」填入資料庫資訊';
+  if(!key){
+    st.textContent='首次使用請點下方「進階設定」填入金鑰';
     st.className='sstatus err';
     document.getElementById('advancedBox').style.display='block';
     return;
