@@ -285,7 +285,7 @@ tr:hover td{background:var(--bg3);}
       <div class="nav">
         <div class="nslabel">主要功能</div>
         <div class="nitem active" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
-        <div class="nitem" onclick="goto('locations',this)"><span class="ic">🗂</span>倉位管理</div>
+        
         <div class="nitem" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
         <div class="nitem" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
         <div class="nitem" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
@@ -379,10 +379,30 @@ tr:hover td{background:var(--bg3);}
         </div>
 
         <div class="page" id="page-inventory">
+          <!-- 倉區分頁 -->
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;" id="invZoneTabs">
+            <button class="zone-tab active" onclick="switchInvZone('ALL',this)">📦 全部</button>
+          </div>
           <div class="card" style="margin:0;">
-            <div class="card-hd"><span class="card-title">庫存總覽</span><div style="display:flex;gap:8px;"><button class="btn btn-primary btn-sm" onclick="openModal('material')">+ 新增料件</button><button class="btn btn-sm" onclick="openModal('adjust')">庫存調整</button></div></div>
-            <div class="search-row"><input id="invQ" placeholder="搜尋料號或品名..." oninput="renderINV()"><select id="invSt" onchange="renderINV()"><option value="">全部</option><option value="ok">正常</option><option value="low">低量</option></select></div>
-            <div class="table-wrap"><table><thead><tr><th>料號</th><th>品名</th><th>倉位</th><th>庫存</th><th>安全量</th><th>狀態</th><th>操作</th></tr></thead><tbody id="invBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody></table></div>
+            <div class="card-hd">
+              <span class="card-title" id="invZoneTitle">全部庫存</span>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary btn-sm" onclick="openModal('material')">+ 新增料件</button>
+                <button class="btn btn-sm" onclick="openModal('adjust')">庫存調整</button>
+              </div>
+            </div>
+            <div class="search-row">
+              <input id="invQ" placeholder="搜尋料號或品名..." oninput="renderINV()">
+              <select id="invSt" onchange="renderINV()">
+                <option value="">全部狀態</option>
+                <option value="ok">正常</option>
+                <option value="low">低量</option>
+              </select>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>品名</th><th>倉位</th><th>現有庫存</th><th>建議數量</th><th>單位</th><th>狀態</th><th>操作</th></tr></thead>
+              <tbody id="invBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody>
+            </table></div>
           </div>
         </div>
 
@@ -481,7 +501,7 @@ tr:hover td{background:var(--bg3);}
   <div class="bottom-nav">
     <div class="bnav-scroll">
       <div class="bnav-item active" onclick="goto('dashboard',null,'儀表板',this)"><span class="ic">📊</span>儀表板</div>
-      <div class="bnav-item" onclick="goto('locations',null,'倉位',this)"><span class="ic">🗂</span>倉位</div>
+      
       <div class="bnav-item" onclick="goto('inbound',null,'進料',this)"><span class="ic">📥</span>進料</div>
       <div class="bnav-item" onclick="goto('outbound',null,'出料',this)"><span class="ic">📤</span>出料</div>
       <div class="bnav-item" onclick="goto('inventory',null,'庫存',this)"><span class="ic">📦</span>庫存</div>
@@ -499,7 +519,7 @@ tr:hover td{background:var(--bg3);}
 
 <script>
 let _db=null,isDemo=false,currentUser='使用者';
-let ibFV='all',obFV='all',currentZone='ALL';
+let ibFV='all',obFV='all',currentZone='ALL',currentInvZone='ALL';
 let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[],users:[]};
 const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 
@@ -519,14 +539,39 @@ function goto(p,el,label,bnavEl){
   closeSidebar();
 }
 
+function showAdvanced(){
+  const box=document.getElementById('advancedBox');
+  box.style.display=box.style.display==='none'?'block':'none';
+  // 填入目前儲存的值
+  const url=localStorage.getItem('erp_url')||'';
+  const key=localStorage.getItem('erp_key')||'';
+  const urlEl=document.getElementById('supaUrl');
+  const keyEl=document.getElementById('supaKey');
+  if(urlEl&&url) urlEl.value=url;
+  if(keyEl&&key) keyEl.value=key;
+}
+function saveAdvanced(){
+  const url=document.getElementById('supaUrl')?.value?.trim();
+  const key=document.getElementById('supaKey')?.value?.trim();
+  if(!url||!key){toast('請填入 URL 和 Key','err');return;}
+  localStorage.setItem('erp_url',url);
+  localStorage.setItem('erp_key',key);
+  toast('設定已儲存，請重新整理頁面','ok');
+}
 async function connectSupabase(){
-  const url=document.getElementById('supaUrl').value.trim();
-  const key=document.getElementById('supaKey').value.trim();
   const name=document.getElementById('userName').value.trim()||'使用者';
   const st=document.getElementById('setupStatus');
   const btn=document.getElementById('btnConnect');
-  if(!url||!key){st.textContent='請填入 URL 和 Key';st.className='sstatus err';return;}
-  btn.disabled=true;btn.textContent='連線中...';st.textContent='載入 Supabase 套件中...';st.className='sstatus';
+  // 從 localStorage 讀取 URL 和 Key
+  const url=localStorage.getItem('erp_url')||'';
+  const key=localStorage.getItem('erp_key')||'';
+  if(!url||!key){
+    st.textContent='請點下方「進階設定」填入資料庫資訊';
+    st.className='sstatus err';
+    document.getElementById('advancedBox').style.display='block';
+    return;
+  }
+  btn.disabled=true;btn.textContent='連線中...';st.textContent='連線中...';st.className='sstatus';
   try{
     if(!window.supabaseLib){
       await new Promise((res,rej)=>{
@@ -542,7 +587,7 @@ async function connectSupabase(){
     const{error}=await _db.from('locations').select('id').limit(1);
     if(error)throw error;
     currentUser=name;
-    localStorage.setItem('erp_url',url);localStorage.setItem('erp_key',key);localStorage.setItem('erp_user',name);
+    localStorage.setItem('erp_user',name);
     st.textContent='✅ 連線成功！進入系統中...';st.className='sstatus ok';
     setTimeout(launchApp,600);
   }catch(e){
@@ -814,14 +859,75 @@ function renderOB(){
   }).join('')||'<tr class="empty-row"><td colspan="7">尚無資料</td></tr>';
 }
 
+function switchInvZone(zone,el){
+  currentInvZone=zone;
+  document.querySelectorAll('#invZoneTabs .zone-tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderINV();
+}
+
 function renderINV(){
+  // 更新倉區 tab
+  const zones=['ALL',...new Set(DB.locations.map(l=>l.zone).filter(Boolean).sort())];
+  const tabsEl=document.getElementById('invZoneTabs');
+  if(tabsEl){
+    tabsEl.innerHTML=zones.map(z=>{
+      let count=0;
+      if(z==='ALL'){count=DB.inventory.filter(iv=>iv.qty>0).length;}
+      else{
+        const locIds=DB.locations.filter(l=>l.zone===z).map(l=>l.id);
+        count=DB.inventory.filter(iv=>locIds.includes(iv.location_id)&&iv.qty>0).length;
+      }
+      const label=z==='ALL'?`📦 全部 (${count})`:`${z} 區 (${count})`;
+      return`<button class="zone-tab${z===currentInvZone?' active':''}" onclick="switchInvZone('${z}',this)">${label}</button>`;
+    }).join('');
+  }
+
+  const titleEl=document.getElementById('invZoneTitle');
+  if(titleEl) titleEl.textContent=currentInvZone==='ALL'?'全部庫存':`${currentInvZone} 區庫存`;
+
   const q=(document.getElementById('invQ')?.value||'').toLowerCase();
   const sf=document.getElementById('invSt')?.value||'';
-  const rows=DB.inventory.filter(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);const isLow=m&&iv.qty<m.safe_qty;return(!q||((m?.code||'')+' '+(m?.name||'')).toLowerCase().includes(q))&&(!sf||(sf==='ok'&&!isLow)||(sf==='low'&&isLow));});
-  document.getElementById('invBody').innerHTML=rows.map(iv=>{
-    const m=DB.materials.find(x=>x.id===iv.material_id);const l=DB.locations.find(x=>x.id===iv.location_id);const ll=l?`${l.zone}-${l.row_no}-${l.col_no}`:'-';const isLow=m&&iv.qty<m.safe_qty;
-    return`<tr><td><b>${m?.code||'-'}</b></td><td>${m?.name||'-'}</td><td>${ll}</td><td>${iv.qty.toLocaleString()}</td><td>${m?.safe_qty||'-'}</td><td><span class="badge ${isLow?'b-warning':'b-success'}">${isLow?'低量':'正常'}</span></td><td><button class="btn btn-sm" onclick="openModal('adjust','${iv.id}')">調整</button></td></tr>`;
-  }).join('')||'<tr class="empty-row"><td colspan="7">尚無資料</td></tr>';
+
+  // 先過濾倉區
+  const zoneLocIds=currentInvZone==='ALL'
+    ?DB.locations.map(l=>l.id)
+    :DB.locations.filter(l=>l.zone===currentInvZone).map(l=>l.id);
+
+  const rows=DB.inventory.filter(iv=>{
+    const m=DB.materials.find(x=>x.id===iv.material_id);
+    const inZone=zoneLocIds.includes(iv.location_id);
+    const isLow=m&&iv.qty<m.safe_qty;
+    const matchQ=!q||((m?.name||'')).toLowerCase().includes(q);
+    const matchSt=!sf||(sf==='ok'&&!isLow)||(sf==='low'&&isLow);
+    return inZone&&matchQ&&matchSt;
+  });
+
+  // 排序：倉位順序
+  rows.sort((a,b)=>{
+    const la=DB.locations.find(x=>x.id===a.location_id);
+    const lb=DB.locations.find(x=>x.id===b.location_id);
+    const za=(la?.zone||'')+(la?.row_no||'')+(la?.col_no||'');
+    const zb=(lb?.zone||'')+(lb?.row_no||'')+(lb?.col_no||'');
+    return za.localeCompare(zb);
+  });
+
+  document.getElementById('invBody').innerHTML=rows.length?rows.map(iv=>{
+    const m=DB.materials.find(x=>x.id===iv.material_id);
+    const l=DB.locations.find(x=>x.id===iv.location_id);
+    const ll=l?(l.custom_name||`${l.zone}-${l.row_no}-${l.col_no}`):'-';
+    const isLow=m&&iv.qty<m.safe_qty;
+    const safeQty=m?.safe_qty||0;
+    return`<tr>
+      <td><b>${m?.name||'-'}</b></td>
+      <td><span class="badge b-info">${ll}</span></td>
+      <td style="font-size:15px;font-weight:700;${isLow?'color:var(--red)':''}">${(iv.qty||0).toLocaleString()}</td>
+      <td style="color:var(--text2);">${safeQty>0?safeQty.toLocaleString():'-'}</td>
+      <td>${m?.unit||'件'}</td>
+      <td><span class="badge ${isLow?'b-danger':'b-success'}">${isLow?'⚠ 低量':'正常'}</span></td>
+      <td><button class="btn btn-sm" onclick="openModal('adjust','${iv.id}')">調整</button></td>
+    </tr>`;
+  }).join(''):'<tr class="empty-row"><td colspan="7">此區尚無庫存資料</td></tr>';
 }
 
 function renderPO(){
