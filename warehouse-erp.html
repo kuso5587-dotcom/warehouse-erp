@@ -181,6 +181,9 @@ tr:hover td{background:var(--bg3);}
 .loc-edit-btn{position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,.18);color:white;font-size:8px;display:none;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1;}
 .loc-cell:hover .loc-edit-btn{display:flex;}
 .drag-hint{font-size:11px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.zone-tab{padding:7px 16px;border-radius:var(--r);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
+.zone-tab:hover{background:var(--bg2);}
+.zone-tab.active{background:var(--blue);color:white;border-color:var(--blue);}
 .ls-empty{background:var(--green-bg);color:var(--green-text);border-color:#C0DD97;}
 .ls-low{background:var(--amber-bg);color:var(--amber-text);border-color:#FAC775;}
 .ls-full{background:var(--red-bg);color:var(--red-text);border-color:#F7C1C1;}
@@ -321,14 +324,41 @@ tr:hover td{background:var(--bg3);}
         </div>
 
         <div class="page" id="page-locations">
+          <!-- 分區 Tab -->
+          <div class="card" style="margin-bottom:12px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;gap:4px;flex-wrap:wrap;" id="zoneTabs">
+                <button class="zone-tab active" onclick="switchZone('ALL',this)">📦 全部</button>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <span class="badge b-success">空閒</span>
+                <span class="badge b-warning">低量</span>
+                <span class="badge b-danger">滿載</span>
+                <span class="badge b-info">保留</span>
+                <button class="btn btn-primary btn-sm" onclick="openModal('location')">+ 新增倉位</button>
+              </div>
+            </div>
+          </div>
+          <!-- 倉位圖 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">倉位圖覽</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="badge b-success">空閒</span><span class="badge b-warning">低量</span><span class="badge b-danger">滿載</span><span class="badge b-info">保留</span><button class="btn btn-primary btn-sm" onclick="openModal('location')">+ 新增倉位</button></div></div>
-            <div class="drag-hint">✋ 拖曳可移動倉位順序 ／ 點 ✎ 可改名稱與狀態</div>
+            <div class="card-hd">
+              <span class="card-title" id="zoneTitle">全部倉位</span>
+              <div class="drag-hint" style="margin:0;">✋ 拖曳移動順序 ／ 點 ✎ 編輯</div>
+            </div>
             <div class="loc-grid" id="locGrid">載入中...</div>
           </div>
+          <!-- 倉位清單 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">倉位清單</span></div>
-            <div class="table-wrap"><table><thead><tr><th>倉位編號</th><th>自訂名稱</th><th>倉區</th><th>容量</th><th>安全量</th><th>狀態</th><th>操作</th></tr></thead><tbody id="locBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody></table></div>
+            <div class="card-hd">
+              <span class="card-title">倉位清單</span>
+              <div style="display:flex;gap:8px;">
+                <input id="locSearch" placeholder="搜尋倉位..." oninput="renderLoc()" style="padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:12px;width:140px;">
+              </div>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>倉位編號</th><th>自訂名稱</th><th>倉區</th><th>庫存料件數</th><th>安全量</th><th>狀態</th><th>操作</th></tr></thead>
+              <tbody id="locBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody>
+            </table></div>
           </div>
         </div>
 
@@ -411,7 +441,21 @@ tr:hover td{background:var(--bg3);}
         </div>
 
         <div class="page" id="page-users">
-          <div class="card"><div class="card-hd"><span class="card-title">使用者管理</span><button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button></div><div class="table-wrap"><table><thead><tr><th>姓名</th><th>帳號</th><th>部門</th><th>角色</th><th>狀態</th><th>操作</th></tr></thead><tbody id="userBody"><tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px;">請連接 Supabase 後啟用</td></tr></tbody></table></div></div>
+          <div class="card" style="margin-bottom:12px;background:var(--blue-bg);border-color:#B5D4F4;">
+            <div style="font-size:13px;color:var(--blue-text);line-height:1.8;">
+              💡 <b>使用說明：</b>使用者在第一次登入時，輸入名稱即可加入。這裡可以管理每個人的角色和部門，方便追蹤誰做了什麼操作。
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">使用者清單</span>
+              <button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>姓名</th><th>部門</th><th>角色</th><th>操作</th></tr></thead>
+              <tbody id="userBody"><tr class="empty-row"><td colspan="4">載入中...</td></tr></tbody>
+            </table></div>
+          </div>
         </div>
 
         <div class="page" id="page-permissions">
@@ -455,8 +499,8 @@ tr:hover td{background:var(--bg3);}
 
 <script>
 let _db=null,isDemo=false,currentUser='使用者';
-let ibFV='all',obFV='all';
-let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[]};
+let ibFV='all',obFV='all',currentZone='ALL';
+let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[],users:[]};
 const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
@@ -536,9 +580,9 @@ function renderOnline(users){
   document.getElementById('onlineAvatars').innerHTML=h;document.getElementById('topAvatars').innerHTML=h;
 }
 
-async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories'].map(t=>loadT(t)));renderAll();}
-async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog'};DB[keyMap[t]||t]=data||[];}catch(e){console.warn(t,e.message);}}
-function renderAll(){refreshDash();renderLoc();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');}
+async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users'].map(t=>loadT(t)));renderAll();}
+async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];}catch(e){console.warn(t,e.message);}}
+function renderAll(){refreshDash();renderLoc();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
 function seedDemo(){
   const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
@@ -560,6 +604,11 @@ function seedDemo(){
     {id:'p1',order_no:'PO-2024-089',supplier_id:'s1',supplier_name:'台鑫五金',material_code:'SCR-M8-020',qty:500,unit_price:5,arrive_date:'2024-01-22',status:'pending',operator:currentUser,created_at:new Date().toISOString()},
     {id:'p2',order_no:'PO-2024-088',supplier_id:'s2',supplier_name:'大聯電子',material_code:'PCB-001',qty:200,unit_price:80,arrive_date:'2024-01-21',status:'transit',operator:currentUser,created_at:new Date(Date.now()-86400000).toISOString()},
     {id:'p3',order_no:'PO-2024-087',supplier_id:'s3',supplier_name:'友達電子',material_code:'CAP-100U',qty:1000,unit_price:2,arrive_date:'2024-01-19',status:'done',operator:currentUser,created_at:new Date(Date.now()-172800000).toISOString()},
+  ];
+  DB.users=[
+    {id:'u1',name:'示範管理員',dept:'資訊部',role:'admin',created_at:new Date().toISOString()},
+    {id:'u2',name:'王小明',dept:'倉儲部',role:'operator',created_at:new Date().toISOString()},
+    {id:'u3',name:'陳美玲',dept:'採購部',role:'manager',created_at:new Date().toISOString()},
   ];
   DB.workorders=[
     {id:'w1',order_no:'WO-2024-042',product_name:'電子控制板A型',plan_qty:100,done_qty:65,start_date:'2024-01-15',end_date:'2024-01-20',status:'active',created_at:new Date().toISOString()},
@@ -586,30 +635,81 @@ function locLabel(l){return l.custom_name||`${l.zone}-${l.row_no}-${l.col_no}`;}
 function locCode(l){return`${l.zone}-${l.row_no}-${l.col_no}`;}
 
 function renderLoc(){
+  // 更新分區 tab
+  const zones=['ALL',...new Set(DB.locations.map(l=>l.zone).filter(Boolean).sort())];
+  const tabsEl=document.getElementById('zoneTabs');
+  if(tabsEl){
+    tabsEl.innerHTML=zones.map(z=>{
+      const count=z==='ALL'?DB.locations.length:DB.locations.filter(l=>l.zone===z).length;
+      const label=z==='ALL'?`📦 全部 (${count})`:`${z} 區 (${count})`;
+      return`<button class="zone-tab${z===currentZone?' active':''}" onclick="switchZone('${z}',this)">${label}</button>`;
+    }).join('');
+  }
+
+  const q=(document.getElementById('locSearch')?.value||'').toLowerCase();
+  const filtered=DB.locations.filter(l=>{
+    const matchZone=currentZone==='ALL'||l.zone===currentZone;
+    const matchQ=!q||(locCode(l)+' '+(l.custom_name||'')).toLowerCase().includes(q);
+    return matchZone&&matchQ;
+  });
+
+  // 更新標題
+  const titleEl=document.getElementById('zoneTitle');
+  if(titleEl) titleEl.textContent=currentZone==='ALL'?`全部倉位 (${filtered.length})`:`${currentZone} 區倉位 (${filtered.length})`;
+
   const g=document.getElementById('locGrid');
-  if(!DB.locations.length){g.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0;">尚無倉位，請點右上方新增</div>';return;}
-  g.innerHTML=DB.locations.map((l,i)=>{
-    const code=locCode(l),name=locLabel(l);
-    return`<div class="loc-cell ls-${l.status||'empty'}" data-id="${l.id}" draggable="true"
-      ondragstart="dragStart(event,'${l.id}')"
-      ondragover="dragOver(event)"
-      ondragleave="dragLeave(event)"
-      ondrop="dragDrop(event,'${l.id}')"
-      ondragend="dragEnd(event)"
-      title="${code}${l.custom_name?' ('+l.custom_name+')':''}">
-      <button class="loc-edit-btn" onclick="event.stopPropagation();openModal('editloc','${l.id}')">✎</button>
-      <div class="loc-name">${name}</div>
-      <div class="loc-sub">${l.custom_name?code:sLbl(l.status)}</div>
-    </div>`;
-  }).join('');
-  setupDragTouch();
-  document.getElementById('locBody').innerHTML=DB.locations.map(l=>`<tr>
-    <td><b>${locCode(l)}</b></td>
-    <td>${l.custom_name?`<span style="color:var(--blue);font-weight:600;">${l.custom_name}</span>`:'<span style="color:var(--text3);">-</span>'}</td>
-    <td>${l.zone}</td><td>${l.capacity}</td><td>${l.safe_qty}</td>
-    <td><span class="badge ${sBadge(l.status)}">${sLbl(l.status)}</span></td>
-    <td><button class="btn btn-sm btn-primary" onclick="openModal('editloc','${l.id}')">✎ 編輯</button></td>
-  </tr>`).join('');
+  if(!filtered.length){
+    g.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0;">此區尚無倉位</div>';
+  } else {
+    // 按排號/格號排序
+    const sorted=[...filtered].sort((a,b)=>{
+      const ar=a.row_no||'0',ac=a.col_no||'0';
+      const br=b.row_no||'0',bc=b.col_no||'0';
+      return ar.localeCompare(br)||ac.localeCompare(bc);
+    });
+    g.innerHTML=sorted.map(l=>{
+      const code=locCode(l),name=locLabel(l);
+      // 計算此倉位庫存料件數
+      const invCount=DB.inventory.filter(iv=>iv.location_id===l.id&&iv.qty>0).length;
+      return`<div class="loc-cell ls-${l.status||'empty'}" data-id="${l.id}" draggable="true"
+        ondragstart="dragStart(event,'${l.id}')"
+        ondragover="dragOver(event)"
+        ondragleave="dragLeave(event)"
+        ondrop="dragDrop(event,'${l.id}')"
+        ondragend="dragEnd(event)"
+        title="${code}${l.custom_name?' - '+l.custom_name:''}${invCount?' | '+invCount+'種料件':''}">
+        <button class="loc-edit-btn" onclick="event.stopPropagation();openModal('editloc','${l.id}')">✎</button>
+        <div class="loc-name">${name}</div>
+        <div class="loc-sub">${invCount?invCount+'種':sLbl(l.status)}</div>
+      </div>`;
+    }).join('');
+    setupDragTouch();
+  }
+
+  // 更新清單
+  const q2=(document.getElementById('locSearch')?.value||'').toLowerCase();
+  const listData=[...filtered].sort((a,b)=>{
+    return(a.zone||'').localeCompare(b.zone||'')||(a.row_no||'').localeCompare(b.row_no||'')||(a.col_no||'').localeCompare(b.col_no||'');
+  });
+  document.getElementById('locBody').innerHTML=listData.length?listData.map(l=>{
+    const invCount=DB.inventory.filter(iv=>iv.location_id===l.id&&iv.qty>0).length;
+    return`<tr>
+      <td><b>${locCode(l)}</b></td>
+      <td>${l.custom_name?`<span style="color:var(--blue);font-weight:600;">${l.custom_name}</span>`:'<span style="color:var(--text3);">-</span>'}</td>
+      <td><span class="badge b-gray">${l.zone} 區</span></td>
+      <td>${invCount>0?`<span style="color:var(--green);font-weight:600;">${invCount} 種</span>`:'<span style="color:var(--text3);">-</span>'}</td>
+      <td>${l.safe_qty||0}</td>
+      <td><span class="badge ${sBadge(l.status)}">${sLbl(l.status)}</span></td>
+      <td><button class="btn btn-sm btn-primary" onclick="openModal('editloc','${l.id}')">✎ 編輯</button></td>
+    </tr>`;
+  }).join(''):'<tr class="empty-row"><td colspan="7">此區尚無倉位</td></tr>';
+}
+
+function switchZone(zone, el){
+  currentZone=zone;
+  document.querySelectorAll('.zone-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderLoc();
 }
 
 // ── DRAG & DROP ──
@@ -1005,7 +1105,36 @@ function openModal(type,extraId){
         <button class="btn btn-primary" onclick="saveEditWO('${id}')">儲存更新</button>
       </div>`;
     }},
-    user:{t:'新增使用者',h:()=>`<div class="form-row"><div class="fg"><label>姓名</label><input id="f-name" placeholder="王小明"></div><div class="fg"><label>帳號</label><input id="f-acct" placeholder="wang.sm"></div></div><div class="form-row"><div class="fg"><label>部門</label><select><option>倉儲部</option><option>採購部</option><option>生產部</option><option>品管部</option></select></div><div class="fg"><label>角色</label><select><option>操作員</option><option>主管</option><option>唯讀</option><option>最高管理員</option></select></div></div><div class="fg"><label>初始密碼</label><input type="password" placeholder="設定密碼"></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal();toast('使用者建立成功','ok')">建立使用者</button></div>`},
+    user:{t:'新增使用者',h:()=>`
+      <div class="form-row">
+        <div class="fg"><label>姓名 *</label><input id="f-uname" placeholder="王小明"></div>
+        <div class="fg"><label>部門</label><input id="f-udept" placeholder="倉儲部"></div>
+      </div>
+      <div class="fg"><label>角色</label>
+        <select id="f-urole">
+          <option value="operator">操作員</option>
+          <option value="manager">主管</option>
+          <option value="readonly">唯讀</option>
+          <option value="admin">最高管理員</option>
+        </select>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveUser()">新增使用者</button></div>`},
+    edituser:{t:'編輯使用者',h:(id)=>{
+      const u=DB.users?.find(x=>x.id===id);if(!u)return'找不到資料';
+      const roles=['operator','manager','readonly','admin'];
+      const roleNames={operator:'操作員',manager:'主管',readonly:'唯讀',admin:'最高管理員'};
+      const roleOpts=roles.map(r=>`<option value="${r}"${u.role===r?' selected':''}>${roleNames[r]}</option>`).join('');
+      return`<div class="form-row">
+        <div class="fg"><label>姓名</label><input id="f-uname" value="${u.name||''}"></div>
+        <div class="fg"><label>部門</label><input id="f-udept" value="${u.dept||''}"></div>
+      </div>
+      <div class="fg"><label>角色</label><select id="f-urole">${roleOpts}</select></div>
+      <div class="modal-foot">
+        <button class="btn btn-danger" onclick="deleteUser('${id}')">🗑 刪除</button>
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditUser('${id}')">儲存</button>
+      </div>`;
+    }},
   };
   const def=defs[type];if(!def)return;
   document.getElementById('modalTitle').textContent=def.t;
@@ -1157,6 +1286,58 @@ async function saveAdj(id){
     addLog('調整','庫存',`庫存調整 原因:${reason}`);
   }
   closeModal();toast('庫存調整已儲存 ✅','ok');renderINV();refreshDash();renderLog();
+}
+
+// ── USER MANAGEMENT ──
+function renderUsers(){
+  const users=DB.users||[];
+  const roleNames={operator:'操作員',manager:'主管',readonly:'唯讀',admin:'最高管理員'};
+  const roleBadge={operator:'b-gray',manager:'b-info',readonly:'b-gray',admin:'b-danger'};
+  document.getElementById('userBody').innerHTML=users.length?users.map(u=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${(u.name||'?').slice(-2)}</div>
+      <b>${u.name||'-'}</b>
+    </div></td>
+    <td>${u.dept||'-'}</td>
+    <td><span class="badge ${roleBadge[u.role]||'b-gray'}">${roleNames[u.role]||u.role||'-'}</span></td>
+    <td><button class="btn btn-sm btn-primary" onclick="openModal('edituser','${u.id}')">✎ 編輯</button></td>
+  </tr>`).join(''):'<tr class="empty-row"><td colspan="4">尚無使用者，點右上方新增</td></tr>';
+}
+
+async function saveUser(){
+  const name=document.getElementById('f-uname')?.value?.trim();
+  const dept=document.getElementById('f-udept')?.value?.trim()||'';
+  const role=document.getElementById('f-urole')?.value||'operator';
+  if(!name){toast('請填寫姓名','err');return;}
+  const rec={name,dept,role,created_at:new Date().toISOString()};
+  if(!isDemo){
+    const res=await _db.from('erp_users').insert(rec);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    await loadT('erp_users');
+  } else {rec.id='u'+Date.now();DB.users.push(rec);}
+  closeModal();toast(name+' 已新增 ✅','ok');renderUsers();
+}
+
+async function saveEditUser(id){
+  const name=document.getElementById('f-uname')?.value?.trim();
+  const dept=document.getElementById('f-udept')?.value?.trim()||'';
+  const role=document.getElementById('f-urole')?.value||'operator';
+  if(!name){toast('請填寫姓名','err');return;}
+  if(!isDemo){
+    const res=await _db.from('erp_users').update({name,dept,role}).eq('id',id);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    await loadT('erp_users');
+  } else {const u=DB.users.find(x=>x.id===id);if(u)Object.assign(u,{name,dept,role});}
+  closeModal();toast('使用者已更新 ✅','ok');renderUsers();
+}
+
+async function deleteUser(id){
+  if(!confirm('確定刪除此使用者？'))return;
+  if(!isDemo){
+    await _db.from('erp_users').delete().eq('id',id);
+    await loadT('erp_users');
+  } else {DB.users=DB.users.filter(x=>x.id!==id);}
+  closeModal();toast('使用者已刪除','ok');renderUsers();
 }
 
 // ── PURCHASE ACTIONS ──
@@ -1357,7 +1538,7 @@ function toast(msg,type='inf'){const e=document.getElementById('toast');e.textCo
 
 window.onload=async()=>{
   const url=localStorage.getItem('erp_url'),key=localStorage.getItem('erp_key'),name=localStorage.getItem('erp_user');
-  if(url&&key&&name){
+  if(url&&key&&name){  // 有記憶資料直接自動登入
     // 有記憶的資料，自動連線不需要再輸入
     document.getElementById('supaUrl').value=url;
     document.getElementById('supaKey').value=key;
