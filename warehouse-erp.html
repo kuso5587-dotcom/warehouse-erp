@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>倉庫 ERP 管理系統</title>
+<script>var supabaseLib=null;</script>
+<style>
+:root {
+  --bg:#f5f4f0; --bg2:#ffffff; --bg3:#eeede9;
+  --border:rgba(0,0,0,0.1); --border2:rgba(0,0,0,0.2);
+  --text:#1a1a18; --text2:#5a5a56; --text3:#9a9a96;
+  --blue:#185FA5; --blue-bg:#E6F1FB; --blue-text:#0C447C;
+  --green:#3B6D11; --green-bg:#EAF3DE; --green-text:#27500A;
+  --amber:#854F0B; --amber-bg:#FAEEDA; --amber-text:#633806;
+  --red:#A32D2D; --red-bg:#FCEBEB; --red-text:#791F1F;
+  --r:8px; --rl:12px;
+  --sidebar:220px; --topbar:52px; --bottombar:60px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+
+/* ══ SETUP ══ */
+#setup{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;overflow-y:auto;padding:20px;}
+.sbox{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:28px;width:100%;max-width:460px;}
+.sbox-logo{font-size:32px;margin-bottom:8px;}
+.sbox h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+.sbox>p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;}
+.guide-box{background:var(--blue-bg);border:1px solid #B5D4F4;border-radius:var(--r);padding:14px;margin-bottom:18px;font-size:13px;color:var(--blue-text);line-height:2.2;}
+.guide-box b{font-weight:700;}
+.sfield{margin-bottom:14px;}
+.sfield label{display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.sfield input{width:100%;padding:13px 14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;}
+.sfield input:focus{outline:none;border-color:var(--blue);}
+.sfield .hint{font-size:11px;color:var(--text3);margin-top:4px;}
+.sbtn{width:100%;padding:16px;background:var(--blue);color:white;border:none;border-radius:var(--r);font-size:16px;font-weight:700;cursor:pointer;margin-top:6px;}
+.sbtn:active{opacity:.85;}
+.sbtn:disabled{opacity:.6;cursor:not-allowed;}
+.sdemo{width:100%;padding:15px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;}
+.sdemo:active{opacity:.85;}
+.sstatus{font-size:12px;text-align:center;margin-top:10px;min-height:18px;}
+.sstatus.ok{color:var(--green);}
+.sstatus.err{color:var(--red);}
+
+/* ══ APP ══ */
+#app{display:none;height:100%;flex-direction:column;}
+#app.ready{display:flex;}
+
+/* TOPBAR */
+.topbar{height:var(--topbar);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:100;}
+.topbar-brand{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.brand-dot{width:9px;height:9px;border-radius:50%;background:var(--blue);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);background:var(--green-bg);padding:4px 10px;border-radius:999px;}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.avatars{display:flex;gap:3px;}
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;border:2px solid var(--bg2);}
+.menu-btn{display:none;padding:6px 8px;background:none;border:none;cursor:pointer;font-size:22px;color:var(--text);}
+
+/* APP BODY */
+.app-body{flex:1;display:flex;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;transition:transform .25s;}
+.sidebar-user{padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sidebar-user .av{width:36px;height:36px;font-size:13px;flex-shrink:0;}
+.user-info{flex:1;min-width:0;}
+.uname{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.urole{font-size:11px;color:var(--text2);}
+.online-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.nav{padding:8px;flex:1;}
+.nslabel{font-size:10px;color:var(--text3);padding:8px 8px 3px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.nitem{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--r);cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;margin-bottom:2px;user-select:none;}
+.nitem:hover{background:var(--bg3);color:var(--text);}
+.nitem.active{background:var(--blue-bg);color:var(--blue);font-weight:700;}
+.nitem .ic{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.online-sec{padding:12px 14px;border-top:1px solid var(--border);}
+.online-sec-title{font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
+.online-avatars{display:flex;gap:4px;flex-wrap:wrap;}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.page-header{padding:14px 18px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.page-header h2{font-size:17px;font-weight:700;}
+.content{flex:1;overflow-y:auto;padding:14px 18px 20px;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* BOTTOM NAV */
+.bottom-nav{display:none;height:var(--bottombar);background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;}
+.bnav-scroll{display:flex;overflow-x:auto;height:100%;-ms-overflow-style:none;scrollbar-width:none;}
+.bnav-scroll::-webkit-scrollbar{display:none;}
+.bnav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:64px;padding:0 8px;cursor:pointer;color:var(--text3);font-size:10px;font-weight:600;gap:3px;border-top:2px solid transparent;transition:all .15s;flex-shrink:0;}
+.bnav-item.active{color:var(--blue);border-top-color:var(--blue);}
+.bnav-item .ic{font-size:18px;}
+
+/* SIDEBAR OVERLAY */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199;}
+
+/* ══ COMPONENTS ══ */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--bg3);border-radius:var(--r);padding:14px;}
+.stat-label{font-size:11px;color:var(--text2);margin-bottom:3px;font-weight:600;}
+.stat-val{font-size:22px;font-weight:700;}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.stat-up{color:var(--green);}
+.stat-dn{color:var(--red);}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:12px;}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.card-title{font-size:13px;font-weight:700;}
+.two-col{display:grid;grid-template-columns:1fr;gap:12px;}
+
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:8px 10px;font-size:11px;color:var(--text2);font-weight:700;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg3);}
+.empty-row td{text-align:center;color:var(--text3);padding:28px;}
+
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;}
+.b-success{background:var(--green-bg);color:var(--green-text);}
+.b-warning{background:var(--amber-bg);color:var(--amber-text);}
+.b-danger{background:var(--red-bg);color:var(--red-text);}
+.b-info{background:var(--blue-bg);color:var(--blue-text);}
+.b-gray{background:var(--bg3);color:var(--text2);}
+
+.btn{padding:9px 16px;border-radius:var(--r);border:1px solid var(--border2);cursor:pointer;font-size:13px;font-weight:700;background:transparent;color:var(--text);transition:all .15s;white-space:nowrap;}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--blue);color:white;border-color:var(--blue);}
+.btn-sm{padding:7px 12px;font-size:12px;}
+.btn-danger{background:var(--red-bg);color:var(--red-text);border-color:#F7C1C1;}
+
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--blue);}
+.fg input[readonly]{background:var(--bg3);}
+.form-row{display:grid;grid-template-columns:1fr;gap:10px;}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:flex-end;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--bg2);border-radius:var(--rl) var(--rl) 0 0;padding:22px;width:100%;max-height:92vh;overflow-y:auto;}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-close{cursor:pointer;color:var(--text2);font-size:24px;background:none;border:none;padding:4px;line-height:1;}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:12px 22px;border-radius:999px;font-size:13px;font-weight:700;z-index:9000;display:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.2);}
+#toast.ok{background:var(--green);color:white;}
+#toast.err{background:var(--red);color:white;}
+#toast.inf{background:var(--blue);color:white;}
+
+.prog-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:5px;}
+.prog-fill{height:100%;border-radius:3px;background:var(--blue);}
+
+.search-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.search-row input,.search-row select{padding:9px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;}
+.search-row input{flex:1;min-width:120px;}
+
+.tab-bar{display:flex;gap:2px;background:var(--bg3);border-radius:var(--r);padding:3px;margin-bottom:12px;}
+.tab-item{flex:1;text-align:center;padding:9px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text2);transition:all .15s;white-space:nowrap;}
+.tab-item.active{background:var(--bg2);color:var(--text);border:1px solid var(--border);}
+
+.act-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.act-item:last-child{border-bottom:none;}
+.act-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.act-text{font-size:12px;flex:1;color:var(--text2);line-height:1.5;}
+.act-time{font-size:11px;color:var(--text3);white-space:nowrap;}
+
+.loc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;}
+.loc-cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:grab;border:1px solid transparent;transition:box-shadow .15s,opacity .15s;position:relative;gap:2px;padding:4px;}
+.loc-cell:active{cursor:grabbing;}
+.loc-cell.dragging{opacity:.35;box-shadow:none;}
+.loc-cell.drag-over{box-shadow:0 0 0 2.5px var(--blue);transform:scale(1.06);}
+.loc-name{font-size:10px;font-weight:700;text-align:center;line-height:1.2;word-break:break-all;}
+.loc-sub{font-size:8px;opacity:.7;text-align:center;}
+.loc-edit-btn{position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,.18);color:white;font-size:8px;display:none;align-items:center;justify-content:center;cursor:pointer;border:none;line-height:1;}
+.loc-cell:hover .loc-edit-btn{display:flex;}
+.drag-hint{font-size:11px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.ls-empty{background:var(--green-bg);color:var(--green-text);border-color:#C0DD97;}
+.ls-low{background:var(--amber-bg);color:var(--amber-text);border-color:#FAC775;}
+.ls-full{background:var(--red-bg);color:var(--red-text);border-color:#F7C1C1;}
+.ls-reserved{background:var(--blue-bg);color:var(--blue-text);border-color:#B5D4F4;}
+.ls-disabled{background:var(--bg3);color:var(--text3);}
+
+.perm-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+.perm-row:last-child{border-bottom:none;}
+.toggle-btn{width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle-btn.on{background:var(--blue);}
+.toggle-btn.off{background:var(--bg3);border:1px solid var(--border2);}
+.toggle-btn::after{content:'';position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:white;transition:left .2s;}
+.toggle-btn.on::after{left:21px;}
+.toggle-btn.off::after{left:3px;}
+
+.alert-bar{padding:10px 13px;border-radius:var(--r);font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-weight:600;}
+.alert-warn{background:var(--amber-bg);color:var(--amber-text);border:1px solid #FAC775;}
+.alert-danger{background:var(--red-bg);color:var(--red-text);border:1px solid #F7C1C1;}
+
+/* ══ RESPONSIVE ══ */
+@media(min-width:600px){
+  .stats-grid{grid-template-columns:repeat(4,1fr);}
+  .two-col{grid-template-columns:1fr 1fr;}
+  .form-row{grid-template-columns:1fr 1fr;}
+  .modal{border-radius:var(--rl);width:500px;max-width:95vw;}
+  .overlay{align-items:center;}
+  #toast{bottom:22px;}
+}
+@media(max-width:767px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:200;transform:translateX(-100%);width:260px;}
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-overlay.open{display:block;}
+  .menu-btn{display:block;}
+  .bottom-nav{display:flex;}
+  .page-header{padding:12px 14px 0;}
+  .content{padding:12px 14px 16px;}
+  .topbar{padding:0 10px;}
+  .live-pill span{display:none;}
+}
+@media(min-width:768px){
+  .topbar-brand{display:none;}
+  .menu-btn{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div id="setup">
+<div class="sbox">
+  <div class="sbox-logo">🏭</div>
+  <h1>倉庫 ERP 系統</h1>
+  <p>多人即時協作，電腦與手機皆可使用</p>
+  <div class="guide-box">
+    <b>📋 如何取得 Supabase 連線資訊（約 5 分鐘）</b><br>
+    ① 前往 <b>supabase.com</b> → 免費註冊 → 建立新專案<br>
+    ② 左側點 <b>Settings → API</b><br>
+    ③ 複製 <b>Project URL</b> 與 <b>service_role key</b>（點 Reveal 顯示）貼入下方<br>
+    ④ 同事用同一個 HTML 檔填入相同資訊即可即時共用
+  </div>
+  <div class="sfield">
+    <label>Project URL</label>
+    <input id="supaUrl" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" inputmode="url">
+    <div class="hint">Supabase → Settings → API → Project URL</div>
+  </div>
+  <div class="sfield">
+    <label>Service Role Key（完整權限金鑰）</label>
+    <input id="supaKey" placeholder="eyJhbGciOiJIUzI1NiIs..." autocomplete="off">
+    <div class="hint">Supabase → Settings → API → service_role secret（點 Reveal 顯示）</div>
+  </div>
+  <div class="sfield">
+    <label>你的名稱（其他人會看到）</label>
+    <input id="userName" placeholder="例：王小明" maxlength="10">
+  </div>
+  <button class="sbtn" id="btnConnect" onclick="connectSupabase()">🔗 連線並進入系統（多人共用）</button>
+  <div class="sstatus" id="setupStatus"></div>
+  <button class="sdemo" onclick="demoMode()">🖥 示範模式（單機體驗，資料不共用）</button>
+</div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="topbar">
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    <div class="topbar-brand"><span class="brand-dot"></span>倉庫 ERP</div>
+    <div class="topbar-right">
+      <div class="live-pill" id="livePill"><div class="pulse"></div><span id="liveText">連線中</span></div>
+      <div class="avatars" id="topAvatars"></div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-user">
+        <div class="av" id="selfAv" style="background:var(--blue);">我</div>
+        <div class="user-info"><div class="uname" id="selfName">-</div><div class="urole">管理員</div></div>
+        <div class="online-dot"></div>
+      </div>
+      <div class="nav">
+        <div class="nslabel">主要功能</div>
+        <div class="nitem active" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
+        <div class="nitem" onclick="goto('locations',this)"><span class="ic">🗂</span>倉位管理</div>
+        <div class="nitem" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
+        <div class="nitem" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
+        <div class="nitem" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
+        <div class="nslabel">ERP 模組</div>
+        <div class="nitem" onclick="goto('purchase',this)"><span class="ic">🛒</span>採購管理</div>
+        <div class="nitem" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
+        <div class="nitem" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
+        <div class="nitem" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
+        <div class="nslabel">系統管理</div>
+        <div class="nitem" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
+        <div class="nitem" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
+        <div class="nitem" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
+      </div>
+      <div class="online-sec">
+        <div class="online-sec-title">目前在線</div>
+        <div class="online-avatars" id="onlineAvatars"></div>
+        <button onclick="logout()" style="margin-top:10px;width:100%;padding:7px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">⬅ 登出 / 切換帳號</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="page-header"><h2 id="pageTitle">總覽儀表板</h2><div id="pageActions"></div></div>
+      <div class="content">
+
+        <div class="page active" id="page-dashboard">
+          <div id="dashAlerts"></div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">倉位使用率</div><div class="stat-val" id="ds-use">-</div><div class="prog-bar"><div class="prog-fill" id="ds-prog" style="width:0"></div></div><div class="stat-sub" id="ds-loc-sub">-</div></div>
+            <div class="stat-card"><div class="stat-label">今日入庫</div><div class="stat-val" id="ds-in">-</div><div class="stat-sub stat-up">入庫單筆數</div></div>
+            <div class="stat-card"><div class="stat-label">今日出庫</div><div class="stat-val" id="ds-out">-</div><div class="stat-sub stat-dn">出庫申請</div></div>
+            <div class="stat-card"><div class="stat-label">料件種類</div><div class="stat-val" id="ds-mat">-</div><div class="stat-sub">庫存總筆數</div></div>
+          </div>
+          <div class="two-col">
+            <div class="card"><div class="card-hd"><span class="card-title">即時操作動態</span><span class="badge b-info">即時</span></div><div id="dashAct"><div style="color:var(--text3);font-size:12px;">載入中...</div></div></div>
+            <div class="card"><div class="card-hd"><span class="card-title">低量警示料件</span></div><div id="dashLow"><div style="color:var(--text3);font-size:12px;">載入中...</div></div></div>
+          </div>
+        </div>
+
+        <div class="page" id="page-locations">
+          <div class="card">
+            <div class="card-hd"><span class="card-title">倉位圖覽</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="badge b-success">空閒</span><span class="badge b-warning">低量</span><span class="badge b-danger">滿載</span><span class="badge b-info">保留</span><button class="btn btn-primary btn-sm" onclick="openModal('location')">+ 新增倉位</button></div></div>
+            <div class="drag-hint">✋ 拖曳可移動倉位順序 ／ 點 ✎ 可改名稱與狀態</div>
+            <div class="loc-grid" id="locGrid">載入中...</div>
+          </div>
+          <div class="card">
+            <div class="card-hd"><span class="card-title">倉位清單</span></div>
+            <div class="table-wrap"><table><thead><tr><th>倉位編號</th><th>自訂名稱</th><th>倉區</th><th>容量</th><th>安全量</th><th>狀態</th><th>操作</th></tr></thead><tbody id="locBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <div class="page" id="page-inbound">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <div class="tab-bar" style="flex:1;max-width:320px;"><div class="tab-item active" id="ib-all" onclick="ibF('all')">全部</div><div class="tab-item" id="ib-pending" onclick="ibF('pending')">待入庫</div><div class="tab-item" id="ib-done" onclick="ibF('done')">已完成</div></div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('inbound')">+ 新增入庫單</button>
+          </div>
+          <div class="card" style="margin:0;"><div class="search-row"><input id="ibQ" placeholder="搜尋料號、供應商..." oninput="renderIB()"></div><div class="table-wrap"><table><thead><tr><th>單號</th><th>品名</th><th>數量</th><th>倉位</th><th>供應商</th><th>狀態</th><th>操作</th></tr></thead><tbody id="ibBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="page" id="page-outbound">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <div class="tab-bar" style="flex:1;"><div class="tab-item active" id="ob-all" onclick="obF('all')">全部</div><div class="tab-item" id="ob-pending" onclick="obF('pending')">待審核</div><div class="tab-item" id="ob-approved" onclick="obF('approved')">已核准</div><div class="tab-item" id="ob-done" onclick="obF('done')">已出庫</div></div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('outbound')">+ 新增出庫申請</button>
+          </div>
+          <div class="card" style="margin:0;"><div class="search-row"><input id="obQ" placeholder="搜尋料號、部門..." oninput="renderOB()"></div><div class="table-wrap"><table><thead><tr><th>單號</th><th>品名</th><th>數量</th><th>部門</th><th>優先</th><th>狀態</th><th>操作</th></tr></thead><tbody id="obBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="page" id="page-inventory">
+          <div class="card" style="margin:0;">
+            <div class="card-hd"><span class="card-title">庫存總覽</span><div style="display:flex;gap:8px;"><button class="btn btn-primary btn-sm" onclick="openModal('material')">+ 新增料件</button><button class="btn btn-sm" onclick="openModal('adjust')">庫存調整</button></div></div>
+            <div class="search-row"><input id="invQ" placeholder="搜尋料號或品名..." oninput="renderINV()"><select id="invSt" onchange="renderINV()"><option value="">全部</option><option value="ok">正常</option><option value="low">低量</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>料號</th><th>品名</th><th>倉位</th><th>庫存</th><th>安全量</th><th>狀態</th><th>操作</th></tr></thead><tbody id="invBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <div class="page" id="page-purchase">
+          <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+            <div class="stat-card"><div class="stat-label">採購單總數</div><div class="stat-val" id="po-t">-</div></div>
+            <div class="stat-card"><div class="stat-label">待審核</div><div class="stat-val" id="po-p">-</div></div>
+            <div class="stat-card"><div class="stat-label">在途中</div><div class="stat-val" id="po-r">-</div></div>
+          </div>
+          <div class="card"><div class="card-hd"><span class="card-title">採購單列表</span><button class="btn btn-primary btn-sm" onclick="openModal('purchase')">+ 建立採購單</button></div><div class="table-wrap"><table><thead><tr><th>單號</th><th>供應商</th><th>料號</th><th>數量</th><th>金額</th><th>到貨日</th><th>狀態</th><th>操作</th></tr></thead><tbody id="poBody"></tbody></table></div></div>
+        </div>
+
+        <div class="page" id="page-supplier">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">供應商管理</span>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-sm" onclick="openModal('mngcat')">⚙ 管理分類</button>
+                <button class="btn btn-primary btn-sm" onclick="openModal('supplier')">+ 新增供應商</button>
+              </div>
+            </div>
+            <div class="search-row">
+              <input id="supQ" placeholder="搜尋供應商、品項..." oninput="renderSup()">
+              <select id="supCatF" onchange="renderSup()" style="padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;">
+                <option value="">全部分類</option>
+              </select>
+              <select id="supStF" onchange="renderSup()" style="padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;">
+                <option value="">全部狀態</option>
+                <option value="active">合作中</option>
+                <option value="watch">觀察中</option>
+                <option value="inactive">停止合作</option>
+              </select>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>分類</th><th>供應商</th><th>聯絡人</th><th>電話</th><th>供應品項</th><th>狀態</th><th>操作</th></tr></thead>
+              <tbody id="supBody"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div class="page" id="page-production">
+          <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+            <div class="stat-card"><div class="stat-label">工單總數</div><div class="stat-val" id="wo-t">-</div></div>
+            <div class="stat-card"><div class="stat-label">生產中</div><div class="stat-val" id="wo-a">-</div></div>
+            <div class="stat-card"><div class="stat-label">待料中</div><div class="stat-val" id="wo-w">-</div></div>
+          </div>
+          <div class="card"><div class="card-hd"><span class="card-title">工單列表</span><button class="btn btn-primary btn-sm" onclick="openModal('workorder')">+ 建立工單</button></div><div class="table-wrap"><table><thead><tr><th>工單號</th><th>成品</th><th>計畫</th><th>完工</th><th>開工</th><th>完工日</th><th>狀態</th><th>操作</th></tr></thead><tbody id="woBody"></tbody></table></div></div>
+        </div>
+
+        <div class="page" id="page-reports">
+          <div class="two-col">
+            <div class="card"><div class="card-hd"><span class="card-title">倉位狀態分佈</span></div><div id="rpt-loc"></div></div>
+            <div class="card"><div class="card-hd"><span class="card-title">進出料統計</span></div><div id="rpt-flow"></div></div>
+          </div>
+          <div class="card"><div class="card-hd"><span class="card-title">報表匯出</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" onclick="exportCSV('inventory')">庫存明細</button><button class="btn" onclick="exportCSV('inbound')">入庫紀錄</button><button class="btn" onclick="exportCSV('outbound')">出庫紀錄</button><button class="btn" onclick="exportCSV('purchase')">採購紀錄</button><button class="btn" onclick="exportCSV('suppliers')">供應商清單</button><button class="btn" onclick="exportCSV('activity_log')">操作紀錄</button></div></div>
+        </div>
+
+        <div class="page" id="page-users">
+          <div class="card"><div class="card-hd"><span class="card-title">使用者管理</span><button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button></div><div class="table-wrap"><table><thead><tr><th>姓名</th><th>帳號</th><th>部門</th><th>角色</th><th>狀態</th><th>操作</th></tr></thead><tbody id="userBody"><tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px;">請連接 Supabase 後啟用</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="page" id="page-permissions">
+          <div class="two-col">
+            <div class="card">
+              <div class="card-hd"><span class="card-title">角色權限設定</span></div>
+              <div class="tab-bar"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">主管</div><div class="tab-item" id="pt-op" onclick="switchRole('op')">操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('read')">唯讀</div></div>
+              <div id="permList"></div>
+              <div style="margin-top:12px;"><button class="btn btn-primary" style="width:100%;" onclick="toast('權限設定已儲存','ok')">儲存權限設定</button></div>
+            </div>
+            <div class="card"><div class="card-hd"><span class="card-title">角色說明</span></div><div id="roleDesc" style="font-size:13px;color:var(--text2);line-height:2;"></div></div>
+          </div>
+        </div>
+
+        <div class="page" id="page-actlog">
+          <div class="card"><div class="card-hd"><span class="card-title">完整操作紀錄</span><button class="btn btn-sm" onclick="exportCSV('activity_log')">匯出 CSV</button></div><div class="table-wrap"><table><thead><tr><th>時間</th><th>操作者</th><th>類型</th><th>說明</th></tr></thead><tbody id="logBody"><tr class="empty-row"><td colspan="4">載入中...</td></tr></tbody></table></div></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="bnav-scroll">
+      <div class="bnav-item active" onclick="goto('dashboard',null,'儀表板',this)"><span class="ic">📊</span>儀表板</div>
+      <div class="bnav-item" onclick="goto('locations',null,'倉位',this)"><span class="ic">🗂</span>倉位</div>
+      <div class="bnav-item" onclick="goto('inbound',null,'進料',this)"><span class="ic">📥</span>進料</div>
+      <div class="bnav-item" onclick="goto('outbound',null,'出料',this)"><span class="ic">📤</span>出料</div>
+      <div class="bnav-item" onclick="goto('inventory',null,'庫存',this)"><span class="ic">📦</span>庫存</div>
+      <div class="bnav-item" onclick="goto('purchase',null,'採購',this)"><span class="ic">🛒</span>採購</div>
+      <div class="bnav-item" onclick="goto('reports',null,'報表',this)"><span class="ic">📈</span>報表</div>
+      <div class="bnav-item" onclick="goto('actlog',null,'紀錄',this)"><span class="ic">📋</span>紀錄</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-hd"><span class="modal-title" id="modalTitle"></span><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div>
+</div>
+<div id="toast"></div>
+
+<script>
+let _db=null,isDemo=false,currentUser='使用者';
+let ibFV='all',obFV='all';
+let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[]};
+const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
+
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
+
+const PT={dashboard:'總覽儀表板',locations:'倉位管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
+function goto(p,el,label,bnavEl){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
+  document.getElementById('pageTitle').textContent=label||PT[p]||p;
+  document.querySelectorAll('.nitem').forEach(x=>x.classList.remove('active'));
+  if(el&&el.classList.contains('nitem'))el.classList.add('active');
+  document.querySelectorAll('.bnav-item').forEach(x=>x.classList.remove('active'));
+  if(bnavEl)bnavEl.classList.add('active');
+  else document.querySelectorAll('.bnav-item').forEach(x=>{if(x.getAttribute('onclick')&&x.getAttribute('onclick').includes("'"+p+"'"))x.classList.add('active');});
+  closeSidebar();
+}
+
+async function connectSupabase(){
+  const url=document.getElementById('supaUrl').value.trim();
+  const key=document.getElementById('supaKey').value.trim();
+  const name=document.getElementById('userName').value.trim()||'使用者';
+  const st=document.getElementById('setupStatus');
+  const btn=document.getElementById('btnConnect');
+  if(!url||!key){st.textContent='請填入 URL 和 Key';st.className='sstatus err';return;}
+  btn.disabled=true;btn.textContent='連線中...';st.textContent='載入 Supabase 套件中...';st.className='sstatus';
+  try{
+    if(!window.supabaseLib){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        s.onload=()=>{window.supabaseLib=window.supabase;res();}
+        s.onerror=()=>rej(new Error('無法載入套件，請確認網路連線'));
+        document.head.appendChild(s);
+      });
+    }
+    _db=window.supabaseLib.createClient(url,key);
+    st.textContent='測試連線中...';
+    const{error}=await _db.from('locations').select('id').limit(1);
+    if(error)throw error;
+    currentUser=name;
+    localStorage.setItem('erp_url',url);localStorage.setItem('erp_key',key);localStorage.setItem('erp_user',name);
+    st.textContent='✅ 連線成功！進入系統中...';st.className='sstatus ok';
+    setTimeout(launchApp,600);
+  }catch(e){
+    st.textContent='❌ '+(e.message||'連線失敗，請確認設定');
+    st.className='sstatus err';btn.disabled=false;btn.textContent='🔗 連線並進入系統（多人共用）';
+  }
+}
+
+function demoMode(){isDemo=true;currentUser='示範管理員';seedDemo();launchApp();}
+
+async function launchApp(){
+  document.getElementById('setup').style.display='none';
+  document.getElementById('app').classList.add('ready');
+  document.getElementById('selfAv').textContent=currentUser.slice(-2);
+  document.getElementById('selfName').textContent=currentUser;
+  updateLive(true);renderOnline([currentUser]);
+  if(!isDemo){
+    setupRT();
+  }
+  loadAll();
+}
+
+function setupRT(){
+  ['locations','materials','inventory','inbound','outbound','activity_log'].forEach(t=>{
+    _db.channel('rt-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{loadT(t);refreshDash();}).subscribe();
+  });
+}
+function updateLive(ok){
+  const p=document.getElementById('livePill'),t=document.getElementById('liveText');
+  if(isDemo){t.textContent='示範';p.style.background='var(--amber-bg)';p.style.color='var(--amber-text)';return;}
+  t.textContent=ok?'即時同步':'中斷';p.style.background=ok?'var(--green-bg)':'var(--amber-bg)';p.style.color=ok?'var(--green-text)':'var(--amber-text)';
+}
+function renderOnline(users){
+  const h=users.slice(0,5).map((u,i)=>`<div class="av" title="${u}" style="background:${COLORS[i%COLORS.length]};width:28px;height:28px;font-size:10px;">${u.slice(-2)}</div>`).join('');
+  document.getElementById('onlineAvatars').innerHTML=h;document.getElementById('topAvatars').innerHTML=h;
+}
+
+async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories'].map(t=>loadT(t)));renderAll();}
+async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog'};DB[keyMap[t]||t]=data||[];}catch(e){console.warn(t,e.message);}}
+function renderAll(){refreshDash();renderLoc();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');}
+
+function seedDemo(){
+  const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
+  DB.locations=[];
+  const demoNames={'A11':'零件架A','A12':'零件架B','B11':'備料區1','C11':'冷藏區'};
+  zones.forEach(z=>{for(let r=1;r<=3;r++)for(let c=1;c<=4;c++){const id=`${z}${r}${c}`;DB.locations.push({id,zone:z,row_no:r.toString().padStart(2,'0'),col_no:c.toString().padStart(2,'0'),capacity:1000,safe_qty:100,status:sts[Math.floor(Math.random()*sts.length)],custom_name:demoNames[id]||null,sort_order:DB.locations.length,created_at:new Date().toISOString()});}});
+  DB.materials=[{id:'m1',code:'SCR-M8-020',name:'螺絲M8×20',unit:'件',safe_qty:200,created_at:new Date().toISOString()},{id:'m2',code:'PCB-001',name:'PCB基板',unit:'片',safe_qty:100,created_at:new Date().toISOString()},{id:'m3',code:'CAP-100U',name:'電容100μF',unit:'顆',safe_qty:500,created_at:new Date().toISOString()},{id:'m4',code:'RES-1K',name:'電阻1kΩ',unit:'顆',safe_qty:1000,created_at:new Date().toISOString()},{id:'m5',code:'MTR-DRV',name:'馬達驅動板',unit:'片',safe_qty:50,created_at:new Date().toISOString()}];
+  DB.inventory=[{id:'i1',material_id:'m1',location_id:'A11',qty:4500,updated_at:new Date().toISOString()},{id:'i2',material_id:'m2',location_id:'A12',qty:320,updated_at:new Date().toISOString()},{id:'i3',material_id:'m3',location_id:'B11',qty:2800,updated_at:new Date().toISOString()},{id:'i4',material_id:'m4',location_id:'B12',qty:1900,updated_at:new Date().toISOString()},{id:'i5',material_id:'m5',location_id:'C11',qty:12,updated_at:new Date().toISOString()}];
+  DB.inbound=[{id:'ib1',order_no:'IN-2024-156',material_id:'m1',location_id:'A11',plan_qty:500,actual_qty:null,supplier:'台鑫五金',status:'pending',operator:'王小明',created_at:new Date().toISOString()},{id:'ib2',order_no:'IN-2024-155',material_id:'m2',location_id:'A12',plan_qty:200,actual_qty:null,supplier:'大聯電子',status:'pending',operator:'陳美玲',created_at:new Date(Date.now()-3600000).toISOString()},{id:'ib3',order_no:'IN-2024-154',material_id:'m3',location_id:'B11',plan_qty:1000,actual_qty:1000,supplier:'友達電子',status:'done',operator:'王小明',created_at:new Date(Date.now()-86400000).toISOString()}];
+  DB.outbound=[{id:'ob1',order_no:'OUT-2024-089',material_id:'m2',location_id:'A12',qty:50,dept:'生產部',priority:'urgent',status:'pending',operator:'林志遠',created_at:new Date().toISOString()},{id:'ob2',order_no:'OUT-2024-088',material_id:'m1',location_id:'A11',qty:100,dept:'維修部',priority:'normal',status:'approved',operator:'林志遠',created_at:new Date(Date.now()-1800000).toISOString()},{id:'ob3',order_no:'OUT-2024-087',material_id:'m5',location_id:'C11',qty:20,dept:'工程部',priority:'low',status:'done',operator:'陳美玲',created_at:new Date(Date.now()-86400000).toISOString()}];
+  DB.actlog=[{id:'l1',action_type:'入庫',module:'進料',description:'螺絲M8×20 × 500件 入庫 A-1-1',operator:'王小明',created_at:new Date().toISOString()},{id:'l2',action_type:'出庫',module:'出料',description:'PCB基板 × 50件 出庫申請',operator:'林志遠',created_at:new Date(Date.now()-900000).toISOString()},{id:'l3',action_type:'設定',module:'倉位',description:'新增倉位 C-3-4',operator:currentUser,created_at:new Date(Date.now()-3600000).toISOString()}];
+  DB.suppliers=[
+    {id:'s1',name:'台鑫五金',tax_id:'12345678',contact:'張大衛',phone:'02-2234-5678',items:'螺絲、螺帽',status:'active',created_at:new Date().toISOString()},
+    {id:'s2',name:'大聯電子',tax_id:'23456789',contact:'李明華',phone:'03-3345-6789',items:'PCB、電子零件',status:'active',created_at:new Date().toISOString()},
+    {id:'s3',name:'友達電子',tax_id:'34567890',contact:'陳美鳳',phone:'04-4456-7890',items:'電容、電阻',status:'active',created_at:new Date().toISOString()},
+    {id:'s4',name:'台揚科技',tax_id:'45678901',contact:'王建智',phone:'02-5567-8901',items:'驅動板、模組',status:'watch',created_at:new Date().toISOString()},
+  ];
+  DB.purchase=[
+    {id:'p1',order_no:'PO-2024-089',supplier_id:'s1',supplier_name:'台鑫五金',material_code:'SCR-M8-020',qty:500,unit_price:5,arrive_date:'2024-01-22',status:'pending',operator:currentUser,created_at:new Date().toISOString()},
+    {id:'p2',order_no:'PO-2024-088',supplier_id:'s2',supplier_name:'大聯電子',material_code:'PCB-001',qty:200,unit_price:80,arrive_date:'2024-01-21',status:'transit',operator:currentUser,created_at:new Date(Date.now()-86400000).toISOString()},
+    {id:'p3',order_no:'PO-2024-087',supplier_id:'s3',supplier_name:'友達電子',material_code:'CAP-100U',qty:1000,unit_price:2,arrive_date:'2024-01-19',status:'done',operator:currentUser,created_at:new Date(Date.now()-172800000).toISOString()},
+  ];
+  DB.workorders=[
+    {id:'w1',order_no:'WO-2024-042',product_name:'電子控制板A型',plan_qty:100,done_qty:65,start_date:'2024-01-15',end_date:'2024-01-20',status:'active',created_at:new Date().toISOString()},
+    {id:'w2',order_no:'WO-2024-041',product_name:'驅動模組B型',plan_qty:50,done_qty:0,start_date:'2024-01-18',end_date:'2024-01-23',status:'waiting',created_at:new Date().toISOString()},
+    {id:'w3',order_no:'WO-2024-040',product_name:'電子控制板A型',plan_qty:200,done_qty:200,start_date:'2024-01-08',end_date:'2024-01-14',status:'done',created_at:new Date(Date.now()-604800000).toISOString()},
+  ];
+}
+
+function refreshDash(){
+  const tot=DB.locations.length,used=DB.locations.filter(l=>l.status==='full'||l.status==='low').length,pct=tot?Math.round(used/tot*100):0;
+  document.getElementById('ds-use').textContent=pct+'%';document.getElementById('ds-prog').style.width=pct+'%';document.getElementById('ds-loc-sub').textContent=used+'/'+tot+' 倉位';
+  const td=new Date().toDateString();
+  document.getElementById('ds-in').textContent=DB.inbound.filter(r=>new Date(r.created_at).toDateString()===td).length;
+  document.getElementById('ds-out').textContent=DB.outbound.filter(r=>new Date(r.created_at).toDateString()===td).length;
+  document.getElementById('ds-mat').textContent=DB.inventory.length;
+  const low=DB.inventory.filter(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
+  document.getElementById('dashAlerts').innerHTML=low.slice(0,2).map(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);return`<div class="alert-bar alert-danger">⚠ 低量：${m?.name} 剩 ${iv.qty} ${m?.unit}（安全量 ${m?.safe_qty}）</div>`;}).join('');
+  const logs=[...DB.actlog].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
+  document.getElementById('dashAct').innerHTML=logs.length?logs.map(l=>{const c=l.action_type==='入庫'?'var(--green)':l.action_type==='出庫'?'var(--red)':'var(--blue)';return`<div class="act-item"><div class="act-dot" style="background:${c}"></div><div class="act-text"><b>${l.operator}</b>：${l.description}</div><div class="act-time">${ft(l.created_at)}</div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0;">尚無操作紀錄</div>';
+  document.getElementById('dashLow').innerHTML=low.length?low.map(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);const p=m?.safe_qty?Math.min(100,Math.round(iv.qty/m.safe_qty*100)):100;return`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>${m?.name}</span><span style="color:var(--red);">${iv.qty}/${m?.safe_qty} ${m?.unit}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${p<30?'var(--red)':'var(--amber)'}"></div></div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0;">目前無低量警示 ✅</div>';
+}
+
+function locLabel(l){return l.custom_name||`${l.zone}-${l.row_no}-${l.col_no}`;}
+function locCode(l){return`${l.zone}-${l.row_no}-${l.col_no}`;}
+
+function renderLoc(){
+  const g=document.getElementById('locGrid');
+  if(!DB.locations.length){g.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0;">尚無倉位，請點右上方新增</div>';return;}
+  g.innerHTML=DB.locations.map((l,i)=>{
+    const code=locCode(l),name=locLabel(l);
+    return`<div class="loc-cell ls-${l.status||'empty'}" data-id="${l.id}" draggable="true"
+      ondragstart="dragStart(event,'${l.id}')"
+      ondragover="dragOver(event)"
+      ondragleave="dragLeave(event)"
+      ondrop="dragDrop(event,'${l.id}')"
+      ondragend="dragEnd(event)"
+      title="${code}${l.custom_name?' ('+l.custom_name+')':''}">
+      <button class="loc-edit-btn" onclick="event.stopPropagation();openModal('editloc','${l.id}')">✎</button>
+      <div class="loc-name">${name}</div>
+      <div class="loc-sub">${l.custom_name?code:sLbl(l.status)}</div>
+    </div>`;
+  }).join('');
+  setupDragTouch();
+  document.getElementById('locBody').innerHTML=DB.locations.map(l=>`<tr>
+    <td><b>${locCode(l)}</b></td>
+    <td>${l.custom_name?`<span style="color:var(--blue);font-weight:600;">${l.custom_name}</span>`:'<span style="color:var(--text3);">-</span>'}</td>
+    <td>${l.zone}</td><td>${l.capacity}</td><td>${l.safe_qty}</td>
+    <td><span class="badge ${sBadge(l.status)}">${sLbl(l.status)}</span></td>
+    <td><button class="btn btn-sm btn-primary" onclick="openModal('editloc','${l.id}')">✎ 編輯</button></td>
+  </tr>`).join('');
+}
+
+// ── DRAG & DROP ──
+let dragId=null;
+function dragStart(e,id){dragId=id;setTimeout(()=>{const el=document.querySelector(`[data-id='${id}']`);if(el)el.classList.add('dragging');},0);}
+function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function dragEnd(e){document.querySelectorAll('.loc-cell').forEach(c=>{c.classList.remove('dragging','drag-over');});}
+function dragDrop(e,targetId){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(dragId===targetId)return;
+  const fromIdx=DB.locations.findIndex(l=>l.id===dragId);
+  const toIdx=DB.locations.findIndex(l=>l.id===targetId);
+  if(fromIdx<0||toIdx<0)return;
+  const [moved]=DB.locations.splice(fromIdx,1);
+  DB.locations.splice(toIdx,0,moved);
+  renderLoc();
+  toast('倉位順序已調整','inf');
+  if(!isDemo) saveLocOrder();
+}
+async function saveLocOrder(){
+  // Update sort_order field if it exists, otherwise just keep in memory
+  DB.locations.forEach(async(l,i)=>{
+    try{await _db.from('locations').update({sort_order:i}).eq('id',l.id);}catch(e){}
+  });
+}
+
+// Touch drag support for mobile
+function setupDragTouch(){
+  document.querySelectorAll('.loc-cell').forEach(cell=>{
+    let touchDragId=null,clone=null,startX=0,startY=0;
+    cell.addEventListener('touchstart',e=>{
+      if(e.target.classList.contains('loc-edit-btn'))return;
+      touchDragId=cell.dataset.id;
+      const t=e.touches[0];startX=t.clientX;startY=t.clientY;
+      setTimeout(()=>{
+        if(!touchDragId)return;
+        cell.classList.add('dragging');
+        clone=cell.cloneNode(true);
+        clone.style.cssText=`position:fixed;z-index:9999;opacity:.85;pointer-events:none;width:${cell.offsetWidth}px;height:${cell.offsetHeight}px;`;
+        document.body.appendChild(clone);
+      },250);
+    },{passive:true});
+    cell.addEventListener('touchmove',e=>{
+      if(!clone)return;e.preventDefault();
+      const t=e.touches[0];
+      clone.style.left=(t.clientX-cell.offsetWidth/2)+'px';
+      clone.style.top=(t.clientY-cell.offsetHeight/2)+'px';
+      document.querySelectorAll('.loc-cell').forEach(c=>c.classList.remove('drag-over'));
+      const el=document.elementFromPoint(t.clientX,t.clientY)?.closest('.loc-cell');
+      if(el&&el!==cell)el.classList.add('drag-over');
+    },{passive:false});
+    cell.addEventListener('touchend',e=>{
+      if(clone){clone.remove();clone=null;}
+      cell.classList.remove('dragging');
+      if(!touchDragId)return;
+      const t=e.changedTouches[0];
+      const el=document.elementFromPoint(t.clientX,t.clientY)?.closest('.loc-cell');
+      if(el&&el.dataset.id&&el.dataset.id!==touchDragId){
+        const fromIdx=DB.locations.findIndex(l=>l.id===touchDragId);
+        const toIdx=DB.locations.findIndex(l=>l.id===el.dataset.id);
+        if(fromIdx>=0&&toIdx>=0){const[m]=DB.locations.splice(fromIdx,1);DB.locations.splice(toIdx,0,m);}
+        renderLoc();toast('倉位順序已調整','inf');
+      }
+      document.querySelectorAll('.loc-cell').forEach(c=>c.classList.remove('drag-over'));
+      touchDragId=null;
+    });
+  });
+}
+function sLbl(s){return{empty:'空閒',low:'低量',full:'滿載',reserved:'保留',disabled:'停用'}[s]||s;}
+function sBadge(s){return{empty:'b-success',low:'b-warning',full:'b-danger',reserved:'b-info',disabled:'b-gray'}[s]||'b-gray';}
+
+function ibF(v){ibFV=v;['all','pending','done'].forEach(x=>document.getElementById('ib-'+x).classList.toggle('active',x===v));renderIB();}
+function renderIB(){
+  const q=(document.getElementById('ibQ')?.value||'').toLowerCase();
+  const rows=DB.inbound.filter(r=>{const m=DB.materials.find(x=>x.id===r.material_id);return(!q||(r.order_no+' '+(m?.code||'')+' '+(m?.name||'')+' '+(r.supplier||'')).toLowerCase().includes(q))&&(ibFV==='all'||r.status===ibFV);});
+  document.getElementById('ibBody').innerHTML=rows.map(r=>{
+    const m=DB.materials.find(x=>x.id===r.material_id);const l=DB.locations.find(x=>x.id===r.location_id);const ll=l?`${l.zone}-${l.row_no}-${l.col_no}`:'-';
+    const sb=r.status==='done'?'b-success':r.status==='pending'?'b-warning':'b-info';
+    const sl={pending:'待入庫',done:'已完成',cancelled:'已取消'}[r.status]||r.status;
+    const btn=r.status==='pending'?`<button class="btn btn-sm btn-primary" onclick="execIB('${r.id}')">入庫</button>`:`<button class="btn btn-sm" onclick="toast('查看','inf')">查看</button>`;
+    return`<tr><td style="white-space:nowrap;font-size:11px;">${r.order_no}</td><td>${m?.name||'-'}</td><td>${r.plan_qty}</td><td>${ll}</td><td>${r.supplier||'-'}</td><td><span class="badge ${sb}">${sl}</span></td><td>${btn}</td></tr>`;
+  }).join('')||'<tr class="empty-row"><td colspan="7">尚無資料</td></tr>';
+}
+
+function obF(v){obFV=v;['all','pending','approved','done'].forEach(x=>document.getElementById('ob-'+x).classList.toggle('active',x===v));renderOB();}
+function renderOB(){
+  const q=(document.getElementById('obQ')?.value||'').toLowerCase();
+  const rows=DB.outbound.filter(r=>{const m=DB.materials.find(x=>x.id===r.material_id);return(!q||(r.order_no+' '+(m?.code||'')+' '+(m?.name||'')+' '+(r.dept||'')).toLowerCase().includes(q))&&(obFV==='all'||r.status===obFV);});
+  document.getElementById('obBody').innerHTML=rows.map(r=>{
+    const m=DB.materials.find(x=>x.id===r.material_id);
+    const pb={urgent:'b-danger',normal:'b-warning',low:'b-info'}[r.priority]||'b-gray';
+    const pl={urgent:'緊急',normal:'一般',low:'低'}[r.priority]||r.priority;
+    const sb={pending:'b-warning',approved:'b-info',done:'b-success',cancelled:'b-gray'}[r.status]||'b-gray';
+    const sl={pending:'待審核',approved:'已核准',done:'已出庫',cancelled:'已取消'}[r.status]||r.status;
+    let btn='';
+    if(r.status==='pending')btn=`<button class="btn btn-sm btn-primary" onclick="approveOB('${r.id}')">審核</button>`;
+    else if(r.status==='approved')btn=`<button class="btn btn-sm btn-primary" onclick="execOB('${r.id}')">出庫</button>`;
+    else btn=`<button class="btn btn-sm" onclick="toast('查看','inf')">查看</button>`;
+    return`<tr><td style="white-space:nowrap;font-size:11px;">${r.order_no}</td><td>${m?.name||'-'}</td><td>${r.qty}</td><td>${r.dept||'-'}</td><td><span class="badge ${pb}">${pl}</span></td><td><span class="badge ${sb}">${sl}</span></td><td>${btn}</td></tr>`;
+  }).join('')||'<tr class="empty-row"><td colspan="7">尚無資料</td></tr>';
+}
+
+function renderINV(){
+  const q=(document.getElementById('invQ')?.value||'').toLowerCase();
+  const sf=document.getElementById('invSt')?.value||'';
+  const rows=DB.inventory.filter(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);const isLow=m&&iv.qty<m.safe_qty;return(!q||((m?.code||'')+' '+(m?.name||'')).toLowerCase().includes(q))&&(!sf||(sf==='ok'&&!isLow)||(sf==='low'&&isLow));});
+  document.getElementById('invBody').innerHTML=rows.map(iv=>{
+    const m=DB.materials.find(x=>x.id===iv.material_id);const l=DB.locations.find(x=>x.id===iv.location_id);const ll=l?`${l.zone}-${l.row_no}-${l.col_no}`:'-';const isLow=m&&iv.qty<m.safe_qty;
+    return`<tr><td><b>${m?.code||'-'}</b></td><td>${m?.name||'-'}</td><td>${ll}</td><td>${iv.qty.toLocaleString()}</td><td>${m?.safe_qty||'-'}</td><td><span class="badge ${isLow?'b-warning':'b-success'}">${isLow?'低量':'正常'}</span></td><td><button class="btn btn-sm" onclick="openModal('adjust','${iv.id}')">調整</button></td></tr>`;
+  }).join('')||'<tr class="empty-row"><td colspan="7">尚無資料</td></tr>';
+}
+
+function renderPO(){
+  const pos=DB.purchase||[];
+  document.getElementById('po-t').textContent=pos.length;
+  document.getElementById('po-p').textContent=pos.filter(x=>x.status==='pending').length;
+  document.getElementById('po-r').textContent=pos.filter(x=>x.status==='transit').length;
+  document.getElementById('poBody').innerHTML=pos.length?pos.map(p=>{
+    const[bc,bl]={pending:['b-warning','待審核'],transit:['b-info','在途'],done:['b-success','已到貨'],cancelled:['b-gray','已取消']}[p.status]||['b-gray',p.status];
+    const amt=p.qty&&p.unit_price?'NT$'+(p.qty*p.unit_price).toLocaleString():'-';
+    let btn='';
+    if(p.status==='pending')btn=`<button class="btn btn-sm btn-primary" onclick="approvePO('${p.id}')">審核</button>`;
+    else if(p.status==='transit')btn=`<button class="btn btn-sm" onclick="receivePO('${p.id}')">確認到貨</button>`;
+    else btn=`<button class="btn btn-sm" onclick="openModal('editpo','${p.id}')">查看</button>`;
+    return`<tr>
+      <td style="font-size:11px;white-space:nowrap;">${p.order_no}</td>
+      <td>${p.supplier_name||'-'}</td>
+      <td>${p.material_code||'-'}</td>
+      <td>${p.qty||'-'}</td>
+      <td>${amt}</td>
+      <td>${p.arrive_date||'-'}</td>
+      <td><span class="badge ${bc}">${bl}</span></td>
+      <td>${btn}</td>
+    </tr>`;
+  }).join(''):'<tr class="empty-row"><td colspan="8">尚無採購單，點右上方新增</td></tr>';
+}
+function renderSup(){
+  // 更新分類下拉
+  const catSel=document.getElementById('supCatF');
+  if(catSel){
+    const curCat=catSel.value;
+    const cats=DB.sup_categories||[];
+    catSel.innerHTML='<option value="">全部分類</option>'+cats.map(c=>`<option value="${c.id}"${c.id===curCat?' selected':''}>${c.name}</option>`).join('');
+  }
+  const q=(document.getElementById('supQ')?.value||'').toLowerCase();
+  const catF=document.getElementById('supCatF')?.value||'';
+  const stF=document.getElementById('supStF')?.value||'';
+  const sups=(DB.suppliers||[]).filter(s=>{
+    const matchQ=!q||((s.name||'')+(s.contact||'')+(s.items||'')+(s.category||'')).toLowerCase().includes(q);
+    const matchCat=!catF||s.category_id===catF;
+    const matchSt=!stF||s.status===stF;
+    return matchQ&&matchCat&&matchSt;
+  });
+  const cats=DB.sup_categories||[];
+  document.getElementById('supBody').innerHTML=sups.length?sups.map(s=>{
+    const cat=cats.find(c=>c.id===s.category_id);
+    const[bc,bl]={active:['b-success','合作中'],watch:['b-warning','觀察中'],inactive:['b-gray','停止合作']}[s.status]||['b-gray',s.status];
+    return`<tr>
+      <td>${cat?`<span class="badge b-info">${cat.name}</span>`:(s.category?`<span class="badge b-gray">${s.category}</span>`:'<span style="color:var(--text3);">-</span>')}</td>
+      <td><b>${s.name}</b></td>
+      <td>${s.contact||'-'}</td>
+      <td>${s.phone||'-'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.items||''}">${s.items||'-'}</td>
+      <td><span class="badge ${bc}">${bl}</span></td>
+      <td><button class="btn btn-sm btn-primary" onclick="openModal('editsup','${s.id}')">✎ 編輯</button></td>
+    </tr>`;
+  }).join(''):'<tr class="empty-row"><td colspan="7">尚無符合的供應商</td></tr>';
+}
+function renderWO(){
+  const wos=DB.workorders||[];
+  document.getElementById('wo-t').textContent=wos.length;
+  document.getElementById('wo-a').textContent=wos.filter(x=>x.status==='active').length;
+  document.getElementById('wo-w').textContent=wos.filter(x=>x.status==='waiting').length;
+  document.getElementById('woBody').innerHTML=wos.length?wos.map(w=>{
+    const[bc,bl]={active:['b-info','生產中'],waiting:['b-danger','待料'],done:['b-success','已完工']}[w.status]||['b-gray',w.status];
+    let btn='';
+    if(w.status==='waiting')btn=`<button class="btn btn-sm btn-primary" onclick="toast('補料申請已送出','ok')">補料申請</button>`;
+    else if(w.status==='active')btn=`<button class="btn btn-sm" onclick="openModal('editwo','${w.id}')">更新進度</button>`;
+    else btn=`<button class="btn btn-sm" onclick="openModal('editwo','${w.id}')">查看</button>`;
+    return`<tr>
+      <td style="white-space:nowrap;">${w.order_no||'-'}</td>
+      <td>${w.product_name||'-'}</td>
+      <td>${w.plan_qty||'-'}</td>
+      <td>${w.done_qty||0}</td>
+      <td>${w.start_date||'-'}</td>
+      <td>${w.end_date||'-'}</td>
+      <td><span class="badge ${bc}">${bl}</span></td>
+      <td>${btn}</td>
+    </tr>`;
+  }).join(''):'<tr class="empty-row"><td colspan="8">尚無工單，點右上方新增</td></tr>';
+}
+function renderReports(){
+  const stats={empty:0,low:0,full:0,reserved:0};DB.locations.forEach(l=>{if(stats[l.status]!==undefined)stats[l.status]++;});const t=DB.locations.length||1;
+  document.getElementById('rpt-loc').innerHTML=Object.entries({empty:'空閒',low:'低量',full:'滿載',reserved:'保留'}).map(([k,lb])=>{const c=stats[k],p=Math.round(c/t*100);const col={empty:'var(--green)',low:'var(--amber)',full:'var(--red)',reserved:'var(--blue)'}[k];return`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>${lb}</span><span>${c} 個</span></div><div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${col}"></div></div></div>`;}).join('');
+  document.getElementById('rpt-flow').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><div style="background:var(--green-bg);border-radius:var(--r);padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green-text);">${DB.inbound.length}</div><div style="font-size:11px;color:var(--green);">入庫單總數</div></div><div style="background:var(--red-bg);border-radius:var(--r);padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red-text);">${DB.outbound.length}</div><div style="font-size:11px;color:var(--red);">出庫單總數</div></div></div><div style="font-size:12px;color:var(--text2);">完成入庫：${DB.inbound.filter(r=>r.status==='done').length} 筆 ／ 完成出庫：${DB.outbound.filter(r=>r.status==='done').length} 筆</div>`;
+}
+function renderLog(){
+  const logs=[...DB.actlog].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  document.getElementById('logBody').innerHTML=logs.map(l=>`<tr><td style="white-space:nowrap;">${fdt(l.created_at)}</td><td>${l.operator||'-'}</td><td><span class="badge ${{入庫:'b-success',出庫:'b-danger',設定:'b-info',調整:'b-gray'}[l.action_type]||'b-gray'}">${l.action_type}</span></td><td>${l.description||'-'}</td></tr>`).join('')||'<tr class="empty-row"><td colspan="4">尚無紀錄</td></tr>';
+}
+
+const PERMS={admin:[1,1,1,1,1,1,1,1,1],manager:[1,1,1,1,1,1,0,1,0],op:[0,1,0,1,0,0,0,0,0],read:[0,0,0,0,0,0,0,1,0]};
+const PL=[['倉位管理','新增/編輯/刪除倉位'],['入庫操作','建立/執行入庫單'],['出庫審核','審核出庫申請'],['出庫操作','執行出庫作業'],['庫存調整','手動調整庫存'],['採購管理','建立/審核採購單'],['使用者管理','新增/停用帳號'],['報表匯出','匯出各類報表'],['系統設定','修改系統參數']];
+const RD={admin:'<span class="badge b-danger">👑 最高管理員</span><br><br>擁有所有模組完整操作權限，包含使用者管理與系統設定。',manager:'<span class="badge b-info">👔 主管</span><br><br>可進行倉位、進出料審核、採購及報表，不可修改帳號或系統設定。',op:'<span class="badge b-warning">🔧 操作員</span><br><br>可建立及執行入出庫單，無法審核或調整庫存。',read:'<span class="badge b-gray">👁 唯讀</span><br><br>只能查詢庫存資料和匯出報表，不可執行任何操作。'};
+function renderPermissions(role){['admin','manager','op','read'].forEach(r=>document.getElementById('pt-'+r).classList.toggle('active',r===role));const perms=PERMS[role];document.getElementById('permList').innerHTML=PL.map(([n,d],i)=>`<div class="perm-row"><div><div style="font-size:13px;font-weight:700;">${n}</div><div style="font-size:11px;color:var(--text2);">${d}</div></div><button class="toggle-btn ${perms[i]?'on':'off'}" onclick="this.classList.toggle('on');this.classList.toggle('off');toast('已更新','inf')"></button></div>`).join('');document.getElementById('roleDesc').innerHTML=RD[role];}
+function switchRole(r){renderPermissions(r);}
+
+async function execIB(id){
+  const r=DB.inbound.find(x=>x.id===id);if(!r)return;
+  if(!isDemo){await _db.from('inbound').update({status:'done',actual_qty:r.plan_qty}).eq('id',id);const ex=DB.inventory.find(iv=>iv.material_id===r.material_id&&iv.location_id===r.location_id);if(ex)await _db.from('inventory').update({qty:ex.qty+r.plan_qty,updated_at:new Date().toISOString()}).eq('id',ex.id);else await _db.from('inventory').insert({material_id:r.material_id,location_id:r.location_id,qty:r.plan_qty});await _db.from('activity_log').insert({action_type:'入庫',module:'進料',description:`執行入庫 ${r.order_no} × ${r.plan_qty}`,operator:currentUser});await loadT('inbound');await loadT('inventory');await loadT('activity_log');}
+  else{r.status='done';r.actual_qty=r.plan_qty;const ex=DB.inventory.find(iv=>iv.material_id===r.material_id);if(ex)ex.qty+=r.plan_qty;addLog('入庫','進料',`執行入庫 ${r.order_no}`);}
+  toast('入庫執行成功 ✅','ok');renderIB();renderINV();refreshDash();renderLog();
+}
+async function approveOB(id){
+  const r=DB.outbound.find(x=>x.id===id);if(!r)return;
+  if(!isDemo){await _db.from('outbound').update({status:'approved'}).eq('id',id);await _db.from('activity_log').insert({action_type:'出庫',module:'出料',description:`審核通過 ${r.order_no}`,operator:currentUser});await loadT('outbound');}
+  else{r.status='approved';addLog('出庫','出料',`審核通過 ${r.order_no}`);}
+  toast('審核通過 ✅','ok');renderOB();refreshDash();renderLog();
+}
+async function execOB(id){
+  const r=DB.outbound.find(x=>x.id===id);if(!r)return;
+  if(!isDemo){await _db.from('outbound').update({status:'done'}).eq('id',id);const ex=DB.inventory.find(iv=>iv.material_id===r.material_id);if(ex)await _db.from('inventory').update({qty:Math.max(0,ex.qty-r.qty),updated_at:new Date().toISOString()}).eq('id',ex.id);await _db.from('activity_log').insert({action_type:'出庫',module:'出料',description:`執行出庫 ${r.order_no} × ${r.qty}`,operator:currentUser});await loadT('outbound');await loadT('inventory');await loadT('activity_log');}
+  else{r.status='done';const ex=DB.inventory.find(iv=>iv.material_id===r.material_id);if(ex)ex.qty=Math.max(0,ex.qty-r.qty);addLog('出庫','出料',`執行出庫 ${r.order_no}`);}
+  toast('出庫完成 ✅','ok');renderOB();renderINV();refreshDash();renderLog();
+}
+function addLog(t,m,d){DB.actlog.unshift({id:'l'+Date.now(),action_type:t,module:m,description:d,operator:currentUser,created_at:new Date().toISOString()});}
+
+function openModal(type,extraId){
+  const defs={
+    inbound:{t:'新增入庫單',h:()=>{const mo=DB.materials.map(m=>`<option value="${m.id}">${m.code} ${m.name}</option>`).join('');const lo=DB.locations.map(l=>`<option value="${l.id}">${locLabel(l)} (${locCode(l)})</option>`).join('');return`<div class="form-row"><div class="fg"><label>料件</label><select id="f-mat">${mo||'<option>先新增料件</option>'}</select></div><div class="fg"><label>指定倉位</label><select id="f-loc">${lo||'<option>先新增倉位</option>'}</select></div></div><div class="form-row"><div class="fg"><label>預計數量</label><input type="number" id="f-qty" placeholder="500"></div><div class="fg"><label>供應商</label><input id="f-sup" placeholder="台鑫五金"></div></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveIB()">建立入庫單</button></div>`;}},
+    outbound:{t:'新增出庫申請',h:()=>{const mo=DB.materials.map(m=>`<option value="${m.id}">${m.code} ${m.name}</option>`).join('');const lo=DB.locations.map(l=>`<option value="${l.id}">${locLabel(l)} (${locCode(l)})</option>`).join('');return`<div class="form-row"><div class="fg"><label>料件</label><select id="f-mat">${mo}</select></div><div class="fg"><label>來源倉位</label><select id="f-loc">${lo}</select></div></div><div class="form-row"><div class="fg"><label>申請數量</label><input type="number" id="f-qty" placeholder="50"></div><div class="fg"><label>申請部門</label><select id="f-dept"><option>生產部</option><option>維修部</option><option>工程部</option><option>品管部</option></select></div></div><div class="fg"><label>優先度</label><select id="f-pri"><option value="urgent">緊急</option><option value="normal" selected>一般</option><option value="low">低</option></select></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveOB()">建立申請</button></div>`;}},
+    location:{t:'新增倉位',h:()=>`<div class="form-row"><div class="fg"><label>倉區（英文字母）</label><input id="f-zone" placeholder="A" maxlength="2"></div><div class="fg"><label>排號</label><input id="f-row" placeholder="01"></div></div><div class="form-row"><div class="fg"><label>格號</label><input id="f-col" placeholder="01"></div><div class="fg"><label>狀態</label><select id="f-status"><option value="empty">空閒</option><option value="reserved">保留</option><option value="disabled">停用</option></select></div></div><div class="form-row"><div class="fg"><label>容量</label><input type="number" id="f-cap" placeholder="1000"></div><div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" placeholder="100"></div></div><div class="fg"><label>自訂名稱（選填）</label><input id="f-cname" placeholder="例：冷藏區1、零件架A"></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveLoc()">建立倉位</button></div>`},
+    editloc:{t:'編輯倉位',h:(id)=>{
+      const l=DB.locations.find(x=>x.id===id);
+      if(!l)return'<p>找不到倉位</p>';
+      const code=`${l.zone}-${l.row_no}-${l.col_no}`;
+      const stOpts=['empty','low','full','reserved','disabled'].map(s=>`<option value="${s}"${l.status===s?' selected':''}>${sLbl(s)}</option>`).join('');
+      return`<div class="fg"><label>倉位編號</label><input value="${code}" readonly></div>
+        <div class="fg"><label>自訂名稱（可空白）</label><input id="f-cname" placeholder="例：冷藏區1、零件架A" value="${l.custom_name||''}"></div>
+        <div class="form-row">
+          <div class="fg"><label>狀態</label><select id="f-status">${stOpts}</select></div>
+          <div class="fg"><label>容量</label><input type="number" id="f-cap" value="${l.capacity||1000}"></div>
+        </div>
+        <div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" value="${l.safe_qty||100}"></div>
+        <div class="modal-foot">
+          <button class="btn btn-danger" onclick="deleteLoc('${id}')">🗑 刪除倉位</button>
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveEditLoc('${id}')">儲存變更</button>
+        </div>`;
+    }},
+    material:{t:'新增料件',h:()=>`<div class="form-row"><div class="fg"><label>料號</label><input id="f-code" placeholder="SCR-M8-020"></div><div class="fg"><label>品名</label><input id="f-name" placeholder="螺絲M8×20"></div></div><div class="form-row"><div class="fg"><label>單位</label><input id="f-unit" placeholder="件"></div><div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" placeholder="100"></div></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveMat()">建立料件</button></div>`},
+    adjust:{t:'庫存調整',h:(id)=>{const iv=DB.inventory.find(r=>r.id===id);const m=DB.materials.find(x=>x.id===iv?.material_id);return`<div class="fg"><label>料件</label><input value="${m?.name||'-'}" readonly></div><div class="form-row"><div class="fg"><label>現有庫存</label><input value="${iv?.qty||0}" readonly></div><div class="fg"><label>調整後數量</label><input type="number" id="f-newqty" placeholder="${iv?.qty||0}"></div></div><div class="fg"><label>調整原因</label><select id="f-reason"><option>盤點修正</option><option>損耗報廢</option><option>系統誤差</option><option>其他</option></select></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveAdj('${id||''}')">確認調整</button></div>`;}},
+    purchase:{t:'建立採購單',h:()=>{
+      const supOpts=DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+      const matOpts=DB.materials.map(m=>`<option value="${m.code}">${m.code} ${m.name}</option>`).join('');
+      return`<div class="form-row">
+        <div class="fg"><label>供應商</label><select id="f-sup-id">${supOpts||'<option value="">先新增供應商</option>'}</select></div>
+        <div class="fg"><label>預計到貨日</label><input type="date" id="f-arrive"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>料號</label><select id="f-mat-code">${matOpts||'<option value="">先新增料件</option>'}</select></div>
+        <div class="fg"><label>數量</label><input type="number" id="f-qty" placeholder="500" min="1"></div>
+      </div>
+      <div class="fg"><label>單價 (NT$)</label><input type="number" id="f-price" placeholder="5" min="0"></div>
+      <div class="fg"><label>備註</label><input id="f-note" placeholder="選填"></div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePO()">建立採購單</button></div>`;
+    }},
+    editpo:{t:'採購單詳情',h:(id)=>{
+      const p=DB.purchase.find(x=>x.id===id);if(!p)return'找不到資料';
+      const[bc,bl]={pending:['b-warning','待審核'],transit:['b-info','在途'],done:['b-success','已到貨'],cancelled:['b-gray','已取消']}[p.status]||['b-gray',p.status];
+      return`<div class="form-row">
+        <div class="fg"><label>採購單號</label><input value="${p.order_no}" readonly></div>
+        <div class="fg"><label>狀態</label><input value="${bl}" readonly></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>供應商</label><input value="${p.supplier_name||'-'}" readonly></div>
+        <div class="fg"><label>料號</label><input value="${p.material_code||'-'}" readonly></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>數量</label><input value="${p.qty||'-'}" readonly></div>
+        <div class="fg"><label>單價</label><input value="NT$${p.unit_price||'-'}" readonly></div>
+      </div>
+      <div class="fg"><label>預計到貨日</label><input value="${p.arrive_date||'-'}" readonly></div>
+      <div class="modal-foot">
+        ${p.status==='pending'?`<button class="btn btn-danger" onclick="cancelPO('${id}')">取消採購</button>`:''}
+        <button class="btn" onclick="closeModal()">關閉</button>
+        ${p.status==='pending'?`<button class="btn btn-primary" onclick="approvePO('${id}')">審核通過</button>`:''}
+        ${p.status==='transit'?`<button class="btn btn-primary" onclick="receivePO('${id}')">確認到貨</button>`:''}
+      </div>`;
+    }},
+    mngcat:{t:'管理供應商分類',h:()=>{
+      const cats=DB.sup_categories||[];
+      const list=cats.length?cats.map(c=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);">
+          <span style="font-size:13px;font-weight:600;">${c.name}</span>
+          <button class="btn btn-sm btn-danger" onclick="deleteCat('${c.id}')">刪除</button>
+        </div>`).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0;">尚無分類，請新增</div>';
+      return`<div style="margin-bottom:14px;max-height:240px;overflow-y:auto;">${list}</div>
+        <div style="border-top:0.5px solid var(--border);padding-top:14px;">
+          <div class="fg"><label>新增分類名稱</label>
+            <div style="display:flex;gap:8px;">
+              <input id="f-catname" placeholder="例：原料區、加工廠、電控廠..." style="flex:1;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:14px;">
+              <button class="btn btn-primary" onclick="addCat()">新增</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot"><button class="btn" onclick="closeModal()">關閉</button></div>`;
+    }},
+    supplier:{t:'新增供應商',h:()=>{
+      const catOpts=(DB.sup_categories||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      return`<div class="form-row">
+        <div class="fg"><label>供應商名稱 *</label><input id="f-name" placeholder="公司名稱"></div>
+        <div class="fg"><label>統一編號</label><input id="f-tax" placeholder="12345678"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>聯絡人</label><input id="f-contact" placeholder="姓名"></div>
+        <div class="fg"><label>電話</label><input id="f-phone" placeholder="02-XXXX-XXXX"></div>
+      </div>
+      <div class="fg"><label>供應品項</label><input id="f-items" placeholder="螺絲、電子零件..."></div>
+      <div class="form-row">
+        <div class="fg"><label>性質分類</label>
+          <select id="f-catid">
+            <option value="">選擇分類（可空白）</option>
+            ${catOpts}
+          </select>
+        </div>
+        <div class="fg"><label>合作狀態</label>
+          <select id="f-status">
+            <option value="active">合作中</option>
+            <option value="watch">觀察中</option>
+            <option value="inactive">停止合作</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveSup()">新增供應商</button></div>`;
+    }},
+    editsup:{t:'編輯供應商',h:(id)=>{
+      const s=DB.suppliers.find(x=>x.id===id);if(!s)return'找不到資料';
+      const stOpts=['active','watch','inactive'].map(v=>`<option value="${v}"${s.status===v?' selected':''}>${{active:'合作中',watch:'觀察中',inactive:'停止合作'}[v]}</option>`).join('');
+      const catOpts='<option value="">無分類</option>'+(DB.sup_categories||[]).map(c=>`<option value="${c.id}"${s.category_id===c.id?' selected':''}>${c.name}</option>`).join('');
+      return`<div class="form-row">
+        <div class="fg"><label>供應商名稱 *</label><input id="f-name" value="${s.name||''}"></div>
+        <div class="fg"><label>統一編號</label><input id="f-tax" value="${s.tax_id||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>聯絡人</label><input id="f-contact" value="${s.contact||''}"></div>
+        <div class="fg"><label>電話</label><input id="f-phone" value="${s.phone||''}"></div>
+      </div>
+      <div class="fg"><label>供應品項</label><textarea id="f-items" rows="2" style="width:100%;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;">${s.items||''}</textarea></div>
+      <div class="form-row">
+        <div class="fg"><label>性質分類</label><select id="f-catid">${catOpts}</select></div>
+        <div class="fg"><label>合作狀態</label><select id="f-status">${stOpts}</select></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-danger" onclick="deleteSup('${id}')">🗑 刪除</button>
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditSup('${id}')">儲存變更</button>
+      </div>`;
+    }},
+    workorder:{t:'建立工單',h:()=>`
+      <div class="form-row">
+        <div class="fg"><label>成品名稱 *</label><input id="f-name" placeholder="電子控制板A型"></div>
+        <div class="fg"><label>計畫數量 *</label><input type="number" id="f-qty" placeholder="100" min="1"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>開工日</label><input type="date" id="f-start"></div>
+        <div class="fg"><label>預計完工日</label><input type="date" id="f-end"></div>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveWO()">建立工單</button></div>`},
+    editwo:{t:'工單詳情',h:(id)=>{
+      const w=DB.workorders.find(x=>x.id===id);if(!w)return'找不到資料';
+      const[bc,bl]={active:['b-info','生產中'],waiting:['b-danger','待料'],done:['b-success','已完工']}[w.status]||['b-gray',w.status];
+      return`<div class="form-row">
+        <div class="fg"><label>工單號</label><input value="${w.order_no}" readonly></div>
+        <div class="fg"><label>狀態</label><input value="${bl}" readonly></div>
+      </div>
+      <div class="fg"><label>成品名稱</label><input value="${w.product_name}" readonly></div>
+      <div class="form-row">
+        <div class="fg"><label>計畫數量</label><input value="${w.plan_qty}" readonly></div>
+        <div class="fg"><label>更新完工數量</label><input type="number" id="f-done" value="${w.done_qty||0}" min="0" max="${w.plan_qty}"></div>
+      </div>
+      <div class="fg"><label>狀態更新</label>
+        <select id="f-wstatus">
+          <option value="active"${w.status==='active'?' selected':''}>生產中</option>
+          <option value="waiting"${w.status==='waiting'?' selected':''}>待料</option>
+          <option value="done"${w.status==='done'?' selected':''}>已完工</option>
+        </select>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditWO('${id}')">儲存更新</button>
+      </div>`;
+    }},
+    user:{t:'新增使用者',h:()=>`<div class="form-row"><div class="fg"><label>姓名</label><input id="f-name" placeholder="王小明"></div><div class="fg"><label>帳號</label><input id="f-acct" placeholder="wang.sm"></div></div><div class="form-row"><div class="fg"><label>部門</label><select><option>倉儲部</option><option>採購部</option><option>生產部</option><option>品管部</option></select></div><div class="fg"><label>角色</label><select><option>操作員</option><option>主管</option><option>唯讀</option><option>最高管理員</option></select></div></div><div class="fg"><label>初始密碼</label><input type="password" placeholder="設定密碼"></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal();toast('使用者建立成功','ok')">建立使用者</button></div>`},
+  };
+  const def=defs[type];if(!def)return;
+  document.getElementById('modalTitle').textContent=def.t;
+  document.getElementById('modalBody').innerHTML=typeof def.h==='function'?def.h(extraId):def.h;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+
+async function saveIB(){
+  const matId=document.getElementById('f-mat')?.value;
+  const locId=document.getElementById('f-loc')?.value;
+  const qty=parseInt(document.getElementById('f-qty')?.value)||0;
+  const sup=document.getElementById('f-sup')?.value||'';
+  if(!matId||matId==='先新增料件'){toast('請先新增料件','err');return;}
+  if(!locId||locId==='先新增倉位'){toast('請先新增倉位','err');return;}
+  if(!qty){toast('請填寫數量','err');return;}
+  const no='IN-'+Date.now();
+  const rec={order_no:no,material_id:matId,location_id:locId,plan_qty:qty,supplier:sup,status:'pending',operator:currentUser,created_at:new Date().toISOString()};
+  if(!isDemo){
+    try{
+      const res=await _db.from('inbound').insert(rec);
+      if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+      try{await _db.from('activity_log').insert({action_type:'入庫',module:'進料',description:'建立入庫單 '+no,operator:currentUser});}catch(e){}
+      await loadT('inbound');await loadT('activity_log');
+    }catch(e){toast('儲存失敗：'+e.message,'err');return;}
+  } else {
+    rec.id='ib'+Date.now();DB.inbound.unshift(rec);addLog('入庫','進料','建立入庫單 '+no);
+  }
+  closeModal();toast('入庫單建立成功 ✅','ok');renderIB();refreshDash();renderLog();
+}
+async function saveOB(){
+  const matId=document.getElementById('f-mat')?.value;
+  const locId=document.getElementById('f-loc')?.value;
+  const qty=parseInt(document.getElementById('f-qty')?.value)||0;
+  const dept=document.getElementById('f-dept')?.value||'';
+  const pri=document.getElementById('f-pri')?.value||'normal';
+  if(!matId||matId==='先新增料件'){toast('請先新增料件','err');return;}
+  if(!locId||locId==='先新增倉位'){toast('請先新增倉位','err');return;}
+  if(!qty){toast('請填寫數量','err');return;}
+  const no='OUT-'+Date.now();
+  const rec={order_no:no,material_id:matId,location_id:locId,qty,dept,priority:pri,status:'pending',operator:currentUser,created_at:new Date().toISOString()};
+  if(!isDemo){
+    try{
+      const res=await _db.from('outbound').insert(rec);
+      if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+      try{await _db.from('activity_log').insert({action_type:'出庫',module:'出料',description:'建立出庫申請 '+no,operator:currentUser});}catch(e){}
+      await loadT('outbound');await loadT('activity_log');
+    }catch(e){toast('儲存失敗：'+e.message,'err');return;}
+  } else {
+    rec.id='ob'+Date.now();DB.outbound.unshift(rec);addLog('出庫','出料','建立出庫申請 '+no);
+  }
+  closeModal();toast('出庫申請建立成功 ✅','ok');renderOB();refreshDash();renderLog();
+}
+async function saveLoc(){
+  const zone=(document.getElementById('f-zone')?.value||'').toUpperCase().trim();
+  const row=(document.getElementById('f-row')?.value||'1').padStart(2,'0');
+  const col=(document.getElementById('f-col')?.value||'1').padStart(2,'0');
+  const status=document.getElementById('f-status')?.value||'empty';
+  const cap=parseInt(document.getElementById('f-cap')?.value)||1000;
+  const safe=parseInt(document.getElementById('f-safe')?.value)||100;
+  const cname=(document.getElementById('f-cname')?.value||'').trim();
+  if(!zone){toast('請填寫倉區','err');return;}
+  if(!isDemo){
+    // 先嘗試含 custom_name 欄位
+    let rec={zone,row_no:row,col_no:col,status,capacity:cap,safe_qty:safe};
+    const res=await _db.from('locations').insert(rec).select().single();
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    if(cname&&res.data?.id){
+      await _db.from('locations').update({custom_name:cname}).eq('id',res.data.id);
+    }
+    await loadT('locations');
+  } else {
+    const rec={id:'loc'+Date.now(),zone,row_no:row,col_no:col,status,capacity:cap,safe_qty:safe,custom_name:cname||null,sort_order:DB.locations.length,created_at:new Date().toISOString()};
+    DB.locations.push(rec);
+  }
+  closeModal();toast('倉位建立成功 ✅','ok');renderLoc();
+}
+
+async function saveEditLoc(id){
+  const l=DB.locations.find(x=>x.id===id);if(!l)return;
+  const cname=(document.getElementById('f-cname')?.value||'').trim();
+  const status=document.getElementById('f-status')?.value||l.status;
+  const cap=parseInt(document.getElementById('f-cap')?.value)||l.capacity;
+  const safe=parseInt(document.getElementById('f-safe')?.value)||l.safe_qty;
+  const updates={custom_name:cname||null,status,capacity:cap,safe_qty:safe};
+  if(!isDemo){
+    const res=await _db.from('locations').update(updates).eq('id',id);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    await loadT('locations');
+  } else {
+    Object.assign(l,updates);
+  }
+  const code=locCode(l);
+  addLog('設定','倉位',`編輯倉位 ${code}${cname?' → '+cname:''}`);
+  closeModal();toast('倉位更新成功 ✅','ok');renderLoc();refreshDash();renderLog();
+}
+
+async function deleteLoc(id){
+  const l=DB.locations.find(x=>x.id===id);
+  if(!l){closeModal();return;}
+  const inUse=DB.inventory.some(iv=>iv.location_id===id);
+  if(inUse){toast('此倉位有庫存，無法刪除','err');return;}
+  if(!confirm(`確定要刪除倉位 ${locCode(l)} 嗎？`))return;
+  if(!isDemo){
+    const res=await _db.from('locations').delete().eq('id',id);
+    if(res.error){toast('刪除失敗：'+res.error.message,'err');return;}
+    await loadT('locations');
+  } else {
+    DB.locations=DB.locations.filter(x=>x.id!==id);
+  }
+  addLog('設定','倉位',`刪除倉位 ${locCode(l)}`);
+  closeModal();toast('倉位已刪除','ok');renderLoc();refreshDash();renderLog();
+}
+async function saveMat(){
+  const code=document.getElementById('f-code')?.value?.trim();
+  const name=document.getElementById('f-name')?.value?.trim();
+  const unit=document.getElementById('f-unit')?.value?.trim()||'件';
+  const safe=parseInt(document.getElementById('f-safe')?.value)||0;
+  if(!code){toast('請填寫料號','err');return;}
+  if(!name){toast('請填寫品名','err');return;}
+  const rec={code,name,unit,safe_qty:safe,created_at:new Date().toISOString()};
+  if(!isDemo){
+    try{
+      const res=await _db.from('materials').insert(rec);
+      if(res.error){
+        if(res.error.message.includes('duplicate')||res.error.message.includes('unique')){toast('此料號已存在','err');}
+        else{toast('儲存失敗：'+res.error.message,'err');}
+        return;
+      }
+      await loadT('materials');
+    }catch(e){toast('儲存失敗：'+e.message,'err');return;}
+  } else {
+    if(DB.materials.find(m=>m.code===code)){toast('此料號已存在','err');return;}
+    rec.id='m'+Date.now();DB.materials.push(rec);
+  }
+  closeModal();toast('料件建立成功 ✅','ok');renderINV();
+}
+async function saveAdj(id){
+  const newQty=parseInt(document.getElementById('f-newqty')?.value);
+  const reason=document.getElementById('f-reason')?.value||'';
+  if(isNaN(newQty)||newQty<0){toast('請輸入正確數量','err');return;}
+  if(!isDemo&&id){
+    const res=await _db.from('inventory').update({qty:newQty,updated_at:new Date().toISOString()}).eq('id',id);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    try{await _db.from('activity_log').insert({action_type:'調整',module:'庫存',description:`庫存調整 原因:${reason} 後:${newQty}`,operator:currentUser});}catch(e){}
+    await loadT('inventory');await loadT('activity_log');
+  } else {
+    const iv=DB.inventory.find(r=>r.id===id);if(iv)iv.qty=newQty;
+    addLog('調整','庫存',`庫存調整 原因:${reason}`);
+  }
+  closeModal();toast('庫存調整已儲存 ✅','ok');renderINV();refreshDash();renderLog();
+}
+
+// ── PURCHASE ACTIONS ──
+async function savePO(){
+  const supId=document.getElementById('f-sup-id')?.value;
+  const matCode=document.getElementById('f-mat-code')?.value;
+  const qty=parseInt(document.getElementById('f-qty')?.value)||0;
+  const price=parseFloat(document.getElementById('f-price')?.value)||0;
+  const arrive=document.getElementById('f-arrive')?.value||'';
+  const note=document.getElementById('f-note')?.value||'';
+  if(!supId){toast('請選擇供應商','err');return;}
+  if(!matCode){toast('請選擇料號','err');return;}
+  if(!qty){toast('請填寫數量','err');return;}
+  const sup=DB.suppliers.find(x=>x.id===supId);
+  const no='PO-'+Date.now();
+  const rec={order_no:no,supplier_id:supId,supplier_name:sup?.name||'',material_code:matCode,qty,unit_price:price,arrive_date:arrive,note,status:'pending',operator:currentUser,created_at:new Date().toISOString()};
+  if(!isDemo){
+    const{error}=await _db.from('purchase').insert(rec);
+    if(error){toast('儲存失敗：'+error.message,'err');return;}
+    try{await _db.from('activity_log').insert({action_type:'採購',module:'採購管理',description:`建立採購單 ${no}`,operator:currentUser});}catch(e){}
+    await loadT('purchase');await loadT('activity_log');
+  } else {
+    rec.id='p'+Date.now();DB.purchase.unshift(rec);addLog('採購','採購管理','建立採購單 '+no);
+  }
+  closeModal();toast('採購單建立成功 ✅','ok');renderPO();refreshDash();renderLog();
+}
+
+async function approvePO(id){
+  const p=DB.purchase.find(x=>x.id===id);if(!p)return;
+  if(!isDemo){
+    await _db.from('purchase').update({status:'transit'}).eq('id',id);
+    try{await _db.from('activity_log').insert({action_type:'採購',module:'採購管理',description:`採購單審核通過 ${p.order_no}`,operator:currentUser});}catch(e){}
+    await loadT('purchase');await loadT('activity_log');
+  } else {p.status='transit';addLog('採購','採購管理',`採購單審核通過 ${p.order_no}`);}
+  closeModal();toast('採購單已審核，狀態改為在途 ✅','ok');renderPO();renderLog();
+}
+
+async function receivePO(id){
+  const p=DB.purchase.find(x=>x.id===id);if(!p)return;
+  if(!isDemo){
+    await _db.from('purchase').update({status:'done'}).eq('id',id);
+    try{await _db.from('activity_log').insert({action_type:'採購',module:'採購管理',description:`確認到貨 ${p.order_no}`,operator:currentUser});}catch(e){}
+    await loadT('purchase');await loadT('activity_log');
+  } else {p.status='done';addLog('採購','採購管理',`確認到貨 ${p.order_no}`);}
+  closeModal();toast('已確認到貨 ✅','ok');renderPO();renderLog();
+}
+
+async function cancelPO(id){
+  if(!confirm('確定要取消此採購單嗎？'))return;
+  const p=DB.purchase.find(x=>x.id===id);if(!p)return;
+  if(!isDemo){
+    await _db.from('purchase').update({status:'cancelled'}).eq('id',id);
+    await loadT('purchase');
+  } else {p.status='cancelled';}
+  closeModal();toast('採購單已取消','inf');renderPO();
+}
+
+// ── SUPPLIER ACTIONS ──
+async function saveSup(){
+  const name=document.getElementById('f-name')?.value?.trim();
+  const tax=document.getElementById('f-tax')?.value?.trim()||'';
+  const contact=document.getElementById('f-contact')?.value?.trim()||'';
+  const phone=document.getElementById('f-phone')?.value?.trim()||'';
+  const items=document.getElementById('f-items')?.value?.trim()||'';
+  const status=document.getElementById('f-status')?.value||'active';
+  const catId=document.getElementById('f-catid')?.value||null;
+  if(!name){toast('請填寫供應商名稱','err');return;}
+  const rec={name,tax_id:tax,contact,phone,items,status,category_id:catId||null,created_at:new Date().toISOString()};
+  if(!isDemo){
+    const{error}=await _db.from('suppliers').insert(rec);
+    if(error){toast('儲存失敗：'+error.message,'err');return;}
+    try{await _db.from('activity_log').insert({action_type:'設定',module:'供應商',description:`新增供應商 ${name}`,operator:currentUser});}catch(e){}
+    await loadT('suppliers');await loadT('activity_log');
+  } else {
+    rec.id='s'+Date.now();DB.suppliers.push(rec);addLog('設定','供應商','新增供應商 '+name);
+  }
+  closeModal();toast('供應商新增成功 ✅','ok');renderSup();renderLog();
+}
+
+async function saveEditSup(id){
+  const s=DB.suppliers.find(x=>x.id===id);if(!s)return;
+  const name=document.getElementById('f-name')?.value?.trim();
+  const tax=document.getElementById('f-tax')?.value?.trim()||'';
+  const contact=document.getElementById('f-contact')?.value?.trim()||'';
+  const phone=document.getElementById('f-phone')?.value?.trim()||'';
+  const items=document.getElementById('f-items')?.value?.trim()||'';
+  const status=document.getElementById('f-status')?.value||s.status;
+  if(!name){toast('請填寫供應商名稱','err');return;}
+  const catId2=document.getElementById('f-catid')?.value||null;
+  const updates={name,tax_id:tax,contact,phone,items,status,category_id:catId2||null};
+  if(!isDemo){
+    try{
+      const res=await _db.from('suppliers').update(updates).eq('id',id);
+      if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+      await loadT('suppliers');
+    }catch(e){toast('儲存失敗：'+e.message,'err');return;}
+  } else {Object.assign(s,updates);}
+  closeModal();toast('供應商已更新 ✅','ok');renderSup();
+}
+
+async function deleteSup(id){
+  const s=DB.suppliers.find(x=>x.id===id);if(!s)return;
+  const inUse=DB.purchase.some(p=>p.supplier_id===id);
+  if(inUse){toast('此供應商有採購紀錄，無法刪除','err');return;}
+  if(!confirm(`確定刪除供應商「${s.name}」？`))return;
+  if(!isDemo){
+    const res=await _db.from('suppliers').delete().eq('id',id);
+    if(res.error){toast('刪除失敗：'+res.error.message,'err');return;}
+    await loadT('suppliers');
+  } else {DB.suppliers=DB.suppliers.filter(x=>x.id!==id);}
+  closeModal();toast('供應商已刪除','ok');renderSup();
+}
+
+// ── WORKORDER ACTIONS ──
+async function saveWO(){
+  const name=document.getElementById('f-name')?.value?.trim();
+  const qty=parseInt(document.getElementById('f-qty')?.value)||0;
+  const start=document.getElementById('f-start')?.value||'';
+  const end=document.getElementById('f-end')?.value||'';
+  if(!name){toast('請填寫成品名稱','err');return;}
+  if(!qty){toast('請填寫計畫數量','err');return;}
+  const no='WO-'+Date.now();
+  const rec={order_no:no,product_name:name,plan_qty:qty,done_qty:0,start_date:start,end_date:end,status:'active',created_at:new Date().toISOString()};
+  if(!isDemo){
+    const res=await _db.from('workorders').insert(rec);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    await loadT('workorders');
+  } else {rec.id='w'+Date.now();DB.workorders.unshift(rec);}
+  closeModal();toast('工單建立成功 ✅','ok');renderWO();
+}
+
+async function saveEditWO(id){
+  const w=DB.workorders.find(x=>x.id===id);if(!w)return;
+  const done=parseInt(document.getElementById('f-done')?.value)||0;
+  const status=document.getElementById('f-wstatus')?.value||w.status;
+  if(!isDemo){
+    const res=await _db.from('workorders').update({done_qty:done,status}).eq('id',id);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    await loadT('workorders');
+  } else {w.done_qty=done;w.status=status;}
+  closeModal();toast('工單已更新 ✅','ok');renderWO();
+}
+
+async function exportCSV(tbl){
+  let data=[];
+  if(!isDemo){const{data:d}=await _db.from(tbl).select('*').order('created_at',{ascending:false});data=d||[];}
+  else{const map={inventory:DB.inventory,inbound:DB.inbound,outbound:DB.outbound,activity_log:DB.actlog,suppliers:DB.suppliers,purchase:DB.purchase,workorders:DB.workorders};data=map[tbl]||[];}
+  if(!data.length){toast('無資料可匯出','inf');return;}
+  const keys=Object.keys(data[0]);
+  const csv=[keys.join(','),...data.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download=tbl+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV 已下載','ok');
+}
+
+function ft(iso){if(!iso)return'-';const d=new Date(iso),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'});}
+function fdt(iso){if(!iso)return'-';return new Date(iso).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+// ── 供應商分類管理 ──
+async function addCat(){
+  const name=document.getElementById('f-catname')?.value?.trim();
+  if(!name){toast('請填寫分類名稱','err');return;}
+  const rec={name,created_at:new Date().toISOString()};
+  if(!isDemo){
+    const res=await _db.from('sup_categories').insert(rec).select().single();
+    if(res.error){toast('新增失敗：'+res.error.message,'err');return;}
+    await loadT('sup_categories');
+  } else {
+    rec.id='cat'+Date.now();DB.sup_categories.push(rec);
+  }
+  toast('分類「'+name+'」已新增 ✅','ok');
+  openModal('mngcat');
+}
+
+async function deleteCat(id){
+  const cat=DB.sup_categories.find(x=>x.id===id);
+  if(!cat)return;
+  const inUse=DB.suppliers.some(s=>s.category_id===id);
+  if(inUse){toast('此分類有供應商使用，無法刪除','err');return;}
+  if(!confirm(`確定刪除分類「${cat.name}」？`))return;
+  if(!isDemo){
+    await _db.from('sup_categories').delete().eq('id',id);
+    await loadT('sup_categories');
+  } else {
+    DB.sup_categories=DB.sup_categories.filter(x=>x.id!==id);
+  }
+  toast('分類已刪除','ok');
+  openModal('mngcat');
+}
+
+function logout(){
+  if(!confirm('確定要登出嗎？'))return;
+  localStorage.removeItem('erp_url');
+  localStorage.removeItem('erp_key');
+  localStorage.removeItem('erp_user');
+  location.reload();
+}
+
+let _tt;
+function toast(msg,type='inf'){const e=document.getElementById('toast');e.textContent=msg;e.className=type;e.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>e.style.display='none',2800);}
+
+window.onload=async()=>{
+  const url=localStorage.getItem('erp_url'),key=localStorage.getItem('erp_key'),name=localStorage.getItem('erp_user');
+  if(url&&key&&name){
+    // 有記憶的資料，自動連線不需要再輸入
+    document.getElementById('supaUrl').value=url;
+    document.getElementById('supaKey').value=key;
+    document.getElementById('userName').value=name;
+    const st=document.getElementById('setupStatus');
+    const btn=document.getElementById('btnConnect');
+    st.textContent='🔄 偵測到上次連線，自動連線中...';st.className='sstatus ok';
+    btn.disabled=true;btn.textContent='自動連線中...';
+    try{
+      if(!window.supabaseLib){
+        await new Promise((res,rej)=>{
+          const s=document.createElement('script');
+          s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+          s.onload=()=>{window.supabaseLib=window.supabase;res();}
+          s.onerror=()=>rej(new Error('網路問題'));
+          document.head.appendChild(s);
+        });
+      }
+      _db=window.supabaseLib.createClient(url,key);
+      const{error}=await _db.from('locations').select('id').limit(1);
+      if(error)throw error;
+      currentUser=name;
+      st.textContent='✅ 自動連線成功！';st.className='sstatus ok';
+      setTimeout(launchApp,400);
+    }catch(e){
+      // 自動連線失敗，讓使用者手動輸入
+      st.textContent='⚠️ 自動連線失敗，請重新確認設定';st.className='sstatus err';
+      btn.disabled=false;btn.textContent='🔗 連線並進入系統（多人共用）';
+    }
+  }
+};
+</script>
+</body>
+</html>
