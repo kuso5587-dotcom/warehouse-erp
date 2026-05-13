@@ -283,7 +283,7 @@ tr:hover td{background:var(--bg3);}
     <div class="sidebar" id="sidebar">
       <div class="sidebar-user">
         <div class="av" id="selfAv" style="background:var(--blue);">我</div>
-        <div class="user-info"><div class="uname" id="selfName">-</div><div class="urole">管理員</div></div>
+        <div class="user-info"><div class="uname" id="selfName">-</div><div class="urole" id="selfRole">載入中...</div></div>
         <div class="online-dot"></div>
       </div>
       <div class="nav">
@@ -467,7 +467,9 @@ tr:hover td{background:var(--bg3);}
         <div class="page" id="page-users">
           <div class="card" style="margin-bottom:12px;background:var(--blue-bg);border-color:#B5D4F4;">
             <div style="font-size:13px;color:var(--blue-text);line-height:1.8;">
-              💡 <b>使用說明：</b>使用者在第一次登入時，輸入名稱即可加入。這裡可以管理每個人的角色和部門，方便追蹤誰做了什麼操作。
+              🔐 <b>只有在這裡新增的姓名才能登入系統</b><br>
+              新增使用者後，該員工輸入相同姓名即可進入。<br>
+              建議設定每個人的角色：最高管理員可新增/刪除使用者，操作員只能執行進出料。
             </div>
           </div>
           <div class="card">
@@ -522,7 +524,7 @@ tr:hover td{background:var(--bg3);}
 <div id="toast"></div>
 
 <script>
-let _db=null,isDemo=false,currentUser='使用者';
+let _db=null,isDemo=false,currentUser='使用者',currentUserRole='admin';
 let ibFV='all',obFV='all',currentZone='ALL',currentInvZone='ALL';
 let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[],users:[]};
 const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
@@ -596,12 +598,12 @@ async function connectSupabase(){
   const url=(localStorage.getItem('erp_url')||'https://nqwjisztneznwihoozjq.supabase.co').trim();
   const key=(localStorage.getItem('erp_key')||'').trim();
   if(!key||key.length<20){
-    st.textContent='請點上方「進階設定」填入 Service Role Key';
+    st.textContent='請點下方「進階設定」填入 Service Role Key';
     st.className='sstatus err';
     document.getElementById('advancedBox').style.display='block';
     return;
   }
-  btn.disabled=true;btn.textContent='連線中...';st.textContent='連線中...';st.className='sstatus';
+  btn.disabled=true;btn.textContent='驗證中...';st.textContent='連線中...';st.className='sstatus';
   try{
     if(!window.supabaseLib){
       await new Promise((res,rej)=>{
@@ -613,14 +615,38 @@ async function connectSupabase(){
       });
     }
     _db=window.supabaseLib.createClient(url,key);
-    const{error}=await _db.from('locations').select('id').limit(1);
-    if(error)throw error;
+    // 先確認連線
+    const{error:connErr}=await _db.from('locations').select('id').limit(1);
+    if(connErr)throw connErr;
+    // 檢查使用者是否已在名單中
+    const{data:users,error:userErr}=await _db.from('erp_users').select('*');
+    if(userErr)throw userErr;
+    // 若名單為空（初始狀態），允許第一位用 admin 進入
+    if(!users||users.length===0){
+      // 自動建立第一個管理員帳號
+      await _db.from('erp_users').insert({name,dept:'管理部',role:'admin',created_at:new Date().toISOString()});
+      currentUser=name;
+      currentUserRole='admin';
+      localStorage.setItem('erp_user',name);
+      st.textContent='✅ 系統初始化完成，歡迎 '+name;st.className='sstatus ok';
+      setTimeout(launchApp,500);
+      return;
+    }
+    // 比對姓名
+    const matched=users.find(u=>u.name.trim()===name);
+    if(!matched){
+      st.textContent='❌ 「'+name+'」未在使用者名單中，請聯絡管理員新增';
+      st.className='sstatus err';
+      btn.disabled=false;btn.textContent='進入系統';
+      return;
+    }
     currentUser=name;
+    currentUserRole=matched.role||'operator';
     localStorage.setItem('erp_user',name);
-    st.textContent='✅ 連線成功！';st.className='sstatus ok';
+    st.textContent='✅ 歡迎回來，'+name+'！';st.className='sstatus ok';
     setTimeout(launchApp,400);
   }catch(e){
-    st.textContent='❌ 連線失敗：'+e.message;
+    st.textContent='❌ '+e.message;
     st.className='sstatus err';
     btn.disabled=false;btn.textContent='進入系統';
   }
@@ -633,6 +659,9 @@ async function launchApp(){
   document.getElementById('app').classList.add('ready');
   document.getElementById('selfAv').textContent=currentUser.slice(-2);
   document.getElementById('selfName').textContent=currentUser;
+  const roleNameMap={admin:'最高管理員',manager:'主管',operator:'操作員',readonly:'唯讀'};
+  const roleEl=document.getElementById('selfRole');
+  if(roleEl)roleEl.textContent=roleNameMap[currentUserRole]||'操作員';
   updateLive(true);renderOnline([currentUser]);
   if(!isDemo){
     setupRT();
@@ -1478,15 +1507,20 @@ function renderUsers(){
   const users=DB.users||[];
   const roleNames={operator:'操作員',manager:'主管',readonly:'唯讀',admin:'最高管理員'};
   const roleBadge={operator:'b-gray',manager:'b-info',readonly:'b-gray',admin:'b-danger'};
-  document.getElementById('userBody').innerHTML=users.length?users.map(u=>`<tr>
-    <td><div style="display:flex;align-items:center;gap:8px;">
-      <div style="width:30px;height:30px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${(u.name||'?').slice(-2)}</div>
-      <b>${u.name||'-'}</b>
-    </div></td>
-    <td>${u.dept||'-'}</td>
-    <td><span class="badge ${roleBadge[u.role]||'b-gray'}">${roleNames[u.role]||u.role||'-'}</span></td>
-    <td><button class="btn btn-sm btn-primary" onclick="openModal('edituser','${u.id}')">✎ 編輯</button></td>
-  </tr>`).join(''):'<tr class="empty-row"><td colspan="4">尚無使用者，點右上方新增</td></tr>';
+  const avatarColors=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
+  document.getElementById('userBody').innerHTML=users.length?users.map((u,i)=>{
+    const isMe=u.name===currentUser;
+    const isAdmin=currentUserRole==='admin';
+    return`<tr${isMe?' style="background:var(--blue-bg);"':''}>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:32px;height:32px;border-radius:50%;background:${avatarColors[i%avatarColors.length]};color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${(u.name||'?').slice(-2)}</div>
+        <div><b>${u.name||'-'}</b>${isMe?'<span style="font-size:10px;color:var(--blue);margin-left:6px;">（你）</span>':''}</div>
+      </div></td>
+      <td>${u.dept||'-'}</td>
+      <td><span class="badge ${roleBadge[u.role]||'b-gray'}">${roleNames[u.role]||u.role||'-'}</span></td>
+      <td>${isAdmin?`<button class="btn btn-sm btn-primary" onclick="openModal('edituser','${u.id}')">✎ 編輯</button>`:'<span style="color:var(--text3);font-size:12px;">-</span>'}</td>
+    </tr>`;
+  }).join(''):'<tr class="empty-row"><td colspan="4">尚無使用者</td></tr>';
 }
 
 async function saveUser(){
