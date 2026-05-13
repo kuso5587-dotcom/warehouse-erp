@@ -541,23 +541,48 @@ function goto(p,el,label,bnavEl){
 
 function showAdvanced(){
   const box=document.getElementById('advancedBox');
-  box.style.display=box.style.display==='none'?'block':'none';
-  // 填入目前儲存的值
-  const url=localStorage.getItem('erp_url')||'';
-  const key=localStorage.getItem('erp_key')||'';
-  const urlEl=document.getElementById('supaUrl');
-  const keyEl=document.getElementById('supaKey');
-  if(urlEl&&url) urlEl.value=url;
-  if(keyEl&&key) keyEl.value=key;
+  const isHidden=box.style.display==='none'||box.style.display==='';
+  box.style.display=isHidden?'block':'none';
+  if(isHidden){
+    const key=localStorage.getItem('erp_key')||'';
+    const keyEl=document.getElementById('supaKey');
+    if(keyEl&&key) keyEl.value=key;
+    // 捲動到進階設定
+    setTimeout(()=>box.scrollIntoView({behavior:'smooth',block:'center'}),100);
+  }
 }
-function saveAdvanced(){
+async function saveAdvanced(){
   const url=document.getElementById('supaUrl')?.value?.trim()||'https://nqwjisztneznwihoozjq.supabase.co';
   const key=document.getElementById('supaKey')?.value?.trim();
+  const name=document.getElementById('userName')?.value?.trim()||'使用者';
   if(!key){toast('請填入 Service Role Key','err');return;}
   localStorage.setItem('erp_url',url);
   localStorage.setItem('erp_key',key);
-  toast('設定已儲存！重新整理後生效','ok');
-  setTimeout(()=>location.reload(),1500);
+  localStorage.setItem('erp_user',name);
+  // 直接嘗試連線
+  const btn=document.getElementById('btnConnect');
+  const st=document.getElementById('setupStatus');
+  btn.disabled=true;st.textContent='連線中...';st.className='sstatus';
+  try{
+    if(!window.supabaseLib){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        s.onload=()=>{window.supabaseLib=window.supabase;res();}
+        s.onerror=()=>rej(new Error('網路問題'));
+        document.head.appendChild(s);
+      });
+    }
+    _db=window.supabaseLib.createClient(url,key);
+    const{error}=await _db.from('locations').select('id').limit(1);
+    if(error)throw error;
+    currentUser=name;
+    st.textContent='✅ 連線成功！';st.className='sstatus ok';
+    setTimeout(launchApp,500);
+  }catch(e){
+    st.textContent='❌ 連線失敗：'+e.message;st.className='sstatus err';
+    btn.disabled=false;
+  }
 }
 async function connectSupabase(){
   const name=document.getElementById('userName').value.trim()||'使用者';
@@ -1071,7 +1096,42 @@ function openModal(type,extraId){
         </div>`;
     }},
     material:{t:'新增料件',h:()=>`<div class="form-row"><div class="fg"><label>料號</label><input id="f-code" placeholder="SCR-M8-020"></div><div class="fg"><label>品名</label><input id="f-name" placeholder="螺絲M8×20"></div></div><div class="form-row"><div class="fg"><label>單位</label><input id="f-unit" placeholder="件"></div><div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" placeholder="100"></div></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveMat()">建立料件</button></div>`},
-    adjust:{t:'庫存調整',h:(id)=>{const iv=DB.inventory.find(r=>r.id===id);const m=DB.materials.find(x=>x.id===iv?.material_id);return`<div class="fg"><label>料件</label><input value="${m?.name||'-'}" readonly></div><div class="form-row"><div class="fg"><label>現有庫存</label><input value="${iv?.qty||0}" readonly></div><div class="fg"><label>調整後數量</label><input type="number" id="f-newqty" placeholder="${iv?.qty||0}"></div></div><div class="fg"><label>調整原因</label><select id="f-reason"><option>盤點修正</option><option>損耗報廢</option><option>系統誤差</option><option>其他</option></select></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveAdj('${id||''}')">確認調整</button></div>`;}},
+    adjust:{t:'庫存調整',h:(id)=>{
+      const iv=DB.inventory.find(r=>r.id===id);
+      const m=DB.materials.find(x=>x.id===iv?.material_id);
+      const l=DB.locations.find(x=>x.id===iv?.location_id);
+      const ll=l?(l.custom_name||`${l.zone}-${l.row_no}-${l.col_no}`):'-';
+      return`
+        <div class="fg">
+          <label>品名（可直接修改）</label>
+          <input id="f-matname" value="${(m?.name||'').replace(/"/g,'&quot;')}" placeholder="輸入品名">
+        </div>
+        <div class="fg">
+          <label>倉位</label>
+          <input value="${ll}" readonly>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>現有庫存</label><input value="${iv?.qty||0}" readonly></div>
+          <div class="fg"><label>調整後數量</label><input type="number" id="f-newqty" value="${iv?.qty||0}"></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>建議數量（安全庫存）</label><input type="number" id="f-safeqty" value="${m?.safe_qty||0}"></div>
+          <div class="fg"><label>單位</label><input id="f-unit" value="${m?.unit||'件'}"></div>
+        </div>
+        <div class="fg"><label>調整原因</label>
+          <select id="f-reason">
+            <option>盤點修正</option>
+            <option>損耗報廢</option>
+            <option>系統誤差</option>
+            <option>進料補充</option>
+            <option>其他</option>
+          </select>
+        </div>
+        <div class="modal-foot">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveAdj('${id||''}','${m?.id||''}')">確認調整</button>
+        </div>`;
+    }},
     purchase:{t:'建立採購單',h:()=>{
       const supOpts=DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
       const matOpts=DB.materials.map(m=>`<option value="${m.code}">${m.code} ${m.name}</option>`).join('');
@@ -1380,20 +1440,34 @@ async function saveMat(){
   }
   closeModal();toast('料件建立成功 ✅','ok');renderINV();
 }
-async function saveAdj(id){
+async function saveAdj(id,matId){
   const newQty=parseInt(document.getElementById('f-newqty')?.value);
   const reason=document.getElementById('f-reason')?.value||'';
+  const newName=document.getElementById('f-matname')?.value?.trim();
+  const newSafe=parseInt(document.getElementById('f-safeqty')?.value)||0;
+  const newUnit=document.getElementById('f-unit')?.value?.trim()||'件';
   if(isNaN(newQty)||newQty<0){toast('請輸入正確數量','err');return;}
-  if(!isDemo&&id){
-    const res=await _db.from('inventory').update({qty:newQty,updated_at:new Date().toISOString()}).eq('id',id);
-    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
-    try{await _db.from('activity_log').insert({action_type:'調整',module:'庫存',description:`庫存調整 原因:${reason} 後:${newQty}`,operator:currentUser});}catch(e){}
-    await loadT('inventory');await loadT('activity_log');
+  if(!newName){toast('品名不能為空','err');return;}
+  if(!isDemo){
+    // 更新庫存數量
+    if(id){
+      const r1=await _db.from('inventory').update({qty:newQty,updated_at:new Date().toISOString()}).eq('id',id);
+      if(r1.error){toast('庫存儲存失敗：'+r1.error.message,'err');return;}
+    }
+    // 更新料件品名、安全庫存、單位
+    if(matId){
+      const r2=await _db.from('materials').update({name:newName,safe_qty:newSafe,unit:newUnit}).eq('id',matId);
+      if(r2.error){toast('品名儲存失敗：'+r2.error.message,'err');return;}
+    }
+    try{await _db.from('activity_log').insert({action_type:'調整',module:'庫存',description:`調整「${newName}」原因:${reason} 數量:${newQty}`,operator:currentUser});}catch(e){}
+    await loadT('inventory');await loadT('materials');await loadT('activity_log');
   } else {
     const iv=DB.inventory.find(r=>r.id===id);if(iv)iv.qty=newQty;
-    addLog('調整','庫存',`庫存調整 原因:${reason}`);
+    const m=DB.materials.find(r=>r.id===matId);
+    if(m){m.name=newName;m.safe_qty=newSafe;m.unit=newUnit;}
+    addLog('調整','庫存',`調整「${newName}」原因:${reason}`);
   }
-  closeModal();toast('庫存調整已儲存 ✅','ok');renderINV();refreshDash();renderLog();
+  closeModal();toast('已儲存 ✅','ok');renderINV();refreshDash();renderLog();
 }
 
 // ── USER MANAGEMENT ──
