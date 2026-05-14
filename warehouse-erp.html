@@ -527,7 +527,7 @@ tr:hover td{background:var(--bg3);}
           <div class="card">
             <div class="card-hd">
               <span class="card-title">使用者清單</span>
-              <button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button>
+              <div id="userMgmtBtns"></div>
             </div>
             <div class="table-wrap"><table>
               <thead><tr><th>姓名</th><th>部門</th><th>角色</th><th>操作</th></tr></thead>
@@ -1368,22 +1368,26 @@ function openModal(type,extraId){
         <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewCostItem()">新增零件</button></div>`;
     }},
     editCostItem:{t:'編輯零件',h:(idx)=>{
-      if(!currentMachine||idx===undefined)return'';
-      const item=currentMachine.items[parseInt(idx)];if(!item)return'';
-      return`<div class="fg"><label>零件名稱 *</label><input id="f-iname" value="${item.name}"></div>
-        <div class="fg"><label>規格</label><input id="f-ispec" value="${item.spec||''}"></div>
+      const i=parseInt(idx);
+      if(!currentMachine||isNaN(i))return'<p>找不到資料</p>';
+      const item=currentMachine.items[i];if(!item)return'<p>找不到零件</p>';
+      return`<div class="fg"><label>零件名稱 *</label><input id="f-iname" value="${(item.name||'').replace(/"/g,'&quot;')}"></div>
+        <div class="fg"><label>規格</label><input id="f-ispec" value="${(item.spec||'').replace(/"/g,'&quot;')}"></div>
         <div class="form-row">
-          <div class="fg"><label>物料單價</label><input type="number" id="f-imat" value="${item.mat_price||0}"></div>
-          <div class="fg"><label>加工單價</label><input type="number" id="f-iwork" value="${item.work_price||0}"></div>
+          <div class="fg"><label>物料單價 (NT$)</label><input type="number" id="f-imat" value="${item.mat_price||0}" min="0"></div>
+          <div class="fg"><label>加工單價 (NT$)</label><input type="number" id="f-iwork" value="${item.work_price||0}" min="0"></div>
         </div>
         <div class="form-row">
-          <div class="fg"><label>加工總價</label><input type="number" id="f-iwtotal" value="${item.work_total||0}"></div>
-          <div class="fg"><label>數量</label><input type="number" id="f-iqty" value="${item.qty||1}"></div>
+          <div class="fg"><label>加工總價 (NT$)</label><input type="number" id="f-iwtotal" value="${item.work_total||0}" min="0"></div>
+          <div class="fg"><label>數量</label><input type="number" id="f-iqty" value="${item.qty||1}" min="1"></div>
+        </div>
+        <div style="background:var(--blue-bg);border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--blue-text);margin-bottom:8px;">
+          小計 = （物料單價 + 加工單價）× 數量 + 加工總價
         </div>
         <div class="modal-foot">
-          <button class="btn btn-danger" onclick="deleteCostItem(${idx})">🗑 刪除</button>
+          <button class="btn btn-danger" onclick="deleteCostItem(${i})">🗑 刪除</button>
           <button class="btn" onclick="closeModal()">取消</button>
-          <button class="btn btn-primary" onclick="saveEditCostItem(${idx})">儲存</button>
+          <button class="btn btn-primary" onclick="saveEditCostItem(${i})">✅ 儲存</button>
         </div>`;
     }},
     workorder:{t:'建立工單',h:()=>`
@@ -1726,9 +1730,11 @@ function recalcTotal(){
 }
 
 function renameMachine(newName){
-  if(!currentMachine||!newName.trim())return;
-  currentMachine.name=newName.trim();
+  if(currentMachineIdx<0||!newName.trim())return;
+  localMachines[currentMachineIdx].name=newName.trim();
+  currentMachine=localMachines[currentMachineIdx];
   renderMachineTabs();
+  toast('機台名稱已更新','ok');
 }
 
 function renderCostItems(){
@@ -1788,7 +1794,8 @@ function saveNewCostItem(){
 }
 
 function saveEditCostItem(idx){
-  if(!currentMachine)return;
+  const i=parseInt(idx);
+  if(currentMachineIdx<0||isNaN(i)){toast('索引錯誤','err');return;}
   const name=(document.getElementById('f-iname')?.value||'').trim();
   if(!name){toast('請填寫零件名稱','err');return;}
   const mat=parseFloat(document.getElementById('f-imat')?.value)||0;
@@ -1796,17 +1803,19 @@ function saveEditCostItem(idx){
   const wtotal=parseFloat(document.getElementById('f-iwtotal')?.value)||0;
   const qty=parseInt(document.getElementById('f-iqty')?.value)||1;
   const spec=(document.getElementById('f-ispec')?.value||'').trim();
-  const line_total=(mat+work)*qty+wtotal;
-  // 直接更新 localMachines 中的資料
-  localMachines[currentMachineIdx].items[idx]={name,spec,mat_price:mat,work_price:work,work_total:wtotal,qty,line_total};
+  const line_total=Math.round((mat+work)*qty+wtotal);
+  localMachines[currentMachineIdx].items[i]={name,spec,mat_price:mat,work_price:work,work_total:wtotal,qty,line_total};
   currentMachine=localMachines[currentMachineIdx];
-  closeModal();toast('零件已更新 ✅','ok');renderCostItems();
+  closeModal();toast(name+' 已更新 ✅','ok');renderCostItems();
 }
 
 function deleteCostItem(idx){
-  if(!currentMachine)return;
-  if(!confirm('確定刪除「'+currentMachine.items[idx]?.name+'」？'))return;
-  currentMachine.items.splice(idx,1);
+  const i=parseInt(idx);
+  if(currentMachineIdx<0||isNaN(i))return;
+  const item=localMachines[currentMachineIdx].items[i];
+  if(!confirm('確定刪除「'+(item?.name||'此零件')+'」？'))return;
+  localMachines[currentMachineIdx].items.splice(i,1);
+  currentMachine=localMachines[currentMachineIdx];
   closeModal();toast('已刪除','ok');renderCostItems();
 }
 
@@ -1840,6 +1849,12 @@ function printCost(){
 
 // ── USER MANAGEMENT ──
 function renderUsers(){
+  const mgmtBtns=document.getElementById('userMgmtBtns');
+  if(mgmtBtns){
+    mgmtBtns.innerHTML=currentUserRole==='admin'
+      ?'<button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button>'
+      :'';
+  }
   const users=DB.users||[];
   const roleNames={operator:'操作員',manager:'主管',readonly:'唯讀',admin:'最高管理員',purchase:'採購人員'};
   const roleBadge={operator:'b-gray',manager:'b-info',readonly:'b-gray',admin:'b-danger',purchase:'b-warning'};
