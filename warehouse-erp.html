@@ -1852,7 +1852,7 @@ function renderUsers(){
   const mgmtBtns=document.getElementById('userMgmtBtns');
   if(mgmtBtns){
     mgmtBtns.innerHTML=currentUserRole==='admin'
-      ?'<button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button>'
+      ?`<button class="btn btn-primary btn-sm" onclick="openModal('user')">+ 新增使用者</button>`
       :'';
   }
   const users=DB.users||[];
