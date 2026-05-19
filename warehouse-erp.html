@@ -1176,9 +1176,18 @@ function renderPO(){
     const[bc,bl]={pending:['b-warning','待審核'],transit:['b-info','在途'],done:['b-success','已到貨'],cancelled:['b-gray','已取消']}[p.status]||['b-gray',p.status];
     const amt=p.qty&&p.unit_price?'NT$'+(p.qty*p.unit_price).toLocaleString():'-';
     let btn='';
-    if(p.status==='pending')btn=`<button class="btn btn-sm btn-primary" onclick="approvePO('${p.id}')">審核</button>`;
-    else if(p.status==='transit')btn=`<button class="btn btn-sm" onclick="receivePO('${p.id}')">確認到貨</button>`;
-    else btn=`<button class="btn btn-sm" onclick="openModal('editpo','${p.id}')">查看</button>`;
+    if(p.status==='pending'){
+      btn=`<button class="btn btn-sm btn-primary" onclick="approvePO('${p.id}')">審核</button>
+           <button class="btn btn-sm" onclick="openModal('editpo','${p.id}')">✎ 編輯</button>
+           <button class="btn btn-sm btn-danger" onclick="deletePO('${p.id}')">🗑</button>`;
+    }else if(p.status==='transit'){
+      btn=`<button class="btn btn-sm btn-primary" onclick="receivePO('${p.id}')">確認到貨</button>
+           <button class="btn btn-sm" onclick="openModal('editpo','${p.id}')">✎ 編輯</button>
+           <button class="btn btn-sm btn-danger" onclick="deletePO('${p.id}')">🗑</button>`;
+    }else{
+      btn=`<button class="btn btn-sm" onclick="openModal('editpo','${p.id}')">查看</button>
+           <button class="btn btn-sm btn-danger" onclick="deletePO('${p.id}')">🗑</button>`;
+    }
     return`<tr>
       <td style="font-size:11px;white-space:nowrap;">${p.order_no}</td>
       <td>${p.supplier_name||'-'}</td>
@@ -1389,25 +1398,26 @@ function openModal(type,extraId){
     }},
     editpo:{t:'採購單詳情',h:(id)=>{
       const p=DB.purchase.find(x=>x.id===id);if(!p)return'找不到資料';
-      const[bc,bl]={pending:['b-warning','待審核'],transit:['b-info','在途'],done:['b-success','已到貨'],cancelled:['b-gray','已取消']}[p.status]||['b-gray',p.status];
+      const stOpts=['pending','transit','done','cancelled'].map(v=>`<option value="${v}"${p.status===v?' selected':''}>${{pending:'待審核',transit:'在途',done:'已到貨',cancelled:'已取消'}[v]}</option>`).join('');
+      const supOpts=DB.suppliers.map(s=>`<option value="${s.id}"${p.supplier_id===s.id?' selected':''}>${s.name}</option>`).join('');
+      const matOpts=DB.materials.map(m=>`<option value="${m.code}"${p.material_code===m.code?' selected':''}>${m.code} ${m.name}</option>`).join('');
       return`<div class="form-row">
-        <div class="fg"><label>採購單號</label><input value="${p.order_no}" readonly></div>
-        <div class="fg"><label>狀態</label><input value="${bl}" readonly></div>
+        <div class="fg"><label>採購單號</label><input value="${p.order_no}" readonly style="background:var(--bg3)"></div>
+        <div class="fg"><label>狀態</label><select id="f-po-status">${stOpts}</select></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label>供應商</label><input value="${p.supplier_name||'-'}" readonly></div>
-        <div class="fg"><label>料號</label><input value="${p.material_code||'-'}" readonly></div>
+        <div class="fg"><label>供應商</label><select id="f-po-sup">${supOpts||`<option value="">${p.supplier_name||'-'}</option>`}</select></div>
+        <div class="fg"><label>料號</label><select id="f-po-mat">${matOpts||`<option value="">${p.material_code||'-'}</option>`}</select></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label>數量</label><input value="${p.qty||'-'}" readonly></div>
-        <div class="fg"><label>單價</label><input value="NT$${p.unit_price||'-'}" readonly></div>
+        <div class="fg"><label>數量</label><input type="number" id="f-po-qty" value="${p.qty||0}" min="1"></div>
+        <div class="fg"><label>單價 (NT$)</label><input type="number" id="f-po-price" value="${p.unit_price||0}" min="0"></div>
       </div>
-      <div class="fg"><label>預計到貨日</label><input value="${p.arrive_date||'-'}" readonly></div>
+      <div class="fg"><label>預計到貨日</label><input type="date" id="f-po-arrive" value="${p.arrive_date||''}"></div>
       <div class="modal-foot">
-        ${p.status==='pending'?`<button class="btn btn-danger" onclick="cancelPO('${id}')">取消採購</button>`:''}
-        <button class="btn" onclick="closeModal()">關閉</button>
-        ${p.status==='pending'?`<button class="btn btn-primary" onclick="approvePO('${id}')">審核通過</button>`:''}
-        ${p.status==='transit'?`<button class="btn btn-primary" onclick="receivePO('${id}')">確認到貨</button>`:''}
+        <button class="btn btn-danger" onclick="deletePO('${id}')">🗑 刪除</button>
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditPO('${id}')">💾 儲存</button>
       </div>`;
     }},
     mngcat:{t:'管理供應商分類',h:()=>{
@@ -2020,7 +2030,15 @@ function initQuotePage(){
   const hasAccess = currentUserRole==='admin' || hasPerm('cost_view');
   document.getElementById('quoteNoAccess').style.display=hasAccess?'none':'block';
   document.getElementById('quoteAccess').style.display=hasAccess?'block':'none';
-  if(hasAccess) renderQuotes();
+  if(!hasAccess) return;
+  // 示範模式從 localStorage 讀取
+  if(isDemo&&(!DB.quotes||DB.quotes.length===0)){
+    try{
+      const saved=localStorage.getItem('erp_quotes');
+      if(saved) DB.quotes=JSON.parse(saved);
+    }catch(e){}
+  }
+  renderQuotes();
 }
 
 function renderQuotes(){
@@ -2205,6 +2223,8 @@ async function saveQuoteForm(){
     }else{rec.id='q'+Date.now();DB.quotes.unshift(rec);}
     toast('詢價單 '+order_no+' 已建立 ✅','ok');
   }
+  // 同時存到 localStorage 備份
+  try{localStorage.setItem('erp_quotes',JSON.stringify(DB.quotes));}catch(e){}
   closeQuoteForm();renderQuotes();
 }
 
@@ -2424,6 +2444,35 @@ async function savePO(){
     rec.id='p'+Date.now();DB.purchase.unshift(rec);addLog('採購','採購管理','建立採購單 '+no);
   }
   closeModal();toast('採購單建立成功 ✅','ok');renderPO();refreshDash();renderLog();
+}
+
+async function saveEditPO(id){
+  const p=DB.purchase.find(x=>x.id===id);if(!p)return;
+  const status=document.getElementById('f-po-status')?.value||p.status;
+  const supId=document.getElementById('f-po-sup')?.value;
+  const sup=DB.suppliers.find(x=>x.id===supId);
+  const matCode=document.getElementById('f-po-mat')?.value||p.material_code;
+  const qty=parseInt(document.getElementById('f-po-qty')?.value)||p.qty;
+  const price=parseFloat(document.getElementById('f-po-price')?.value)||p.unit_price;
+  const arrive=document.getElementById('f-po-arrive')?.value||p.arrive_date;
+  const updates={status,supplier_id:supId||p.supplier_id,supplier_name:sup?.name||p.supplier_name,material_code:matCode,qty,unit_price:price,arrive_date:arrive};
+  if(!isDemo){
+    const res=await _db.from('purchase').update(updates).eq('id',id);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    await loadT('purchase');
+  }else{Object.assign(p,updates);}
+  closeModal();toast('採購單已更新 ✅','ok');renderPO();
+}
+
+async function deletePO(id){
+  const p=DB.purchase.find(x=>x.id===id);if(!p)return;
+  if(!confirm('確定刪除採購單 '+p.order_no+'？'))return;
+  if(!isDemo){
+    const res=await _db.from('purchase').delete().eq('id',id);
+    if(res.error){toast('刪除失敗：'+res.error.message,'err');return;}
+    await loadT('purchase');
+  }else{DB.purchase=DB.purchase.filter(x=>x.id!==id);}
+  closeModal();toast('採購單已刪除','ok');renderPO();
 }
 
 async function approvePO(id){
