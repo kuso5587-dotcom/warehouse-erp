@@ -300,6 +300,7 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
         <div class="nitem" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
+        <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
         <div class="nslabel">系統管理</div>
         <div class="nitem" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
@@ -679,6 +680,7 @@ tr:hover td{background:var(--bg3);}
       <div class="bnav-item" onclick="goto('quote',null,'詢價',this)"><span class="ic">📋</span>詢價</div>
       <div class="bnav-item" onclick="goto('reports',null,'報表',this)"><span class="ic">📈</span>報表</div>
       <div class="bnav-item" onclick="goto('actlog',null,'紀錄',this)"><span class="ic">📋</span>紀錄</div>
+      <div class="bnav-item" onclick="goto('orders',null,'訂購',this)"><span class="ic">📑</span>訂購</div>
     </div>
   </div>
 </div>
@@ -691,7 +693,7 @@ tr:hover td{background:var(--bg3);}
 <script>
 let _db=null,isDemo=false,currentUser='使用者',currentUserRole='admin';
 let ibFV='all',obFV='all',currentZone='ALL',currentInvZone='ALL';
-let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[],users:[],quotes:[]};
+let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[],users:[],quotes:[],orders:[]};
 const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
@@ -709,6 +711,7 @@ function goto(p,el,label,bnavEl){
   else document.querySelectorAll('.bnav-item').forEach(x=>{if(x.getAttribute('onclick')&&x.getAttribute('onclick').includes("'"+p+"'"))x.classList.add('active');});
   if(p==='cost') initCostPage();
   if(p==='quote'){initQuotePage();}
+  if(p==='orders'){initOrdersPage();}
   closeSidebar();
 }
 
@@ -1232,6 +1235,71 @@ function renderSup(){
     </tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="7">尚無符合的供應商</td></tr>';
 }
+async function saveNewOrder(){
+  const name=(document.getElementById('f-ord-name')?.value||'').trim();
+  const sup=(document.getElementById('f-ord-sup')?.value||'').trim();
+  if(!name){toast('請填寫品名','err');return;}
+  const rec={
+    year:parseInt(document.getElementById('f-ord-year')?.value)||new Date().getFullYear(),
+    order_date:document.getElementById('f-ord-date')?.value||'',
+    arrive_date:document.getElementById('f-arr-date')?.value||'',
+    supplier:sup,
+    po_no:document.getElementById('f-ord-po')?.value||'',
+    name,spec:document.getElementById('f-ord-spec')?.value||'',
+    qty:parseInt(document.getElementById('f-ord-qty')?.value)||0,
+    unit:document.getElementById('f-ord-unit')?.value||'件',
+    unit_price:parseFloat(document.getElementById('f-ord-up')?.value)||0,
+    amount:parseFloat(document.getElementById('f-ord-amt')?.value)||0,
+    created_at:new Date().toISOString()
+  };
+  if(!isDemo){
+    const res=await _db.from('orders').insert(rec).select().single();
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    if(!DB.orders) DB.orders=[];
+    DB.orders.unshift(res.data);
+  }else{
+    rec.id='ord'+Date.now();
+    if(!DB.orders) DB.orders=[];
+    DB.orders.unshift(rec);
+  }
+  closeModal();toast('訂購紀錄已新增 ✅','ok');renderOrders();
+}
+
+async function saveEditOrder(id){
+  const o=(DB.orders||[]).find(x=>x.id===id);if(!o)return;
+  const name=(document.getElementById('f-ord-name')?.value||'').trim();
+  if(!name){toast('請填寫品名','err');return;}
+  const updates={
+    year:parseInt(document.getElementById('f-ord-year')?.value)||o.year,
+    order_date:document.getElementById('f-ord-date')?.value||o.order_date,
+    arrive_date:document.getElementById('f-arr-date')?.value||o.arrive_date,
+    supplier:document.getElementById('f-ord-sup')?.value||o.supplier,
+    po_no:document.getElementById('f-ord-po')?.value||o.po_no,
+    name,spec:document.getElementById('f-ord-spec')?.value||'',
+    qty:parseInt(document.getElementById('f-ord-qty')?.value)||0,
+    unit:document.getElementById('f-ord-unit')?.value||'件',
+    unit_price:parseFloat(document.getElementById('f-ord-up')?.value)||0,
+    amount:parseFloat(document.getElementById('f-ord-amt')?.value)||0,
+  };
+  if(!isDemo){
+    const res=await _db.from('orders').update(updates).eq('id',id);
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    Object.assign(o,updates);
+  }else{Object.assign(o,updates);}
+  closeModal();toast('已更新 ✅','ok');renderOrders();
+}
+
+async function deleteOrder(id){
+  const o=(DB.orders||[]).find(x=>x.id===id);if(!o)return;
+  if(!confirm('確定刪除此筆訂購紀錄？'))return;
+  if(!isDemo){
+    const res=await _db.from('orders').delete().eq('id',id);
+    if(res.error){toast('刪除失敗','err');return;}
+  }
+  DB.orders=DB.orders.filter(x=>x.id!==id);
+  closeModal();toast('已刪除','ok');renderOrders();
+}
+
 function getNextWONo(){
   // 工單號格式：WO-YYYYMM-序號（當月流水號）
   const now=new Date();
@@ -1530,6 +1598,66 @@ function openModal(type,extraId){
         </div>`;
     }},
 
+    addorder:{t:'新增訂購紀錄',h:()=>{
+      const supOpts=(DB.suppliers||[]).map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+      const yr=new Date().getFullYear();
+      return`<div class="form-row">
+        <div class="fg"><label>訂購日期</label><input type="date" id="f-ord-date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="fg"><label>到貨日期</label><input type="date" id="f-arr-date"></div>
+      </div>
+      <div class="fg"><label>廠商名稱 *</label>
+        <div style="display:flex;gap:6px;">
+          <input id="f-ord-sup" placeholder="廠商名稱" list="sup-list" style="flex:1;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:13px;">
+          <datalist id="sup-list">${supOpts}</datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>採購單號</label><input id="f-ord-po" placeholder="PO號碼"></div>
+        <div class="fg"><label>年份</label><input type="number" id="f-ord-year" value="${yr}" min="2000" max="2099"></div>
+      </div>
+      <div class="fg"><label>品名 *</label><input id="f-ord-name" placeholder="品名"></div>
+      <div class="fg"><label>規格</label><input id="f-ord-spec" placeholder="規格"></div>
+      <div class="form-row">
+        <div class="fg"><label>數量</label><input type="number" id="f-ord-qty" value="1" min="0"></div>
+        <div class="fg"><label>單位</label><input id="f-ord-unit" value="件"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>單價</label><input type="number" id="f-ord-up" value="0" min="0"></div>
+        <div class="fg"><label>金額</label><input type="number" id="f-ord-amt" value="0" min="0"></div>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewOrder()">新增</button></div>`;
+    }},
+    editorder:{t:'編輯訂購紀錄',h:(id)=>{
+      const o=(DB.orders||[]).find(x=>x.id===id);if(!o)return'找不到';
+      const supOpts=(DB.suppliers||[]).map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+      return`<div class="form-row">
+        <div class="fg"><label>訂購日期</label><input id="f-ord-date" value="${o.order_date||''}"></div>
+        <div class="fg"><label>到貨日期</label><input id="f-arr-date" value="${o.arrive_date||''}"></div>
+      </div>
+      <div class="fg"><label>廠商名稱 *</label>
+        <input id="f-ord-sup" value="${o.supplier||''}" list="sup-list2">
+        <datalist id="sup-list2">${supOpts}</datalist>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>採購單號</label><input id="f-ord-po" value="${o.po_no||''}"></div>
+        <div class="fg"><label>年份</label><input type="number" id="f-ord-year" value="${o.year||new Date().getFullYear()}"></div>
+      </div>
+      <div class="fg"><label>品名 *</label><input id="f-ord-name" value="${(o.name||'').replace(/"/g,'&quot;')}"></div>
+      <div class="fg"><label>規格</label><input id="f-ord-spec" value="${(o.spec||'').replace(/"/g,'&quot;')}"></div>
+      <div class="form-row">
+        <div class="fg"><label>數量</label><input type="number" id="f-ord-qty" value="${o.qty||0}"></div>
+        <div class="fg"><label>單位</label><input id="f-ord-unit" value="${o.unit||'件'}"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>單價</label><input type="number" id="f-ord-up" value="${o.unit_price||0}"></div>
+        <div class="fg"><label>金額</label><input type="number" id="f-ord-amt" value="${o.amount||0}"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-danger" onclick="deleteOrder('${id}')">🗑 刪除</button>
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditOrder('${id}')">💾 儲存</button>
+      </div>`;
+    }},
     workorder:{t:'建立工單',h:()=>{
       const no=getNextWONo();
       return`<div style="background:var(--blue-bg);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--blue-text);">
@@ -2199,7 +2327,7 @@ async function saveQuoteForm(){
   const id=(document.getElementById('qf-id')?.value||'').trim();
 
   if(id&&id.length>5){
-    const updates={supplier,fax,contact,status,note,items:itemsJson};
+    const updates={client:supplier,supplier,fax,contact,status,note,items:itemsJson};
     if(!isDemo){
       const res=await _db.from('quotes').update(updates).eq('id',id);
       if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
@@ -2215,7 +2343,7 @@ async function saveQuoteForm(){
     const _ds=_now.getFullYear().toString()+(_now.getMonth()+1).toString().padStart(2,'0')+_now.getDate().toString().padStart(2,'0');
     const _todayCount=(DB.quotes||[]).filter(q=>(q.order_no||'').includes('DJ-'+_ds)).length+1;
     const order_no='DJ-'+_ds+'-'+_todayCount;
-    const rec={order_no,supplier,fax,contact,status,note,items:itemsJson,operator:currentUser,created_at:new Date().toISOString()};
+    const rec={order_no,client:supplier,supplier,fax,contact,status,note,items:itemsJson,operator:currentUser,created_at:new Date().toISOString()};
     if(!isDemo){
       const res=await _db.from('quotes').insert(rec);
       if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
@@ -2612,8 +2740,13 @@ async function exportCSV(tbl){
   else{const map={inventory:DB.inventory,inbound:DB.inbound,outbound:DB.outbound,activity_log:DB.actlog,suppliers:DB.suppliers,purchase:DB.purchase,workorders:DB.workorders};data=map[tbl]||[];}
   if(!data.length){toast('無資料可匯出','inf');return;}
   const keys=Object.keys(data[0]);
-  const csv=[keys.join(','),...data.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download=tbl+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV 已下載','ok');
+  const csv=[keys.join(','),...data.map(r=>keys.map(k=>{
+    const v=r[k]??'';
+    const s=typeof v==='string'?v.replace(/"/g,'""'):String(v);
+    return '"'+s+'"';
+  }).join(','))].join('\r\n');
+  const bom='\uFEFF';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bom+csv],{type:'text/csv;charset=utf-8'}));a.download=tbl+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV 已下載','ok');
 }
 
 function ft(iso){if(!iso)return'-';const d=new Date(iso),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'});}
@@ -2648,6 +2781,134 @@ async function deleteCat(id){
   }
   toast('分類已刪除','ok');
   openModal('mngcat');
+}
+
+// ── ORDERS MODULE ──
+let currentOrderYear = 'all';
+let currentOrderPage = 1;
+const ORDER_PAGE_SIZE = 50;
+
+function initOrdersPage(){
+  if(!isDemo && DB.orders_loaded){renderOrders();return;}
+  if(!isDemo){
+    loadOrdersFromDB();
+  } else {
+    renderOrders();
+  }
+}
+
+async function loadOrdersFromDB(year){
+  const countEl=document.getElementById('orderCount');
+  if(countEl) countEl.textContent='資料載入中...';
+  try{
+    let q=_db.from('orders').select('*',{count:'exact'});
+    if(year&&year!=='all') q=q.eq('year',year);
+    q=q.order('order_date',{ascending:false}).limit(2000);
+    const{data,error,count}=await q;
+    if(error)throw error;
+    if(!DB.orders) DB.orders=[];
+    // 合併（避免重複）
+    const existing=new Set(DB.orders.map(o=>o.id));
+    (data||[]).forEach(o=>{if(!existing.has(o.id))DB.orders.push(o);});
+    DB.orders_loaded=true;
+    renderOrders();
+  }catch(e){
+    if(countEl) countEl.textContent='載入失敗：'+e.message;
+  }
+}
+
+function renderOrderYearTabs(){
+  const tabsEl=document.getElementById('orderYearTabs');
+  if(!tabsEl) return;
+  const years=['all',...new Set((DB.orders||[]).map(o=>o.year).filter(Boolean))].sort((a,b)=>a==='all'?-1:b-a);
+  tabsEl.innerHTML=years.map(y=>`
+    <button class="zone-tab${y===currentOrderYear?' active':''}" onclick="switchOrderYear(${y==='all'?''all'':y},this)">
+      ${y==='all'?'📑 全部':y+'年'}
+    </button>`).join('');
+  // 更新廠商下拉
+  const supF=document.getElementById('orderSupF');
+  if(supF){
+    const sups=[...new Set((DB.orders||[]).map(o=>o.supplier).filter(Boolean))].sort();
+    const cur=supF.value;
+    supF.innerHTML='<option value="">全部廠商</option>'+sups.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+  }
+}
+
+function switchOrderYear(year, el){
+  currentOrderYear=year;
+  currentOrderPage=1;
+  document.querySelectorAll('#orderYearTabs .zone-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  // 如果該年份資料未載入，從 DB 載入
+  if(!isDemo&&year!=='all'){
+    const hasYear=(DB.orders||[]).some(o=>o.year===year);
+    if(!hasYear){loadOrdersFromDB(year);return;}
+  }
+  renderOrders();
+}
+
+function renderOrders(){
+  renderOrderYearTabs();
+  const q=(document.getElementById('orderQ')?.value||'').toLowerCase();
+  const supF=document.getElementById('orderSupF')?.value||'';
+  let rows=(DB.orders||[]).filter(o=>{
+    const matchY=currentOrderYear==='all'||o.year===currentOrderYear||o.year===parseInt(currentOrderYear);
+    const matchQ=!q||((o.name||'')+(o.supplier||'')+(o.spec||'')+(o.po_no||'')).toLowerCase().includes(q);
+    const matchS=!supF||o.supplier===supF;
+    return matchY&&matchQ&&matchS;
+  });
+  rows.sort((a,b)=>(b.order_date||'').localeCompare(a.order_date||''));
+  const total=rows.length;
+  const totalPages=Math.max(1,Math.ceil(total/ORDER_PAGE_SIZE));
+  if(currentOrderPage>totalPages) currentOrderPage=1;
+  const start=(currentOrderPage-1)*ORDER_PAGE_SIZE;
+  const pageRows=rows.slice(start,start+ORDER_PAGE_SIZE);
+  const countEl=document.getElementById('orderCount');
+  if(countEl) countEl.textContent=`共 ${total.toLocaleString()} 筆，第 ${currentOrderPage}/${totalPages} 頁`;
+  document.getElementById('orderBody').innerHTML=pageRows.length?pageRows.map(o=>`<tr>
+    <td style="white-space:nowrap;">${o.order_date||'-'}</td>
+    <td>${o.supplier||'-'}</td>
+    <td>${o.name||'-'}</td>
+    <td style="color:var(--text2);">${o.spec||'-'}</td>
+    <td style="text-align:right;">${(o.qty||0).toLocaleString()}</td>
+    <td>${o.unit||'件'}</td>
+    <td style="text-align:right;">${o.unit_price?'NT$'+(o.unit_price||0).toLocaleString():'-'}</td>
+    <td style="text-align:right;font-weight:600;">${o.amount?'NT$'+(o.amount||0).toLocaleString():'-'}</td>
+    <td><button class="btn btn-sm" onclick="openModal('editorder','${o.id}')">✎</button></td>
+  </tr>`).join(''):'<tr class="empty-row"><td colspan="9">尚無資料</td></tr>';
+  // 分頁按鈕
+  const pager=document.getElementById('orderPager');
+  if(pager){
+    let btns='';
+    if(currentOrderPage>1) btns+=`<button class="btn btn-sm" onclick="goOrderPage(${currentOrderPage-1})">← 上一頁</button>`;
+    const start2=Math.max(1,currentOrderPage-2),end2=Math.min(totalPages,currentOrderPage+2);
+    for(let i=start2;i<=end2;i++) btns+=`<button class="btn btn-sm${i===currentOrderPage?' btn-primary':''}" onclick="goOrderPage(${i})">${i}</button>`;
+    if(currentOrderPage<totalPages) btns+=`<button class="btn btn-sm" onclick="goOrderPage(${currentOrderPage+1})">下一頁 →</button>`;
+    pager.innerHTML=btns;
+  }
+}
+
+function goOrderPage(p){currentOrderPage=p;renderOrders();document.getElementById('page-orders')?.scrollTo(0,0);}
+
+function exportOrdersCSV(){
+  const q=(document.getElementById('orderQ')?.value||'').toLowerCase();
+  const supF=document.getElementById('orderSupF')?.value||'';
+  let rows=(DB.orders||[]).filter(o=>{
+    const matchY=currentOrderYear==='all'||o.year===currentOrderYear||o.year===parseInt(currentOrderYear);
+    const matchQ=!q||((o.name||'')+(o.supplier||'')+(o.spec||'')).toLowerCase().includes(q);
+    const matchS=!supF||o.supplier===supF;
+    return matchY&&matchQ&&matchS;
+  });
+  if(!rows.length){toast('無資料','inf');return;}
+  const keys=['year','order_date','arrive_date','supplier','po_no','name','spec','qty','unit','unit_price','amount'];
+  const headers=['年份','訂購日期','到貨日期','廠商','採購單號','品名','規格','數量','單位','單價','金額'];
+  const csv=[headers.join(','),...rows.map(r=>keys.map(k=>{
+    const v=r[k]??'';const s=String(v).replace(/"/g,'""');return '"'+s+'"';
+  }).join(','))].join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='訂購紀錄_'+(currentOrderYear==='all'?'全部':currentOrderYear)+'年.csv';
+  a.click();toast('CSV 已下載','ok');
 }
 
 function logout(){
