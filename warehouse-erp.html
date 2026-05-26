@@ -222,6 +222,15 @@ tr:hover td{background:var(--bg3);}
   .content{padding:12px 14px 16px;}
   .topbar{padding:0 10px;}
   .live-pill span{display:none;}
+  /* 手機版詢價單表格輸入優化 */
+  .quote-items-wrap table thead{display:none;}
+  .quote-items-wrap table tbody tr{display:flex;flex-wrap:wrap;gap:6px;padding:10px 8px;border:1px solid var(--border);background:var(--bg3);margin-bottom:6px;border-radius:var(--r);}
+  .quote-items-wrap table td{border:none;padding:2px 0;}
+  .quote-items-wrap table td:nth-child(1){width:24px;font-weight:700;color:var(--text3);}
+  .quote-items-wrap table td:nth-child(2){flex:1;min-width:0;}
+  .quote-items-wrap table td:nth-child(3),.quote-items-wrap table td:nth-child(4){width:auto;}
+  .quote-items-wrap table td input{font-size:16px!important;}
+  .quote-form-grid{grid-template-columns:1fr!important;}
 }
 @media(min-width:768px){
   .topbar-brand{display:none;}
@@ -601,7 +610,7 @@ tr:hover td{background:var(--bg3);}
                   <span style="font-size:13px;font-weight:700;">詢價品項</span>
                   <button class="btn btn-sm btn-primary" onclick="addQuoteItem()">+ 新增品項</button>
                 </div>
-                <div class="table-wrap">
+                <div class="table-wrap quote-items-wrap">
                   <table id="quoteItemTable">
                     <thead><tr><th style="width:30px;">項次</th><th>品名/規格</th><th style="width:80px;">數量</th><th style="width:60px;">單位</th><th style="width:120px;">參考單價</th><th style="width:200px;">備註</th><th style="width:40px;">刪除</th></tr></thead>
                     <tbody id="quoteItemBody"></tbody>
@@ -2343,7 +2352,8 @@ async function saveQuoteForm(){
     const _ds=_now.getFullYear().toString()+(_now.getMonth()+1).toString().padStart(2,'0')+_now.getDate().toString().padStart(2,'0');
     const _todayCount=(DB.quotes||[]).filter(q=>(q.order_no||'').includes('DJ-'+_ds)).length+1;
     const order_no='DJ-'+_ds+'-'+_todayCount;
-    const rec={order_no,client:supplier,supplier,fax,contact,status,note,items:itemsJson,operator:currentUser,created_at:new Date().toISOString()};
+    const _firstItem=currentQuoteItems.find(i=>(i.name||'').trim());
+    const rec={order_no,client:supplier,supplier,fax,contact,status,note,items:itemsJson,product:(_firstItem?.name||supplier||'詢價').trim(),operator:currentUser,created_at:new Date().toISOString()};
     if(!isDemo){
       const res=await _db.from('quotes').insert(rec);
       if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
@@ -2822,7 +2832,7 @@ function renderOrderYearTabs(){
   if(!tabsEl) return;
   const years=['all',...new Set((DB.orders||[]).map(o=>o.year).filter(Boolean))].sort((a,b)=>a==='all'?-1:b-a);
   tabsEl.innerHTML=years.map(y=>`
-    <button class="zone-tab${y===currentOrderYear?' active':''}" onclick="switchOrderYear(${y==='all'?''all'':y},this)">
+    <button class="zone-tab${y===currentOrderYear?' active':''}" onclick="switchOrderYear(${y==='all'?'\'all\'':y},this)">
       ${y==='all'?'📑 全部':y+'年'}
     </button>`).join('');
   // 更新廠商下拉
