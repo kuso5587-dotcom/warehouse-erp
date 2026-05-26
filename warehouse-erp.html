@@ -694,6 +694,7 @@ tr:hover td{background:var(--bg3);}
             <div style="font-size:12px;color:var(--text3);padding:2px 0 6px;" id="orderCount"></div>
             <div class="table-wrap"><table>
               <thead><tr>
+                <th style="width:42px;text-align:center;color:var(--text3);">#</th>
                 <th style="white-space:nowrap;">訂購日期</th>
                 <th style="white-space:nowrap;">預計進貨日</th>
                 <th style="white-space:nowrap;">實入進貨日</th>
@@ -709,7 +710,7 @@ tr:hover td{background:var(--bg3);}
                 <th>底色</th>
                 <th>操作</th>
               </tr></thead>
-              <tbody id="orderBody"><tr class="empty-row"><td colspan="14">載入中...</td></tr></tbody>
+              <tbody id="orderBody"><tr class="empty-row"><td colspan="15">載入中...</td></tr></tbody>
             </table></div>
             <div id="orderPager" style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;"></div>
           </div>
@@ -3332,6 +3333,7 @@ function renderOrders(){
       <option value="none"${o.row_color==='none'?' selected':''}>✖清除</option>
     </select>`;
     return`<tr style="${rowBg}">
+    <td style="text-align:center;color:var(--text3);font-size:12px;white-space:nowrap;">${start+pageRows.indexOf(o)+1}</td>
     <td style="white-space:nowrap;">${fROC(o.order_date)}</td>
     <td style="white-space:nowrap;color:var(--text2);">${fROC(o.plan_date)}</td>
     <td style="white-space:nowrap;color:var(--text2);">${fROC(o.arrive_date)}</td>
@@ -3346,7 +3348,7 @@ function renderOrders(){
     <td>${accSel}</td>
     <td>${colorSel}</td>
     <td><button class="btn btn-sm" onclick="openModal('editorder','${o.id}')">✎</button></td>
-  </tr>`;}).join(''):'<tr class="empty-row"><td colspan="14">尚無資料</td></tr>';
+  </tr>`;}).join(''):'<tr class="empty-row"><td colspan="15">尚無資料</td></tr>';
   // 分頁按鈕
   const pager=document.getElementById('orderPager');
   if(pager){
