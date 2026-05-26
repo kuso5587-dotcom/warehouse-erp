@@ -2821,9 +2821,32 @@ async function importOrdersFile(input){
   const file = input.files[0];
   if(!file){ return; }
   input.value='';
+
+  // ── 步驟1：詢問匯入模式 ──
+  const mode = await new Promise(res=>{
+    const d=document.createElement('div');
+    d.style.cssText='position:fixed;inset:0;background:#0008;z-index:9999;display:flex;align-items:center;justify-content:center;';
+    d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:28px 24px;max-width:360px;width:90%;box-shadow:0 8px 40px #0004;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px;">📂 匯入 Excel</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px;">選擇匯入方式：</div>
+      <button id="imp-clear" style="width:100%;padding:12px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
+        🔄 清空後全新匯入（建議）<br><span style="font-size:11px;opacity:.8;">先刪除同年份舊資料，再匯入 → 確保 2467 筆完整</span>
+      </button>
+      <button id="imp-append" style="width:100%;padding:12px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
+        ➕ 追加匯入（補充新資料）<br><span style="font-size:11px;color:var(--text3);">不刪舊資料，直接新增</span>
+      </button>
+      <button id="imp-cancel" style="width:100%;padding:10px;background:none;color:var(--text3);border:none;font-size:13px;cursor:pointer;">取消</button>
+    </div>`;
+    document.body.appendChild(d);
+    d.querySelector('#imp-clear').onclick=()=>{document.body.removeChild(d);res('clear');};
+    d.querySelector('#imp-append').onclick=()=>{document.body.removeChild(d);res('append');};
+    d.querySelector('#imp-cancel').onclick=()=>{document.body.removeChild(d);res(null);};
+  });
+  if(!mode) return;
+
   toast('讀取檔案中...','inf');
 
-  // 動態載入 SheetJS
+  // ── 步驟2：載入 SheetJS ──
   if(!window.XLSX){
     await new Promise((res,rej)=>{
       const s=document.createElement('script');
@@ -2834,140 +2857,152 @@ async function importOrdersFile(input){
   }
 
   const buf = await file.arrayBuffer();
-  const wb = window.XLSX.read(buf, {type:'array'});
-  const ws = wb.Sheets[wb.SheetNames[0]];
+  const wb2 = window.XLSX.read(buf, {type:'array'});
+  const ws = wb2.Sheets[wb2.SheetNames[0]];
   const raw = window.XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
-  // 從檔名抓年份（民國114年->2025）
+  // ── 步驟3：偵測年份 ──
   let fileYear = null;
   const fnRoc = file.name.match(/(\d{3})年/);
   if(fnRoc){ fileYear = parseInt(fnRoc[1]) + 1911; }
   else { const fy=file.name.match(/20(\d{2})/); if(fy) fileYear=parseInt('20'+fy[1]); }
-
-  // 若無法從檔名判斷，彈出詢問
   if(!fileYear){
-    const input_yr = prompt('請輸入這份 Excel 的西元年份（例：2025）：', new Date().getFullYear());
-    fileYear = parseInt(input_yr)||new Date().getFullYear();
+    const yr = prompt('請輸入這份 Excel 的西元年份（例：2025）：', new Date().getFullYear());
+    fileYear = parseInt(yr)||new Date().getFullYear();
   } else {
-    // 讓使用者確認或修改年份
-    const confirmed = confirm(`偵測到年份：${fileYear} 年（民國 ${fileYear-1911} 年）\n若正確請按確定，若有誤請按取消後手動輸入。`);
-    if(!confirmed){
-      const input_yr = prompt('請輸入正確的西元年份：', fileYear);
-      fileYear = parseInt(input_yr)||fileYear;
-    }
+    const ok = confirm(`偵測到年份：${fileYear} 年（民國 ${fileYear-1911} 年）\n正確請按確定，有誤請按取消再手動輸入。`);
+    if(!ok){ const yr=prompt('請輸入正確的西元年份：',fileYear); fileYear=parseInt(yr)||fileYear; }
   }
 
-  // 找標題列（找含"品名"的那行）
-  let hdrRow = -1;
+  // ── 步驟4：解析標題 ──
+  let hdrRow=-1;
+  // 先找兩行合併的標題（第0行含"訂購"，第1行含"日期"）
   for(let i=0;i<Math.min(5,raw.length);i++){
     if(raw[i].some(c=>String(c).includes('品名'))){ hdrRow=i; break; }
   }
   if(hdrRow<0){ toast('找不到標題列（需含「品名」欄）','err'); return; }
 
-  const headers = raw[hdrRow].map(h=>String(h).trim());
-  const col = (names)=>{
+  // 合併雙行標題（你的 Excel 第0行+第1行合併才是完整欄名）
+  const hdr0=raw[0]||[];
+  const hdr1=raw[1]||[];
+  const headers=hdr0.map((h,i)=>(String(h||'').trim()+String(hdr1[i]||'').trim()));
+
+  const col=(names)=>{
     for(const n of names){
-      const i = headers.findIndex(h=>h.includes(n));
+      const i=headers.findIndex(h=>h.includes(n));
       if(i>=0) return i;
     }
     return -1;
   };
-  const C = {
-    ord_date: col(['訂購','日期']),
-    plan_date: col(['預計']),
-    arr_date: col(['實入','到貨','進貨']),
-    supplier: col(['廠商']),
-    po_no:    col(['採購單號','單號']),
-    name:     col(['品名']),
-    spec:     col(['規格']),
-    qty:      col(['訂購數量','數量']),
-    unit:     col(['單位']),
-    unit_price: col(['單價']),
-    amount:   col(['小計','金額']),
+  const C={
+    ord_date:  col(['訂購日期','訂購']),
+    plan_date: col(['預計進貨','預計']),
+    arr_date:  col(['實入進貨','實入']),
+    supplier:  col(['廠商']),
+    po_no:     col(['採購單號']),
+    name:      col(['品名']),
+    spec:      col(['規格']),
+    qty:       col(['訂購數量','數量']),
+    unit:      col(['單位']),
+    unit_price:col(['單價']),
+    amount:    col(['小計']),
   };
+  console.log('欄位對應:', C, '標題:', headers);
 
-  const parseDate = (v)=>{
-    if(v===null||v===undefined||v==='') return '';
+  // ── 步驟5：解析日期 ──
+  const parseDate=(v)=>{
+    if(v===null||v===undefined||v==='') return null;
     if(typeof v==='number'&&v>40000&&v<60000){
       const d=new Date(Math.round((v-25569)*86400*1000));
-      const y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,'0'),dd=String(d.getUTCDate()).padStart(2,'0');
-      return `${y}-${m}-${dd}`;
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
     }
-    const s = String(v).replace(/[^0-9]/g,'');
-    if(!s) return '';
+    const s=String(v).replace(/[^0-9]/g,'');
+    if(!s) return null;
     if(s.length===4) return `${fileYear}-${s.slice(0,2)}-${s.slice(2,4)}`;
-    if(s.length===7){ const y=parseInt(s.slice(0,3))+1911; return `${y}-${s.slice(3,5)}-${s.slice(5,7)}`; }
+    if(s.length===7){ return `${parseInt(s.slice(0,3))+1911}-${s.slice(3,5)}-${s.slice(5,7)}`; }
     if(s.length===8) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
-    return '';
+    return null;
   };
-
-  const toNum = (v)=>{
-    if(v===null||v===undefined||v==='') return 0;
+  const toNum=(v)=>{
+    if(!v&&v!==0) return 0;
     if(typeof v==='number') return v;
-    const s=String(v).replace(/[^0-9.\-]/g,'');
-    return parseFloat(s)||0;
+    return parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0;
   };
 
-  const rows = raw.slice(hdrRow+1);
-  let imported=0, skipped=0;
+  // ── 步驟6：組資料（從第3行起，跳過前2行標題）──
+  const dataRows=raw.slice(2); // 你的Excel：第1行標題上、第2行標題下、第3行起資料
   const toInsert=[];
+  let skipped=0;
 
-  for(const r of rows){
-    const name = String(r[C.name]||'').trim();
+  for(const r of dataRows){
+    const name=String(r[C.name]||'').trim();
     if(!name){ skipped++; continue; }
-
-    const ord_date = parseDate(r[C.ord_date]);
-    const parsedYear = ord_date ? parseInt(ord_date.slice(0,4)) : NaN;
-    const year = (parsedYear>2000&&parsedYear<2100) ? parsedYear : fileYear;
-    const supplier = String(r[C.supplier]||'').trim();
-    const qty = Math.round(toNum(r[C.qty]));
-    const unit_price = toNum(r[C.unit_price]);
-    const amount_raw = r[C.amount];
-    const amount = (typeof amount_raw==='number') ? amount_raw : (qty*unit_price)||0;
-
+    const ord_date=parseDate(r[C.ord_date]);
+    const parsedY=ord_date?parseInt(ord_date.slice(0,4)):NaN;
+    const year=(parsedY>2000&&parsedY<2100)?parsedY:fileYear;
+    const qty=Math.round(toNum(r[C.qty]));
+    const unit_price=toNum(r[C.unit_price]);
+    const amt_raw=r[C.amount];
+    const amount=(typeof amt_raw==='number')?amt_raw:(qty*unit_price)||0;
     toInsert.push({
-      year, order_date:ord_date,
-      plan_date: parseDate(r[C.plan_date]),
-      arrive_date: parseDate(r[C.arr_date]),
-      supplier, po_no: String(r[C.po_no]||'').trim(),
-      name, spec: String(r[C.spec]||'').trim(),
-      qty: Math.round(qty), unit: String(r[C.unit]||'件').trim(),
-      unit_price, amount,
+      year,
+      order_date: ord_date,
+      plan_date:  parseDate(r[C.plan_date]),
+      arrive_date:parseDate(r[C.arr_date]),
+      supplier:   String(r[C.supplier]||'').trim(),
+      po_no:      String(r[C.po_no]||'').trim(),
+      name,
+      spec:       String(r[C.spec]||'').trim(),
+      qty,
+      unit:       String(r[C.unit]||'件').trim()||'件',
+      unit_price,
+      amount,
     });
-    imported++;
   }
 
-  if(!toInsert.length){ toast('沒有可匯入的資料，請確認檔案格式','err'); return; }
+  if(!toInsert.length){ toast('沒有可匯入的資料，請確認格式','err'); return; }
+  toast(`解析完成：${toInsert.length} 筆，準備寫入...`,'inf');
 
   if(isDemo){
+    if(mode==='clear') DB.orders=DB.orders.filter(o=>o.year!==fileYear);
     toInsert.forEach((r,i)=>{ r.id='imp'+Date.now()+i; DB.orders.unshift(r); });
-    toast(`✅ 匯入完成！共 ${imported} 筆（${skipped} 筆略過）`,'ok');
+    DB.orders=DB.orders.sort((a,b)=>(b.order_date||'').localeCompare(a.order_date||''));
+    toast(`✅ 匯入完成！${toInsert.length} 筆`,'ok');
     renderOrders(); return;
   }
 
-  // 分批寫入 Supabase（每批 100 筆）
+  // ── 步驟7：清空舊資料（若選清空模式）──
+  if(mode==='clear'){
+    toast(`刪除 ${fileYear} 年舊資料中...`,'inf');
+    const{error:delErr}=await _db.from('orders').delete().eq('year',fileYear);
+    if(delErr){ toast('刪除失敗：'+delErr.message,'err'); return; }
+    toast('舊資料已清空，開始匯入...','inf');
+  }
+
+  // ── 步驟8：分批寫入（100筆/批）──
   const BATCH=100;
   let done=0, failed=0;
   for(let i=0;i<toInsert.length;i+=BATCH){
     const batch=toInsert.slice(i,i+BATCH);
-    const {error}=await _db.from('orders').insert(batch);
+    const{error}=await _db.from('orders').insert(batch);
     if(error){
-      // 單批失敗改逐筆重試
+      console.warn(`批次 ${i}-${i+BATCH} 失敗:`, error.message);
       for(const rec of batch){
-        const {error:e2}=await _db.from('orders').insert([rec]);
-        if(e2){ failed++; console.warn('略過筆：',rec.name, e2.message); }
+        const{error:e2}=await _db.from('orders').insert([rec]);
+        if(e2){ failed++; console.warn('單筆失敗:',rec.name,e2.message); }
         else done++;
       }
-    } else {
-      done+=batch.length;
-    }
+    } else { done+=batch.length; }
     toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
   }
-  // 重新從資料庫全量載入
+
+  // ── 步驟9：重新全量載入 ──
   DB.orders=[];
   DB.orders_loaded=false;
   await loadOrdersFromDB();
-  toast(`✅ 完成！成功 ${done} 筆${failed>0?' / 失敗 '+failed+' 筆':''}（空白略過 ${skipped} 筆）`,'ok');
+  const msg=`✅ 完成！成功 ${done} 筆${failed>0?' ／ 失敗 '+failed+' 筆':''}（空白略過 ${skipped} 筆）`;
+  toast(msg,'ok');
+  alert(msg);
 }
 
 // ── WORKORDER ACTIONS ──
