@@ -3134,36 +3134,34 @@ async function editOrderYear(oldYear){
   const newYear = parseInt(newYearStr);
   if(!newYear||newYear<2000||newYear>2099){ toast('年份無效','err'); return; }
   if(newYear===oldYear){ toast('年份相同，無需修改','inf'); return; }
-  if(!confirm(`確定將所有 ${oldYear} 年的訂購紀錄改為 ${newYear} 年？\n（年份欄位 + 訂購/到貨日期 都會同步更新）`)) return;
-  toast('修改中...','inf');
-  if(!isDemo){
-    // 同時更新 year 欄位和 order_date / arrive_date 字串中的年份
-    const {error}=await _db.from('orders').update({year:newYear}).eq('year',oldYear);
-    if(error){ toast('修改失敗：'+error.message,'err'); return; }
-    // 批次更新日期字串（舊年 -> 新年）
-    const oldPrefix=String(oldYear)+'-';
-    const newPrefix=String(newYear)+'-';
-    const targets=(DB.orders||[]).filter(o=>
-      o.year===oldYear||
-      (o.order_date||'').startsWith(oldPrefix)||
-      (o.arrive_date||'').startsWith(oldPrefix)
-    );
-    const BATCH=200;
-    for(let i=0;i<targets.length;i+=BATCH){
-      const batch=targets.slice(i,i+BATCH);
-      for(const o of batch){
-        const upd={year:newYear};
-        if((o.order_date||'').startsWith(oldPrefix))  upd.order_date=newPrefix+o.order_date.slice(5);
-        if((o.arrive_date||'').startsWith(oldPrefix)) upd.arrive_date=newPrefix+o.arrive_date.slice(5);
-        // plan_date 只在欄位存在時才更新
-        if(o.plan_date&&(o.plan_date||'').startsWith(oldPrefix)) upd.plan_date=newPrefix+o.plan_date.slice(5);
-        const{error}=await _db.from('orders').update(upd).eq('id',o.id);
-        if(error) console.warn('date update err:',o.id,error.message);
-      }
-      toast(`更新日期中... ${Math.min(i+BATCH,targets.length)}/${targets.length} 筆`,'inf');
-    }
+
+  // 產生 SQL 讓使用者到 Supabase 執行（最可靠的方式）
+  const sql=`-- 將 ${oldYear} 年訂購紀錄全部改為 ${newYear} 年
+-- 在 Supabase → SQL Editor 執行此 SQL
+
+UPDATE orders SET
+  year = ${newYear},
+  order_date = REPLACE(order_date, '${oldYear}-', '${newYear}-'),
+  arrive_date = REPLACE(arrive_date, '${oldYear}-', '${newYear}-')
+WHERE year = ${oldYear}
+   OR order_date LIKE '${oldYear}-%'
+   OR arrive_date LIKE '${oldYear}-%';
+
+-- 若有 plan_date 欄位，再加這行：
+-- UPDATE orders SET plan_date = REPLACE(plan_date, '${oldYear}-', '${newYear}-') WHERE plan_date LIKE '${oldYear}-%';
+`;
+
+  // 顯示 SQL 並複製到剪貼簿
+  const choice = confirm(
+    `請到 Supabase → SQL Editor 執行以下 SQL 才能同步日期：\n\n${sql}\n\n按「確定」複製 SQL 到剪貼簿\n按「取消」只更新本機畫面（重新整理後會還原）`
+  );
+  if(choice){
+    try{ await navigator.clipboard.writeText(sql); toast('SQL 已複製！請到 Supabase SQL Editor 貼上執行','ok'); }
+    catch(e){ prompt('請複製以下 SQL：',sql); }
+    return;
   }
-  // 更新本地資料（year + 日期字串）
+
+  // 只更新本機顯示（不存資料庫）
   const oldPrefix=String(oldYear)+'-';
   const newPrefix=String(newYear)+'-';
   (DB.orders||[]).forEach(o=>{
@@ -3174,7 +3172,7 @@ async function editOrderYear(oldYear){
   });
   if(currentOrderYear===oldYear) currentOrderYear=newYear;
   renderOrders();
-  toast(`✅ 已將 ${oldYear} 年改為 ${newYear} 年（日期同步更新）`,'ok');
+  toast(`⚠️ 只更新了畫面，資料庫未改。請執行 SQL 才能永久儲存。`,'inf');
 }
 
 function switchOrderYear(year, el){
