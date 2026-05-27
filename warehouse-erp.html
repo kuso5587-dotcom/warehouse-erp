@@ -298,10 +298,12 @@ tr:hover td{background:var(--bg3);}
       <div class="nav">
         <div class="nslabel">主要功能</div>
         <div class="nitem active" id="nav-dashboard" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
+        <div class="nslabel">🏭 倉庫管理</div>
         <div class="nitem" id="nav-inbound" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
         <div class="nitem" id="nav-outbound" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
         <div class="nitem" id="nav-inventory" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
-        <div class="nslabel">採購 ERP 模組</div>
+        <div class="nitem" id="nav-locations" onclick="goto('locations',this)"><span class="ic">🗂️</span>倉位管理</div>
+        <div class="nslabel">🛒 採購管理</div>
         <div class="nitem" id="nav-cost" onclick="goto('cost',this)"><span class="ic">💰</span>成本計算</div>
         <div class="nitem" id="nav-quote" onclick="goto('quote',this)"><span class="ic">📋</span>詢價單</div>
         <div class="nitem" id="nav-purchase" onclick="goto('purchase',this)"><span class="ic">🛒</span>採購管理</div>
@@ -309,11 +311,11 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
         <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
-        <div class="nslabel">系統管理</div>
+        <div class="nslabel">⚙️ 系統管理</div>
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
         <div class="nitem" id="nav-actlog" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
-        <div class="nitem" id="nav-usage" onclick="goto('usage',this)"><span class="ic">📊</span>系統用量</div>
+        <div class="nitem" id="nav-usage" onclick="goto('usage',this)"><span class="ic">📡</span>系統用量</div>
       </div>
       <div class="online-sec">
         <div class="online-sec-title">目前在線</div>
@@ -662,7 +664,7 @@ tr:hover td{background:var(--bg3);}
           <div class="two-col">
             <div class="card">
               <div class="card-hd"><span class="card-title">角色權限設定</span></div>
-              <div class="tab-bar"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">👑管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">👔主管</div><div class="tab-item" id="pt-purchase" onclick="switchRole('purchase')">🛒採購部</div><div class="tab-item" id="pt-op" onclick="switchRole('operator')">🔧操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('readonly')">👁唯讀</div></div>
+              <div class="tab-bar" style="flex-wrap:wrap;"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">👑管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">👔主管</div><div class="tab-item" id="pt-purchase" onclick="switchRole('purchase')">🛒採購部</div><div class="tab-item" id="pt-warehouse" onclick="switchRole('warehouse')">🏭倉管部</div><div class="tab-item" id="pt-op" onclick="switchRole('operator')">🔧操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('readonly')">👁唯讀</div></div>
               <div id="permList"></div>
               <div style="margin-top:12px;"><button class="btn btn-primary" style="width:100%;" onclick="savePermissions()">💾 儲存此角色權限</button></div>
             </div>
@@ -961,6 +963,7 @@ function applyNavPerms(){
   // 每個 nav 對應的權限 key
   const navMap={
     'nav-dashboard':'dashboard_view',
+    'nav-locations':'locations_view',
     'nav-inbound':'inbound_view',
     'nav-outbound':'outbound_view',
     'nav-inventory':'inventory_view',
@@ -1473,11 +1476,12 @@ function renderLog(){
 }
 
 let editingPermRole='admin';
-const ROLE_LABELS={admin:'👑 最高管理員',manager:'👔 主管',purchase:'🛒 採購部',operator:'🔧 操作員',readonly:'👁 唯讀'};
+const ROLE_LABELS={admin:'👑 最高管理員',manager:'👔 主管',purchase:'🛒 採購部',warehouse:'🏭 倉管部',operator:'🔧 操作員',readonly:'👁 唯讀'};
 const ROLE_DESC={
   admin:'擁有全部模組完整操作權限，包含使用者管理、訂購紀錄、核銷與系統設定。',
   manager:'可操作進出料、採購、報表，可查看訂購紀錄與核銷，不可修改帳號。',
   purchase:'採購部門：可查看與操作採購、詢價、訂購紀錄、核銷、供應商與成本。',
+  warehouse:'倉管部門：可操作進料、出料、庫存、倉位與生產排程，不可看採購/訂購/成本。',
   operator:'操作員：可執行入出庫，不可看採購/訂購/成本/核銷相關資料。',
   readonly:'唯讀：只能查看儀表板、庫存與報表，無法執行任何新增或編輯。'
 };
@@ -1494,7 +1498,7 @@ function renderPermissions(role){
   const base=DEFAULT_PERMS[role]||DEFAULT_PERMS['operator'];
   editingPerms=Object.assign({},base);
   const groups=[
-    {label:'📊 主要功能',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust']},
+    {label:'🏭 倉庫管理',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust','locations_view','locations_edit']},
     {label:'🛒 採購模組',items:['purchase_view','purchase_add','purchase_approve','supplier_view','supplier_edit','quote_view','quote_edit','cost_view']},
     {label:'📑 訂購紀錄',items:['orders_view','orders_edit','orders_import','accounting_view']},
     {label:'📈 報表與系統',items:['reports_view','reports_export','production_view','production_edit','users_manage','actlog_view']},
@@ -2122,13 +2126,14 @@ async function saveAdj(id,matId){
 }
 
 // ══ 細部權限系統 ══
-const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view", "查看進料管理"], ["inbound_add", "新增入庫單"], ["inbound_exec", "執行入庫"], ["outbound_view", "查看出料管理"], ["outbound_add", "新增出庫申請"], ["outbound_approve", "審核出庫"], ["outbound_exec", "執行出庫"], ["inventory_view", "查看庫存"], ["inventory_adjust", "庫存調整"], ["purchase_view", "查看採購管理"], ["purchase_add", "新增採購單"], ["purchase_approve", "審核採購"], ["supplier_view", "查看供應商"], ["supplier_edit", "新增/編輯供應商"], ["quote_view","查看詢價單"], ["quote_edit","新增/編輯詢價單"], ["production_view", "查看生產排程"], ["production_edit", "新增/更新工單"], ["cost_view", "成本計算"], ["orders_view","查看訂購紀錄"], ["orders_edit","新增/編輯訂購紀錄"], ["orders_import","匯入訂購Excel"], ["accounting_view","查看/操作核銷"], ["reports_view", "查看報表分析"], ["reports_export", "匯出報表"], ["users_manage", "使用者管理"],["actlog_view","查看操作紀錄"]];
+const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view","查看進料管理"],["inbound_add","新增入庫單"],["inbound_exec","執行入庫"],["outbound_view","查看出料管理"],["outbound_add","新增出庫申請"],["outbound_approve","審核出庫"],["outbound_exec","執行出庫"],["inventory_view","查看庫存"],["inventory_adjust","庫存調整"],["locations_view","查看倉位管理"],["locations_edit","新增/編輯倉位"],["purchase_view","查看採購管理"],["purchase_add","新增採購單"],["purchase_approve","審核採購"],["supplier_view","查看供應商"],["supplier_edit","新增/編輯供應商"],["quote_view","查看詢價單"],["quote_edit","新增/編輯詢價單"],["production_view","查看生產排程"],["production_edit","新增/更新工單"],["cost_view","成本計算"],["orders_view","查看訂購紀錄"],["orders_edit","新增/編輯訂購紀錄"],["orders_import","匯入訂購Excel"],["accounting_view","查看/操作核銷"],["reports_view","查看報表分析"],["reports_export","匯出報表"],["users_manage","使用者管理"],["actlog_view","查看操作紀錄"]];
 const DEFAULT_PERMS = {
   "admin":    {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true},
   "manager":  {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true},
   "purchase": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":false,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":false,"production_edit":false,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false},
   "operator": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false},
-  "readonly": {"dashboard_view":true,"inbound_view":true,"inbound_add":false,"inbound_exec":false,"outbound_view":true,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false}
+  "readonly":  {"dashboard_view":true,"inbound_view":true,"inbound_add":false,"inbound_exec":false,"outbound_view":true,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"locations_view":true,"locations_edit":false,"purchase_view":true,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false},
+  "warehouse": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"locations_view":true,"locations_edit":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":true,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false}
 };
 let currentUserPerms = null; // null = 用角色預設
 
@@ -3092,7 +3097,32 @@ async function importOrdersFile(input){
     renderOrders(); return;
   }
 
-  // ── 步驟7：清空舊資料（若選清空模式）──
+  // ── 步驟7：偵測資料表實際欄位（避免送不存在的欄位） ──
+  toast('偵測資料表欄位中...','inf');
+  let allowedCols=null;
+  try{
+    const{data:probe}=await _db.from('orders').select('*').limit(1);
+    if(probe&&probe.length>0) allowedCols=new Set(Object.keys(probe[0]));
+    else{
+      // 表是空的，試送一筆最小資料看哪些欄位存在
+      const testRec={year:1900,name:'__test__',qty:0};
+      const{error:te}=await _db.from('orders').insert([testRec]);
+      if(!te){
+        await _db.from('orders').delete().eq('year',1900);
+        allowedCols=new Set(['year','name','qty','order_date','arrive_date','supplier','po_no','spec','unit','unit_price','amount']);
+      }
+    }
+  }catch(e){ console.warn('欄位偵測失敗，使用基本欄位'); }
+
+  // 過濾每筆資料，只保留資料庫有的欄位
+  const filterRec=(rec)=>{
+    if(!allowedCols) return rec;
+    const out={};
+    Object.keys(rec).forEach(k=>{ if(allowedCols.has(k)) out[k]=rec[k]; });
+    return out;
+  };
+
+  // ── 步驟8：清空舊資料（若選清空模式）──
   if(mode==='clear'){
     toast(`刪除 ${fileYear} 年舊資料中...`,'inf');
     const{error:delErr}=await _db.from('orders').delete().eq('year',fileYear);
@@ -3100,28 +3130,32 @@ async function importOrdersFile(input){
     toast('舊資料已清空，開始匯入...','inf');
   }
 
-  // ── 步驟8：分批寫入（100筆/批）──
-  const BATCH=100;
-  let done=0, failed=0;
+  // ── 步驟9：分批寫入（50筆/批，更穩定）──
+  const BATCH=50;
+  let done=0, failed=0, failMsgs=[];
   for(let i=0;i<toInsert.length;i+=BATCH){
-    const batch=toInsert.slice(i,i+BATCH);
+    const batch=toInsert.slice(i,i+BATCH).map(filterRec);
     const{error}=await _db.from('orders').insert(batch);
     if(error){
-      console.warn(`批次 ${i}-${i+BATCH} 失敗:`, error.message);
+      // 批次失敗→逐筆重試
       for(const rec of batch){
-        const{error:e2}=await _db.from('orders').insert([rec]);
-        if(e2){ failed++; console.warn('單筆失敗:',rec.name,e2.message); }
-        else done++;
+        const{error:e2}=await _db.from('orders').insert([filterRec(rec)]);
+        if(e2){
+          failed++;
+          if(failMsgs.length<3) failMsgs.push(rec.name+': '+e2.message);
+          console.warn('單筆失敗:',rec.name, e2.message);
+        } else done++;
       }
     } else { done+=batch.length; }
     toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
   }
 
-  // ── 步驟9：重新全量載入 ──
+  // ── 步驟10：重新全量載入 ──
   DB.orders=[];
   DB.orders_loaded=false;
   await loadOrdersFromDB();
-  const msg=`✅ 完成！成功 ${done} 筆${failed>0?' ／ 失敗 '+failed+' 筆':''}（空白略過 ${skipped} 筆）`;
+  const failTip=failMsgs.length>0?`\n失敗原因：${failMsgs[0]}`:'';
+  const msg=`✅ 完成！成功 ${done} 筆${failed>0?' ／ 失敗 '+failed+' 筆':''}（空白略過 ${skipped} 筆）${failTip}`;
   toast(msg,'ok');
   alert(msg);
 }
