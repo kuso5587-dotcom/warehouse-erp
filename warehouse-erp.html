@@ -3223,33 +3223,53 @@ async function importOrdersFile(input){
     toast('舊資料已清空，開始匯入...','inf');
   }
 
-  // ── 步驟9：分批寫入（50筆/批，更穩定）──
-  const BATCH=50;
+  // ── 步驟9：清理資料（確保每個必填欄位都有值）──
+  const cleanRec=(rec)=>{
+    const base=filterRec(rec);
+    // 確保必填欄位不為 null/空
+    if(!base.year||isNaN(base.year)) base.year=fileYear;
+    if(!base.name) base.name='(無品名)';
+    if(base.qty===null||base.qty===undefined||isNaN(base.qty)) base.qty=0;
+    if(!base.unit||base.unit==='') base.unit='件';
+    if(base.unit_price===null||base.unit_price===undefined) base.unit_price=0;
+    if(base.amount===null||base.amount===undefined) base.amount=0;
+    // 空字串日期改為 null
+    if(base.order_date==='') base.order_date=null;
+    if(base.plan_date==='') base.plan_date=null;
+    if(base.arrive_date==='') base.arrive_date=null;
+    return base;
+  };
+
+  // ── 步驟10：分批寫入（每批20筆，最穩定）──
+  const BATCH=20;
   let done=0, failed=0, failMsgs=[];
   for(let i=0;i<toInsert.length;i+=BATCH){
-    const batch=toInsert.slice(i,i+BATCH).map(filterRec);
+    const batch=toInsert.slice(i,i+BATCH).map(cleanRec);
     const{error}=await _db.from('orders').insert(batch);
     if(error){
+      console.warn(`第${i/BATCH+1}批失敗(${batch.length}筆):`, error.message);
       // 批次失敗→逐筆重試
       for(const rec of batch){
-        const{error:e2}=await _db.from('orders').insert([filterRec(rec)]);
+        const clean=cleanRec(rec);
+        const{error:e2}=await _db.from('orders').insert([clean]);
         if(e2){
           failed++;
-          if(failMsgs.length<3) failMsgs.push(rec.name+': '+e2.message);
-          console.warn('單筆失敗:',rec.name, e2.message);
+          if(failMsgs.length<5) failMsgs.push(`[${clean.name}] ${e2.message}`);
+          console.error('單筆失敗:', JSON.stringify(clean), e2.message);
         } else done++;
       }
     } else { done+=batch.length; }
-    toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
+    if(i%200===0) toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
   }
 
-  // ── 步驟10：重新全量載入 ──
+  // ── 步驟11：重新全量載入 ──
   DB.orders=[];
   DB.orders_loaded=false;
   await loadOrdersFromDB();
-  const failTip=failMsgs.length>0?`\n失敗原因：${failMsgs[0]}`:'';
-  const msg=`✅ 完成！成功 ${done} 筆${failed>0?' ／ 失敗 '+failed+' 筆':''}（空白略過 ${skipped} 筆）${failTip}`;
-  toast(msg,'ok');
+
+  const failDetail=failMsgs.length>0?'\n\n失敗原因（前5筆）：\n'+failMsgs.join('\n'):'';
+  const msg=`匯入完成！\n✅ 成功：${done} 筆\n❌ 失敗：${failed} 筆\n⏭ 略過空白：${skipped} 筆${failDetail}`;
+  toast(done+' 筆匯入成功','ok');
   alert(msg);
 }
 
