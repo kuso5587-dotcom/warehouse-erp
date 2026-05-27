@@ -313,6 +313,7 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
         <div class="nitem" id="nav-actlog" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
+        <div class="nitem" id="nav-usage" onclick="goto('usage',this)"><span class="ic">📊</span>系統用量</div>
       </div>
       <div class="online-sec">
         <div class="online-sec-title">目前在線</div>
@@ -726,6 +727,40 @@ tr:hover td{background:var(--bg3);}
           </div>
         </div>
 
+
+        <div class="page" id="page-usage">
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-hd"><span class="card-title">📊 系統用量監控</span>
+              <button class="btn btn-primary btn-sm" onclick="refreshUsage()">🔄 重新整理</button>
+            </div>
+            <div id="usageContent" style="padding:8px 0;">
+              <div style="color:var(--text3);font-size:13px;">載入中...</div>
+            </div>
+          </div>
+          <!-- Supabase -->
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-hd"><span class="card-title">🗄️ Supabase 資料庫</span>
+              <a href="https://supabase.com/dashboard" target="_blank" class="btn btn-sm">開啟後台 ↗</a>
+            </div>
+            <div id="sbUsage" style="padding:4px 0;"></div>
+            <div style="font-size:12px;color:var(--text3);margin-top:8px;line-height:1.8;">
+              免費方案上限：資料庫 <b>500 MB</b>、檔案儲存 <b>1 GB</b>、每月流量 <b>5 GB</b><br>
+              超過免費額度後可升級 Pro（$25/月）
+            </div>
+          </div>
+          <!-- GitHub -->
+          <div class="card">
+            <div class="card-hd"><span class="card-title">🐙 GitHub Pages</span>
+              <a href="https://github.com" target="_blank" class="btn btn-sm">開啟後台 ↗</a>
+            </div>
+            <div id="ghUsage" style="padding:4px 0;"></div>
+            <div style="font-size:12px;color:var(--text3);margin-top:8px;line-height:1.8;">
+              免費方案上限：Repository <b>1 GB</b>、Pages 每月流量 <b>100 GB</b>、單檔 <b>100 MB</b><br>
+              目前這個 ERP 系統約 <b id="fileSize">計算中...</b>，遠低於上限
+            </div>
+          </div>
+        </div>
+
         <div class="page" id="page-actlog">
           <div class="card"><div class="card-hd"><span class="card-title">完整操作紀錄</span><button class="btn btn-sm" onclick="exportCSV('activity_log')">匯出 CSV</button></div><div class="table-wrap"><table><thead><tr><th>時間</th><th>操作者</th><th>類型</th><th>說明</th></tr></thead><tbody id="logBody"><tr class="empty-row"><td colspan="4">載入中...</td></tr></tbody></table></div></div>
         </div>
@@ -778,6 +813,7 @@ function goto(p,el,label,bnavEl){
   if(p==='cost') initCostPage();
   if(p==='quote'){initQuotePage();}
   if(p==='orders'){initOrdersPage();}
+  if(p==='usage'){initUsagePage();}
   closeSidebar();
 }
 
@@ -2955,17 +2991,21 @@ async function importOrdersFile(input){
   }
 
   // ── 步驟4：解析標題 ──
-  let hdrRow=-1;
-  // 先找兩行合併的標題（第0行含"訂購"，第1行含"日期"）
+  // 你的 Excel：第1行="訂購/預計/實入..."，第2行="日期/進貨日/進貨日..."，第3行起=資料
+  // 合併前兩行作為完整欄名，資料從第3行（index=2）開始
+  let hdrRow=0; // 品名在第0行
   for(let i=0;i<Math.min(5,raw.length);i++){
     if(raw[i].some(c=>String(c).includes('品名'))){ hdrRow=i; break; }
   }
   if(hdrRow<0){ toast('找不到標題列（需含「品名」欄）','err'); return; }
 
-  // 合併雙行標題（你的 Excel 第0行+第1行合併才是完整欄名）
-  const hdr0=raw[0]||[];
-  const hdr1=raw[1]||[];
+  // 合併雙行標題
+  const hdr0=raw[hdrRow]||[];
+  const hdr1=raw[hdrRow+1]||[];
   const headers=hdr0.map((h,i)=>(String(h||'').trim()+String(hdr1[i]||'').trim()));
+  // 判斷第二行是否為標題延續（含"日期"、"進貨"等字樣），是則資料從 hdrRow+2 開始
+  const isDoubleHdr=hdr1.some(c=>String(c||'').match(/日期|進貨|數量/));
+  const dataStart=hdrRow+(isDoubleHdr?2:1);
 
   const col=(names)=>{
     for(const n of names){
@@ -3010,7 +3050,8 @@ async function importOrdersFile(input){
   };
 
   // ── 步驟6：組資料（從第3行起，跳過前2行標題）──
-  const dataRows=raw.slice(hdrRow+1); // 從標題行後第一筆資料開始
+  const dataRows=raw.slice(dataStart); // 從資料行開始（自動判斷單/雙行標題）
+  console.log(`標題行:${hdrRow}, 資料起始:${dataStart}, 總資料行:${dataRows.length}`);
   const toInsert=[];
   let skipped=0;
 
@@ -3128,6 +3169,118 @@ async function saveEditWO(id){
     await loadT('workorders');
   } else {w.done_qty=done;w.status=status;}
   closeModal();toast('工單已更新 ✅','ok');renderWO();
+}
+
+
+async function initUsagePage(){ await refreshUsage(); }
+
+async function refreshUsage(){
+  const el=document.getElementById('usageContent');
+  const sbEl=document.getElementById('sbUsage');
+  const ghEl=document.getElementById('ghUsage');
+  if(el) el.innerHTML='<div style="color:var(--text3);font-size:13px;">計算中...</div>';
+
+  // ── 計算各資料表筆數 ──
+  const tables=[
+    {key:'orders',   label:'訂購紀錄'},
+    {key:'quotes',   label:'詢價單'},
+    {key:'purchase', label:'採購管理'},
+    {key:'suppliers',label:'供應商'},
+    {key:'inventory',label:'庫存'},
+    {key:'inbound',  label:'進料單'},
+    {key:'outbound', label:'出料單'},
+    {key:'erp_users',label:'使用者'},
+    {key:'activity_log',label:'操作紀錄'},
+  ];
+
+  let rows=[];
+  let totalRows=0;
+
+  if(!isDemo&&_db){
+    for(const t of tables){
+      try{
+        const{count,error}=await _db.from(t.key).select('*',{count:'exact',head:true});
+        const n=error?'(錯誤)':(count||0);
+        rows.push({label:t.label,count:n});
+        if(typeof n==='number') totalRows+=n;
+      }catch(e){ rows.push({label:t.label,count:'?'}); }
+    }
+  } else {
+    // Demo 模式用本地資料
+    const demoMap={orders:DB.orders?.length||0,quotes:DB.quotes?.length||0,purchase:DB.purchase?.length||0,suppliers:DB.suppliers?.length||0,inventory:DB.inventory?.length||0,inbound:DB.inbound?.length||0,outbound:DB.outbound?.length||0,erp_users:DB.users?.length||0,activity_log:DB.actlog?.length||0};
+    tables.forEach(t=>{ rows.push({label:t.label,count:demoMap[t.key]||0}); totalRows+=demoMap[t.key]||0; });
+  }
+
+  // ── 資料表統計 ──
+  if(el) el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px;">
+      ${rows.map(r=>`<div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:700;color:var(--blue-text);">${typeof r.count==='number'?r.count.toLocaleString():r.count}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${r.label}</div>
+      </div>`).join('')}
+      <div style="background:var(--blue-bg);border-radius:8px;padding:12px;text-align:center;border:1px solid #B5D4F4;">
+        <div style="font-size:22px;font-weight:700;color:var(--blue-text);">${totalRows.toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--blue-text);margin-top:2px;">總筆數</div>
+      </div>
+    </div>`;
+
+  // ── Supabase 用量（估算）──
+  // 每筆約 500 bytes，估算總大小
+  const estMB=(totalRows*500/1024/1024).toFixed(2);
+  const estPct=Math.min(100,(totalRows*500/1024/1024/500*100)).toFixed(1);
+  const barW=Math.min(100,parseFloat(estPct));
+  if(sbEl) sbEl.innerHTML=`
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+        <span>資料庫用量（估算）</span>
+        <span style="font-weight:600;">${estMB} MB / 500 MB（${estPct}%）</span>
+      </div>
+      <div style="background:var(--bg3);border-radius:4px;height:10px;overflow:hidden;">
+        <div style="background:${barW>80?'#e53935':barW>50?'#fb8c00':'#43a047'};height:100%;width:${barW}%;border-radius:4px;transition:width .5s;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">實際用量請到 Supabase → Project Settings → Database → Disk Usage 查看</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:16px;font-weight:700;">${estMB} MB</div>
+        <div style="font-size:11px;color:var(--text3);">估算資料大小</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:16px;font-weight:700;">${(500-parseFloat(estMB)).toFixed(0)} MB</div>
+        <div style="font-size:11px;color:var(--text3);">剩餘空間</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:16px;font-weight:700;">${Math.floor(500*1024*1024/(totalRows>0?totalRows*500:500)).toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--text3);">估計可存總筆數</div>
+      </div>
+    </div>`;
+
+  // ── GitHub 檔案大小 ──
+  const fsEl=document.getElementById('fileSize');
+  // 取得 HTML 原始碼大小（用 content-length 或 document.documentElement.outerHTML）
+  try{
+    const htmlBytes=new Blob([document.documentElement.outerHTML]).size;
+    const htmlKB=(htmlBytes/1024).toFixed(1);
+    if(fsEl) fsEl.textContent=htmlKB+' KB';
+    if(ghEl) ghEl.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:16px;font-weight:700;">${htmlKB} KB</div>
+          <div style="font-size:11px;color:var(--text3);">ERP 系統大小</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:16px;font-weight:700;">${(1024*1024-htmlBytes/1024).toFixed(0)} KB</div>
+          <div style="font-size:11px;color:var(--text3);">Repository 剩餘（估）</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:16px;font-weight:700;">${Math.floor(1024*1024/(htmlBytes/1024))} 份</div>
+          <div style="font-size:11px;color:var(--text3);">可存放備份數</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);">實際用量：GitHub → Repository → Settings → Danger Zone → Repository size</div>`;
+  }catch(e){}
+
+  toast('用量資料已更新','ok');
 }
 
 async function exportCSV(tbl){
