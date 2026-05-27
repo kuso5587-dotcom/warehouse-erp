@@ -1476,7 +1476,7 @@ function renderPermissions(role){
           ${isAdminOnly?'<div style="font-size:10px;color:var(--amber-text);">⚠️ 建議僅管理員開啟</div>':''}
         </div>
         <button class="toggle-btn ${on?'on':'off'} ${locked?'disabled':''}"
-          onclick="${locked?'toast('管理員固定開啟','inf')':'togglePerm(''+k+'')"}>
+          onclick="${locked?'alert(\'此項目固定開啟\')':'togglePerm(\''+k+'\')'}">
         </button>
       </div>`;
     });
