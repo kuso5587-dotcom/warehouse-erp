@@ -297,23 +297,22 @@ tr:hover td{background:var(--bg3);}
       </div>
       <div class="nav">
         <div class="nslabel">主要功能</div>
-        <div class="nitem active" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
-        
-        <div class="nitem" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
-        <div class="nitem" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
-        <div class="nitem" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
+        <div class="nitem active" id="nav-dashboard" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
+        <div class="nitem" id="nav-inbound" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
+        <div class="nitem" id="nav-outbound" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
+        <div class="nitem" id="nav-inventory" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
         <div class="nslabel">採購 ERP 模組</div>
-        <div class="nitem" onclick="goto('cost',this)"><span class="ic">💰</span>成本計算</div>
+        <div class="nitem" id="nav-cost" onclick="goto('cost',this)"><span class="ic">💰</span>成本計算</div>
         <div class="nitem" id="nav-quote" onclick="goto('quote',this)"><span class="ic">📋</span>詢價單</div>
-        <div class="nitem" onclick="goto('purchase',this)"><span class="ic">🛒</span>採購管理</div>
-        <div class="nitem" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
-        <div class="nitem" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
+        <div class="nitem" id="nav-purchase" onclick="goto('purchase',this)"><span class="ic">🛒</span>採購管理</div>
+        <div class="nitem" id="nav-supplier" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
+        <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
-        <div class="nitem" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
+        <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
         <div class="nslabel">系統管理</div>
-        <div class="nitem" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
+        <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
-        <div class="nitem" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
+        <div class="nitem" id="nav-actlog" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
       </div>
       <div class="online-sec">
         <div class="online-sec-title">目前在線</div>
@@ -662,9 +661,9 @@ tr:hover td{background:var(--bg3);}
           <div class="two-col">
             <div class="card">
               <div class="card-hd"><span class="card-title">角色權限設定</span></div>
-              <div class="tab-bar"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">主管</div><div class="tab-item" id="pt-op" onclick="switchRole('op')">操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('read')">唯讀</div></div>
+              <div class="tab-bar"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">👑管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">👔主管</div><div class="tab-item" id="pt-purchase" onclick="switchRole('purchase')">🛒採購部</div><div class="tab-item" id="pt-op" onclick="switchRole('operator')">🔧操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('readonly')">👁唯讀</div></div>
               <div id="permList"></div>
-              <div style="margin-top:12px;"><button class="btn btn-primary" style="width:100%;" onclick="toast('權限設定已儲存','ok')">儲存權限設定</button></div>
+              <div style="margin-top:12px;"><button class="btn btn-primary" style="width:100%;" onclick="savePermissions()">💾 儲存此角色權限</button></div>
             </div>
             <div class="card"><div class="card-hd"><span class="card-title">角色說明</span></div><div id="roleDesc" style="font-size:13px;color:var(--text2);line-height:2;"></div></div>
           </div>
@@ -900,16 +899,12 @@ async function launchApp(){
   const roleNameMap={admin:'最高管理員',manager:'主管',operator:'操作員',readonly:'唯讀'};
   const roleEl=document.getElementById('selfRole');
   if(roleEl)roleEl.textContent=roleNameMap[currentUserRole]||'操作員';
-  // 只有 admin 看到權限設定
-  const permNav=document.getElementById('nav-perm');
-  if(permNav) permNav.style.display=currentUserRole==='admin'?'flex':'none';
-  // 估價單：admin 或採購部門才顯示
-  const quoteNav=document.getElementById('nav-quote');
-  if(quoteNav){
-    const user=DB.users.find(u=>u.name===currentUser);
-    const showQuote=currentUserRole==='admin'||(user?.dept||'').includes('採購')||(user?.roles||'').includes('purchase');
-    quoteNav.style.display=showQuote?'flex':'none';
-  }
+  // 載入本機儲存的自訂權限
+  try{
+    const saved=JSON.parse(localStorage.getItem('erp_perms')||'{}');
+    Object.keys(saved).forEach(role=>{ DEFAULT_PERMS[role]=Object.assign({},DEFAULT_PERMS[role]||{},saved[role]); });
+  }catch(e){}
+  applyNavPerms();
   updateLive(true);renderOnline([currentUser]);
   if(!isDemo){
     setupRT();
@@ -922,6 +917,35 @@ function setupRT(){
     _db.channel('rt-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{loadT(t);refreshDash();}).subscribe();
   });
 }
+
+function applyNavPerms(){
+  const p=getUserPerms();
+  const isAdmin=currentUserRole==='admin';
+  // 每個 nav 對應的權限 key
+  const navMap={
+    'nav-dashboard':'dashboard_view',
+    'nav-inbound':'inbound_view',
+    'nav-outbound':'outbound_view',
+    'nav-inventory':'inventory_view',
+    'nav-cost':'cost_view',
+    'nav-quote':'quote_view',
+    'nav-purchase':'purchase_view',
+    'nav-supplier':'supplier_view',
+    'nav-production':'production_view',
+    'nav-orders':'orders_view',
+    'nav-reports':'reports_view',
+    'nav-users':'users_manage',
+    'nav-perm':'users_manage',
+    'nav-actlog':'actlog_view',
+  };
+  Object.entries(navMap).forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const show=isAdmin||p[key];
+    el.style.display=show?'flex':'none';
+  });
+}
+
 function updateLive(ok){
   const p=document.getElementById('livePill'),t=document.getElementById('liveText');
   if(isDemo){t.textContent='示範';p.style.background='var(--amber-bg)';p.style.color='var(--amber-text)';return;}
@@ -1411,11 +1435,72 @@ function renderLog(){
   document.getElementById('logBody').innerHTML=logs.map(l=>`<tr><td style="white-space:nowrap;">${fdt(l.created_at)}</td><td>${l.operator||'-'}</td><td><span class="badge ${{入庫:'b-success',出庫:'b-danger',設定:'b-info',調整:'b-gray'}[l.action_type]||'b-gray'}">${l.action_type}</span></td><td>${l.description||'-'}</td></tr>`).join('')||'<tr class="empty-row"><td colspan="4">尚無紀錄</td></tr>';
 }
 
-const PERMS={admin:[1,1,1,1,1,1,1,1,1],manager:[1,1,1,1,1,1,0,1,0],op:[0,1,0,1,0,0,0,0,0],read:[0,0,0,0,0,0,0,1,0]};
-const PL=[['倉位管理','新增/編輯/刪除倉位'],['入庫操作','建立/執行入庫單'],['出庫審核','審核出庫申請'],['出庫操作','執行出庫作業'],['庫存調整','手動調整庫存'],['採購管理','建立/審核採購單'],['使用者管理','新增/停用帳號'],['報表匯出','匯出各類報表'],['系統設定','修改系統參數']];
-const RD={admin:'<span class="badge b-danger">👑 最高管理員</span><br><br>擁有所有模組完整操作權限，包含使用者管理與系統設定。',manager:'<span class="badge b-info">👔 主管</span><br><br>可進行倉位、進出料審核、採購及報表，不可修改帳號或系統設定。',op:'<span class="badge b-warning">🔧 操作員</span><br><br>可建立及執行入出庫單，無法審核或調整庫存。',read:'<span class="badge b-gray">👁 唯讀</span><br><br>只能查詢庫存資料和匯出報表，不可執行任何操作。'};
-function renderPermissions(role){['admin','manager','op','read'].forEach(r=>document.getElementById('pt-'+r).classList.toggle('active',r===role));const perms=PERMS[role];document.getElementById('permList').innerHTML=PL.map(([n,d],i)=>`<div class="perm-row"><div><div style="font-size:13px;font-weight:700;">${n}</div><div style="font-size:11px;color:var(--text2);">${d}</div></div><button class="toggle-btn ${perms[i]?'on':'off'}" onclick="this.classList.toggle('on');this.classList.toggle('off');toast('已更新','inf')"></button></div>`).join('');document.getElementById('roleDesc').innerHTML=RD[role];}
+let editingPermRole='admin';
+const ROLE_LABELS={admin:'👑 最高管理員',manager:'👔 主管',purchase:'🛒 採購部',operator:'🔧 操作員',readonly:'👁 唯讀'};
+const ROLE_DESC={
+  admin:'擁有全部模組完整操作權限，包含使用者管理、訂購紀錄、核銷與系統設定。',
+  manager:'可操作進出料、採購、報表，可查看訂購紀錄與核銷，不可修改帳號。',
+  purchase:'採購部門：可查看與操作採購、詢價、訂購紀錄、核銷、供應商與成本。',
+  operator:'操作員：可執行入出庫，不可看採購/訂購/成本/核銷相關資料。',
+  readonly:'唯讀：只能查看儀表板、庫存與報表，無法執行任何新增或編輯。'
+};
+// 存放目前編輯中的權限（尚未儲存）
+let editingPerms={};
+
+function renderPermissions(role){
+  editingPermRole=role;
+  ['admin','manager','purchase','op','read'].forEach(r=>{
+    const el=document.getElementById('pt-'+r);
+    if(el) el.classList.toggle('active',r===role||r.slice(0,4)===role.slice(0,4));
+  });
+  // 取本角色的當前權限（從 DEFAULT_PERMS 或 editingPerms）
+  const base=DEFAULT_PERMS[role]||DEFAULT_PERMS['operator'];
+  editingPerms=Object.assign({},base);
+  const groups=[
+    {label:'📊 主要功能',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust']},
+    {label:'🛒 採購模組',items:['purchase_view','purchase_add','purchase_approve','supplier_view','supplier_edit','quote_view','quote_edit','cost_view']},
+    {label:'📑 訂購紀錄',items:['orders_view','orders_edit','orders_import','accounting_view']},
+    {label:'📈 報表與系統',items:['reports_view','reports_export','production_view','production_edit','users_manage','actlog_view']},
+  ];
+  const permNameMap=Object.fromEntries(PERM_ITEMS);
+  let html='';
+  groups.forEach(g=>{
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 0 4px;letter-spacing:.5px;">${g.label}</div>`;
+    g.items.forEach(k=>{
+      const on=editingPerms[k]?true:false;
+      const isAdminOnly=['users_manage','actlog_view'].includes(k);
+      const locked=role==='admin'&&['dashboard_view','users_manage'].includes(k);
+      html+=`<div class="perm-row">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${permNameMap[k]||k}</div>
+          ${isAdminOnly?'<div style="font-size:10px;color:var(--amber-text);">⚠️ 建議僅管理員開啟</div>':''}
+        </div>
+        <button class="toggle-btn ${on?'on':'off'} ${locked?'disabled':''}"
+          onclick="${locked?'toast('管理員固定開啟','inf')':'togglePerm(''+k+'')"}>
+        </button>
+      </div>`;
+    });
+  });
+  document.getElementById('permList').innerHTML=html;
+  document.getElementById('roleDesc').innerHTML=`<span class="badge ${role==='admin'?'b-danger':role==='purchase'?'b-info':'b-gray'}">${ROLE_LABELS[role]||role}</span><br><br>${ROLE_DESC[role]||''}`;
+}
+function togglePerm(key){
+  editingPerms[key]=!editingPerms[key];
+  renderPermissions(editingPermRole);
+}
 function switchRole(r){renderPermissions(r);}
+async function savePermissions(){
+  DEFAULT_PERMS[editingPermRole]=Object.assign({},editingPerms);
+  // 若有後端，可存 Supabase（需要 system_config 表）
+  // 目前存 localStorage 作為本機快取
+  try{
+    const saved=JSON.parse(localStorage.getItem('erp_perms')||'{}');
+    saved[editingPermRole]=editingPerms;
+    localStorage.setItem('erp_perms',JSON.stringify(saved));
+  }catch(e){}
+  toast(`✅ ${ROLE_LABELS[editingPermRole]} 權限已儲存`,'ok');
+  applyNavPerms();
+}
 
 async function execIB(id){
   const r=DB.inbound.find(x=>x.id===id);if(!r)return;
@@ -1723,22 +1808,6 @@ function openModal(type,extraId){
         <div class="fg"><label>單價</label><input type="number" id="f-ord-up" value="${o.unit_price||0}"></div>
         <div class="fg"><label>金額</label><input type="number" id="f-ord-amt" value="${o.amount||0}"></div>
       </div>
-      <div class="form-row">
-        <div class="fg"><label>📦 進場核銷</label>
-          <select id="f-ord-arrive">
-            <option value="">-- 未設定 --</option>
-            <option value="arrived"${o.arrive_status==='arrived'?' selected':''}>✅ 已進場</option>
-            <option value="not_arrived"${o.arrive_status==='not_arrived'?' selected':''}>⏳ 未進場</option>
-          </select>
-        </div>
-        <div class="fg"><label>🧾 會計核銷</label>
-          <select id="f-ord-accounting">
-            <option value="">-- 未設定 --</option>
-            <option value="done"${o.accounting_status==='done'?' selected':''}>✅ 已核銷</option>
-            <option value="pending"${o.accounting_status==='pending'?' selected':''}>⏳ 待核銷</option>
-          </select>
-        </div>
-      </div>
       <div class="fg"><label>🧾 會計核銷</label>
         <select id="f-ord-accounting" style="padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;width:100%;">
           <option value="">-- 未設定 --</option>
@@ -2016,8 +2085,14 @@ async function saveAdj(id,matId){
 }
 
 // ══ 細部權限系統 ══
-const PERM_ITEMS = [["inbound_view", "查看進料管理"], ["inbound_add", "新增入庫單"], ["inbound_exec", "執行入庫"], ["outbound_view", "查看出料管理"], ["outbound_add", "新增出庫申請"], ["outbound_approve", "審核出庫"], ["outbound_exec", "執行出庫"], ["inventory_view", "查看庫存"], ["inventory_adjust", "庫存調整"], ["purchase_view", "查看採購管理"], ["purchase_add", "新增採購單"], ["purchase_approve", "審核採購"], ["supplier_view", "查看供應商"], ["supplier_edit", "新增/編輯供應商"], ["production_view", "查看生產排程"], ["production_edit", "新增/更新工單"], ["cost_view", "成本計算（採購限定）"], ["reports_view", "查看報表"], ["reports_export", "匯出報表"], ["users_manage", "使用者管理"]];
-const DEFAULT_PERMS = {"admin": {"inbound_view": true, "inbound_add": true, "inbound_exec": true, "outbound_view": true, "outbound_add": true, "outbound_approve": true, "outbound_exec": true, "inventory_view": true, "inventory_adjust": true, "purchase_view": true, "purchase_add": true, "purchase_approve": true, "supplier_view": true, "supplier_edit": true, "production_view": true, "production_edit": true, "cost_view": true, "reports_view": true, "reports_export": true, "users_manage": true}, "manager": {"inbound_view": true, "inbound_add": true, "inbound_exec": true, "outbound_view": true, "outbound_add": true, "outbound_approve": true, "outbound_exec": true, "inventory_view": true, "inventory_adjust": true, "purchase_view": true, "purchase_add": true, "purchase_approve": true, "supplier_view": true, "supplier_edit": true, "production_view": true, "production_edit": true, "cost_view": false, "reports_view": true, "reports_export": true, "users_manage": false}, "purchase": {"inbound_view": true, "inbound_add": true, "inbound_exec": false, "outbound_view": true, "outbound_add": true, "outbound_approve": false, "outbound_exec": false, "inventory_view": true, "inventory_adjust": false, "purchase_view": true, "purchase_add": true, "purchase_approve": true, "supplier_view": true, "supplier_edit": true, "production_view": false, "production_edit": false, "cost_view": true, "reports_view": true, "reports_export": true, "users_manage": false}, "operator": {"inbound_view": true, "inbound_add": true, "inbound_exec": true, "outbound_view": true, "outbound_add": true, "outbound_approve": false, "outbound_exec": true, "inventory_view": true, "inventory_adjust": true, "purchase_view": false, "purchase_add": false, "purchase_approve": false, "supplier_view": false, "supplier_edit": false, "production_view": false, "production_edit": false, "cost_view": false, "reports_view": true, "reports_export": false, "users_manage": false}, "readonly": {"inbound_view": true, "inbound_add": false, "inbound_exec": false, "outbound_view": true, "outbound_add": false, "outbound_approve": false, "outbound_exec": false, "inventory_view": true, "inventory_adjust": false, "purchase_view": true, "purchase_add": false, "purchase_approve": false, "supplier_view": true, "supplier_edit": false, "production_view": false, "production_edit": false, "cost_view": false, "reports_view": true, "reports_export": false, "users_manage": false}};
+const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view", "查看進料管理"], ["inbound_add", "新增入庫單"], ["inbound_exec", "執行入庫"], ["outbound_view", "查看出料管理"], ["outbound_add", "新增出庫申請"], ["outbound_approve", "審核出庫"], ["outbound_exec", "執行出庫"], ["inventory_view", "查看庫存"], ["inventory_adjust", "庫存調整"], ["purchase_view", "查看採購管理"], ["purchase_add", "新增採購單"], ["purchase_approve", "審核採購"], ["supplier_view", "查看供應商"], ["supplier_edit", "新增/編輯供應商"], ["quote_view","查看詢價單"], ["quote_edit","新增/編輯詢價單"], ["production_view", "查看生產排程"], ["production_edit", "新增/更新工單"], ["cost_view", "成本計算"], ["orders_view","查看訂購紀錄"], ["orders_edit","新增/編輯訂購紀錄"], ["orders_import","匯入訂購Excel"], ["accounting_view","查看/操作核銷"], ["reports_view", "查看報表分析"], ["reports_export", "匯出報表"], ["users_manage", "使用者管理"],["actlog_view","查看操作紀錄"]];
+const DEFAULT_PERMS = {
+  "admin":    {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true},
+  "manager":  {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true},
+  "purchase": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":false,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":false,"production_edit":false,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false},
+  "operator": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false},
+  "readonly": {"dashboard_view":true,"inbound_view":true,"inbound_add":false,"inbound_exec":false,"outbound_view":true,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false}
+};
 let currentUserPerms = null; // null = 用角色預設
 
 // 取得目前使用者的有效權限
