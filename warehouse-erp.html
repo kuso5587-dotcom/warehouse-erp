@@ -677,6 +677,7 @@ tr:hover td{background:var(--bg3);}
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                 <button class="btn btn-primary btn-sm" onclick="openModal('addorder')">+ 新增</button>
                 <button class="btn btn-sm" onclick="exportOrdersCSV()">📥 匯出 CSV</button>
+                <button class="btn btn-sm" onclick="openColorLabelEditor()">🎨 底色名稱</button>
                 <label class="btn btn-sm" style="cursor:pointer;position:relative;">
                   📂 匯入 Excel
                   <input type="file" accept=".xlsx,.xls,.csv" onchange="importOrdersFile(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
@@ -3009,7 +3010,7 @@ async function importOrdersFile(input){
   };
 
   // ── 步驟6：組資料（從第3行起，跳過前2行標題）──
-  const dataRows=raw.slice(2); // 你的Excel：第1行標題上、第2行標題下、第3行起資料
+  const dataRows=raw.slice(hdrRow+1); // 從標題行後第一筆資料開始
   const toInsert=[];
   let skipped=0;
 
@@ -3336,6 +3337,47 @@ function fROC(dateStr){
 }
 
 
+
+// 底色標籤（可自訂）
+const DEFAULT_COLOR_LABELS={green:'廠內',yellow:'菲施',red:'標記1',blue:'標記2'};
+function getColorLabels(){
+  try{
+    const saved=localStorage.getItem('erp_color_labels');
+    return saved?Object.assign({},DEFAULT_COLOR_LABELS,JSON.parse(saved)):Object.assign({},DEFAULT_COLOR_LABELS);
+  }catch(e){ return Object.assign({},DEFAULT_COLOR_LABELS); }
+}
+function openColorLabelEditor(){
+  const CL=getColorLabels();
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
+  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:320px;box-shadow:0 8px 40px #0004;">
+    <div style="font-weight:700;font-size:15px;margin-bottom:16px;">🎨 底色名稱設定</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${['green','yellow','red','blue'].map(c=>`
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">${{green:'🟢',yellow:'🟡',red:'🔴',blue:'🔵'}[c]}</span>
+        <input id="cl-${c}" value="${CL[c]}" maxlength="8"
+          style="flex:1;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;">
+      <button onclick="saveColorLabels()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;">💾 儲存</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+}
+function saveColorLabels(){
+  const CL={};
+  ['green','yellow','red','blue'].forEach(c=>{
+    CL[c]=(document.getElementById('cl-'+c)?.value||DEFAULT_COLOR_LABELS[c]).trim();
+  });
+  localStorage.setItem('erp_color_labels',JSON.stringify(CL));
+  document.querySelector('[style*="position:fixed"][style*="z-index:9999"]')?.remove();
+  toast('底色名稱已儲存 ✅','ok');
+  renderOrders();
+}
+
 async function quickSaveAcc(id, val, el){
   el.disabled=true;
   const o=(DB.orders||[]).find(x=>x.id===id);
@@ -3411,12 +3453,13 @@ function renderOrders(){
       <option value="pending"${o.accounting_status==='pending'?' selected':''}>⏳待核銷</option>
     </select>`;
     // 底色選項下拉
-    const colorSel=`<select onchange="quickRowColor('${o.id}',this.value,this)" title="設定底色" style="font-size:11px;padding:2px 3px;border-radius:4px;border:1px solid #ccc;background:${rowBg||'var(--bg2)'};min-width:52px;">
+    const CL=getColorLabels();
+    const colorSel=`<select onchange="quickRowColor('${o.id}',this.value,this)" title="設定底色" style="font-size:11px;padding:2px 3px;border-radius:4px;border:1px solid #ccc;background:${rowBg||'var(--bg2)'};min-width:60px;">
       <option value="">🎨</option>
-      <option value="green"${o.row_color==='green'?' selected':''}>🟢廠內</option>
-      <option value="yellow"${o.row_color==='yellow'?' selected':''}>🟡菲施</option>
-      <option value="red"${o.row_color==='red'?' selected':''}>🔴標記</option>
-      <option value="blue"${o.row_color==='blue'?' selected':''}>🔵標記</option>
+      <option value="green"${o.row_color==='green'?' selected':''}>🟢${CL.green}</option>
+      <option value="yellow"${o.row_color==='yellow'?' selected':''}>🟡${CL.yellow}</option>
+      <option value="red"${o.row_color==='red'?' selected':''}>🔴${CL.red}</option>
+      <option value="blue"${o.row_color==='blue'?' selected':''}>🔵${CL.blue}</option>
       <option value="none"${o.row_color==='none'?' selected':''}>✖清除</option>
     </select>`;
     return`<tr style="${rowBg}">
