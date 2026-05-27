@@ -664,7 +664,10 @@ tr:hover td{background:var(--bg3);}
           <div class="two-col">
             <div class="card">
               <div class="card-hd"><span class="card-title">角色權限設定</span></div>
-              <div class="tab-bar" style="flex-wrap:wrap;"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">👑管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">👔主管</div><div class="tab-item" id="pt-purchase" onclick="switchRole('purchase')">🛒採購部</div><div class="tab-item" id="pt-warehouse" onclick="switchRole('warehouse')">🏭倉管部</div><div class="tab-item" id="pt-op" onclick="switchRole('operator')">🔧操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('readonly')">👁唯讀</div></div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div class="tab-bar" id="roleTabBar" style="flex-wrap:wrap;flex:1;"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">👑管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">👔主管</div><div class="tab-item" id="pt-purchase" onclick="switchRole('purchase')">🛒採購部</div><div class="tab-item" id="pt-warehouse" onclick="switchRole('warehouse')">🏭倉管部</div><div class="tab-item" id="pt-op" onclick="switchRole('operator')">🔧操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('readonly')">👁唯讀</div></div>
+                <button class="btn btn-sm" onclick="addCustomRole()" title="新增自訂部門/角色">＋ 新增部門</button>
+              </div>
               <div id="permList"></div>
               <div style="margin-top:12px;"><button class="btn btn-primary" style="width:100%;" onclick="savePermissions()">💾 儲存此角色權限</button></div>
             </div>
@@ -998,7 +1001,7 @@ function renderOnline(users){
 
 async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));renderAll();}
 async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];}catch(e){console.warn(t,e.message);}}
-function renderAll(){refreshDash();renderLoc();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
+function renderAll(){loadCustomRoles();refreshDash();renderLoc();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
 function seedDemo(){
   const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
@@ -1490,9 +1493,11 @@ let editingPerms={};
 
 function renderPermissions(role){
   editingPermRole=role;
-  ['admin','manager','purchase','op','read'].forEach(r=>{
-    const el=document.getElementById('pt-'+r);
-    if(el) el.classList.toggle('active',r===role||r.slice(0,4)===role.slice(0,4));
+  // 精確比對分頁 id，支援所有角色
+  const tabMap={admin:'pt-admin',manager:'pt-manager',purchase:'pt-purchase',warehouse:'pt-warehouse',operator:'pt-op',readonly:'pt-read'};
+  Object.entries(tabMap).forEach(([r,id])=>{
+    const el=document.getElementById(id);
+    if(el) el.classList.toggle('active',r===role);
   });
   // 取本角色的當前權限（從 DEFAULT_PERMS 或 editingPerms）
   const base=DEFAULT_PERMS[role]||DEFAULT_PERMS['operator'];
@@ -1525,6 +1530,91 @@ function renderPermissions(role){
   document.getElementById('permList').innerHTML=html;
   document.getElementById('roleDesc').innerHTML=`<span class="badge ${role==='admin'?'b-danger':role==='purchase'?'b-info':'b-gray'}">${ROLE_LABELS[role]||role}</span><br><br>${ROLE_DESC[role]||''}`;
 }
+
+function addCustomRole(){
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
+  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:340px;box-shadow:0 8px 40px #0004;">
+    <div style="font-weight:700;font-size:15px;margin-bottom:16px;">➕ 新增部門 / 角色</div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--text3);">部門名稱（英文，用於系統識別）</label>
+      <input id="nr-key" placeholder="例：warehouse2, accounting" maxlength="20"
+        style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--text3);">顯示名稱（中文）</label>
+      <input id="nr-label" placeholder="例：會計部、菲施倉管" maxlength="10"
+        style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--text3);">以哪個角色為基礎複製權限</label>
+      <select id="nr-base" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
+        <option value="operator">🔧 操作員（最少權限）</option>
+        <option value="warehouse">🏭 倉管部</option>
+        <option value="purchase">🛒 採購部</option>
+        <option value="manager">👔 主管</option>
+        <option value="readonly">👁 唯讀</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="confirmAddRole()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;">✅ 新增</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+}
+
+function confirmAddRole(){
+  const key=(document.getElementById('nr-key')?.value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  const label=(document.getElementById('nr-label')?.value||'').trim();
+  const base=document.getElementById('nr-base')?.value||'operator';
+  if(!key||!label){ toast('請填寫部門名稱','err'); return; }
+  if(DEFAULT_PERMS[key]){ toast('此角色已存在','err'); return; }
+  // 複製基礎角色的權限
+  DEFAULT_PERMS[key]=Object.assign({},DEFAULT_PERMS[base]||{});
+  ROLE_LABELS[key]='🏷️ '+label;
+  ROLE_DESC[key]=`自訂角色：${label}（以${ROLE_LABELS[base]||base}為基礎）`;
+  // 新增分頁按鈕
+  const tabBar=document.getElementById('roleTabBar');
+  if(tabBar){
+    const btn=document.createElement('div');
+    btn.className='tab-item';
+    btn.id='pt-'+key;
+    btn.textContent='🏷️'+label;
+    btn.onclick=()=>switchRole(key);
+    tabBar.appendChild(btn);
+  }
+  // 儲存到 localStorage
+  try{
+    const saved=JSON.parse(localStorage.getItem('erp_custom_roles')||'{}');
+    saved[key]={label:'🏷️ '+label,desc:ROLE_DESC[key],perms:DEFAULT_PERMS[key]};
+    localStorage.setItem('erp_custom_roles',JSON.stringify(saved));
+  }catch(e){}
+  document.querySelector('[style*="position:fixed"][style*="z-index:9999"]')?.remove();
+  toast(`✅ 已新增「${label}」角色，請設定權限後儲存`,'ok');
+  switchRole(key);
+}
+
+function loadCustomRoles(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('erp_custom_roles')||'{}');
+    Object.entries(saved).forEach(([key,r])=>{
+      DEFAULT_PERMS[key]=r.perms||{};
+      ROLE_LABELS[key]=r.label||key;
+      ROLE_DESC[key]=r.desc||'';
+      const tabBar=document.getElementById('roleTabBar');
+      if(tabBar&&!document.getElementById('pt-'+key)){
+        const btn=document.createElement('div');
+        btn.className='tab-item';
+        btn.id='pt-'+key;
+        btn.textContent=r.label||key;
+        btn.onclick=()=>switchRole(key);
+        tabBar.appendChild(btn);
+      }
+    });
+  }catch(e){}
+}
+
 function togglePerm(key){
   editingPerms[key]=!editingPerms[key];
   renderPermissions(editingPermRole);
@@ -3097,22 +3187,25 @@ async function importOrdersFile(input){
     renderOrders(); return;
   }
 
-  // ── 步驟7：偵測資料表實際欄位（避免送不存在的欄位） ──
+  // ── 步驟7：偵測資料表實際欄位 ──
   toast('偵測資料表欄位中...','inf');
-  let allowedCols=null;
+  // 用 rpc 查 information_schema，或直接送一筆空資料看 error 訊息
+  let allowedCols=new Set(['year','name','qty','order_date','arrive_date','supplier','po_no','spec','unit','unit_price','amount']);
   try{
-    const{data:probe}=await _db.from('orders').select('*').limit(1);
-    if(probe&&probe.length>0) allowedCols=new Set(Object.keys(probe[0]));
-    else{
-      // 表是空的，試送一筆最小資料看哪些欄位存在
-      const testRec={year:1900,name:'__test__',qty:0};
-      const{error:te}=await _db.from('orders').insert([testRec]);
-      if(!te){
-        await _db.from('orders').delete().eq('year',1900);
-        allowedCols=new Set(['year','name','qty','order_date','arrive_date','supplier','po_no','spec','unit','unit_price','amount']);
-      }
+    // 先試送含所有新欄位的測試資料
+    const testRec={year:1900,name:'__col_probe__',qty:0,plan_date:null,accounting_status:'',row_color:'',actual_qty:null};
+    const{error:te}=await _db.from('orders').insert([testRec]);
+    if(!te){
+      // 全部欄位都存在
+      await _db.from('orders').delete().eq('name','__col_probe__');
+      allowedCols=new Set(['year','name','qty','order_date','plan_date','arrive_date','supplier','po_no','spec','unit','unit_price','amount','accounting_status','row_color','actual_qty']);
+      toast('資料表欄位完整 ✅','ok');
+    } else {
+      // 某些欄位不存在，用基本欄位
+      console.warn('新欄位偵測:', te.message);
+      toast('⚠️ 部分欄位未建立，將用基本欄位匯入。請執行 Supabase SQL 建立完整欄位。','inf');
     }
-  }catch(e){ console.warn('欄位偵測失敗，使用基本欄位'); }
+  }catch(e){ console.warn('欄位偵測失敗'); }
 
   // 過濾每筆資料，只保留資料庫有的欄位
   const filterRec=(rec)=>{
