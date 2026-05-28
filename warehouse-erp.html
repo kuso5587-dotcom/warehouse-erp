@@ -309,6 +309,8 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-supplier" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
         <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
+        <div class="nslabel">💼 業務管理</div>
+        <div class="nitem" id="nav-sales" onclick="goto('sales',this)"><span class="ic">📋</span>生產工作單</div>
         <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
         <div class="nslabel">⚙️ 系統管理</div>
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
@@ -703,6 +705,43 @@ tr:hover td{background:var(--bg3);}
         </div>
 
 
+        <div class="page" id="page-sales">
+          <!-- 統計 -->
+          <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px;">
+            <div class="stat-card"><div class="stat-label">工作單總數</div><div class="stat-val" id="sale-total">-</div></div>
+            <div class="stat-card"><div class="stat-label">進行中</div><div class="stat-val" id="sale-active">-</div></div>
+            <div class="stat-card"><div class="stat-label">本月交貨</div><div class="stat-val" id="sale-month">-</div></div>
+            <div class="stat-card"><div class="stat-label">已完成</div><div class="stat-val" id="sale-done">-</div></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">📋 生產工作通知單</span>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="openSalesForm()">＋ 新增工作單</button>
+                <button class="btn btn-sm" onclick="exportSalesCSV()">📥 匯出CSV</button>
+              </div>
+            </div>
+            <div class="search-row" style="flex-wrap:wrap;gap:8px;">
+              <input id="saleQ" placeholder="搜尋客戶、工單號、機型..." oninput="renderSales()" style="flex:1;min-width:180px;">
+              <select id="saleStF" onchange="renderSales()" style="padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;">
+                <option value="">全部狀態</option>
+                <option value="進行中">進行中</option>
+                <option value="已完成">已完成</option>
+                <option value="暫停">暫停</option>
+                <option value="取消">取消</option>
+              </select>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr>
+                <th>#</th><th>工單號</th><th>客戶</th><th>機型</th><th>機器名稱</th>
+                <th style="text-align:right;">台數</th><th>交貨日期</th><th>接單業務</th>
+                <th>狀態</th><th>操作</th>
+              </tr></thead>
+              <tbody id="salesBody"><tr class="empty-row"><td colspan="10">尚無工作單</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+
         <div class="page" id="page-usage">
           <div class="card" style="margin-bottom:12px;">
             <div class="card-hd"><span class="card-title">📊 系統用量監控</span>
@@ -775,7 +814,7 @@ const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
 
-const PT={dashboard:'總覽儀表板',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
+const PT={dashboard:'總覽儀表板',sales:'業務管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
 function goto(p,el,label,bnavEl){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
@@ -789,6 +828,7 @@ function goto(p,el,label,bnavEl){
   if(p==='quote'){initQuotePage();}
   if(p==='orders'){initOrdersPage();}
   if(p==='usage'){initUsagePage();}
+  if(p==='sales'){initSalesPage();}
   closeSidebar();
 }
 
@@ -945,6 +985,7 @@ function applyNavPerms(){
     'nav-supplier':'supplier_view',
     'nav-production':'production_view',
     'nav-orders':'orders_view',
+    'nav-sales':'sales_view',
     'nav-reports':'reports_view',
     'nav-users':'users_manage',
     'nav-perm':'users_manage',
@@ -1406,7 +1447,7 @@ async function saveNewLoc(){
   const name=(document.getElementById('f-loc-name')?.value||'').trim();
   const note=(document.getElementById('f-loc-note')?.value||'').trim();
   if(!zone){ toast('請填寫區域','err'); return; }
-  const rec={zone, row_no:row, col_no:col, custom_name:name||`${zone}-${row}-${col}`, note, status:'ok'};
+  const rec={zone, row_no:row, col_no:col, custom_name:name||`${zone}-${row}-${col}`, status:'ok'};
   if(!isDemo){
     const{error}=await _db.from('locations').insert([rec]);
     if(error){ toast('新增失敗：'+error.message,'err'); return; }
@@ -1780,7 +1821,6 @@ function openModal(type,extraId){
         <div class="fg"><label>列號</label><input id="f-loc-col" placeholder="例：1、01"></div>
       </div>
       <div class="fg"><label>自訂名稱（選填）</label><input id="f-loc-name" placeholder="例：A區1排1列、冷藏櫃1"></div>
-      <div class="fg"><label>備註</label><input id="f-loc-note" placeholder="說明此倉位用途"></div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal()">取消</button>
         <button class="btn btn-primary" onclick="saveNewLoc()">新增</button>
@@ -1795,7 +1835,6 @@ function openModal(type,extraId){
         <div class="fg"><label>列號</label><input id="f-loc-col" value="${l.col_no||''}"></div>
       </div>
       <div class="fg"><label>自訂名稱</label><input id="f-loc-name" value="${l.custom_name||''}"></div>
-      <div class="fg"><label>備註</label><input id="f-loc-note" value="${l.note||''}"></div>
       <div class="modal-foot">
         <button class="btn btn-danger" onclick="deleteLoc('${id}')">🗑 刪除</button>
         <button class="btn" onclick="closeModal()">取消</button>
@@ -2195,22 +2234,22 @@ async function saveLoc(){
 }
 
 async function saveEditLoc(id){
-  const l=DB.locations.find(x=>x.id===id);if(!l)return;
-  const cname=(document.getElementById('f-cname')?.value||'').trim();
-  const status=document.getElementById('f-status')?.value||l.status;
-  const cap=parseInt(document.getElementById('f-cap')?.value)||l.capacity;
-  const safe=parseInt(document.getElementById('f-safe')?.value)||l.safe_qty;
-  const updates={custom_name:cname||null,status,capacity:cap,safe_qty:safe};
+  const l=DB.locations.find(x=>x.id===id);if(!l){toast('找不到倉位','err');return;}
+  const zone=(document.getElementById('f-loc-zone')?.value||'').trim();
+  const row=(document.getElementById('f-loc-row')?.value||'').trim();
+  const col=(document.getElementById('f-loc-col')?.value||'').trim();
+  const name=(document.getElementById('f-loc-name')?.value||'').trim();
+  const note=(document.getElementById('f-loc-note')?.value||'').trim();
+  if(!zone){toast('請填寫區域','err');return;}
+  const updates={zone,row_no:row,col_no:col,custom_name:name||`${zone}-${row}-${col}`};
   if(!isDemo){
-    const res=await _db.from('locations').update(updates).eq('id',id);
-    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    const{error}=await _db.from('locations').update(updates).eq('id',id);
+    if(error){toast('修改失敗：'+error.message,'err');return;}
     await loadT('locations');
   } else {
     Object.assign(l,updates);
   }
-  const code=locCode(l);
-  addLog('設定','倉位',`編輯倉位 ${code}${cname?' → '+cname:''}`);
-  closeModal();toast('倉位更新成功 ✅','ok');renderLoc();refreshDash();renderLog();
+  closeModal();toast('倉位已更新 ✅','ok');renderLocList();renderINV();
 }
 
 async function deleteLoc(id){
@@ -2284,7 +2323,7 @@ async function saveAdj(id,matId){
 }
 
 // ══ 細部權限系統 ══
-const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view","查看進料管理"],["inbound_add","新增入庫單"],["inbound_exec","執行入庫"],["outbound_view","查看出料管理"],["outbound_add","新增出庫申請"],["outbound_approve","審核出庫"],["outbound_exec","執行出庫"],["inventory_view","查看庫存"],["inventory_adjust","庫存調整"],["locations_view","查看倉位管理"],["locations_edit","新增/編輯倉位"],["purchase_view","查看採購管理"],["purchase_add","新增採購單"],["purchase_approve","審核採購"],["supplier_view","查看供應商"],["supplier_edit","新增/編輯供應商"],["quote_view","查看詢價單"],["quote_edit","新增/編輯詢價單"],["production_view","查看生產排程"],["production_edit","新增/更新工單"],["cost_view","成本計算"],["orders_view","查看訂購紀錄"],["orders_edit","新增/編輯訂購紀錄"],["orders_import","匯入訂購Excel"],["accounting_view","查看/操作核銷"],["reports_view","查看報表分析"],["reports_export","匯出報表"],["users_manage","使用者管理"],["actlog_view","查看操作紀錄"]];
+const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view","查看進料管理"],["inbound_add","新增入庫單"],["inbound_exec","執行入庫"],["outbound_view","查看出料管理"],["outbound_add","新增出庫申請"],["outbound_approve","審核出庫"],["outbound_exec","執行出庫"],["inventory_view","查看庫存"],["inventory_adjust","庫存調整"],["locations_view","查看倉位管理"],["locations_edit","新增/編輯倉位"],["purchase_view","查看採購管理"],["purchase_add","新增採購單"],["purchase_approve","審核採購"],["supplier_view","查看供應商"],["supplier_edit","新增/編輯供應商"],["quote_view","查看詢價單"],["quote_edit","新增/編輯詢價單"],["production_view","查看生產排程"],["production_edit","新增/更新工單"],["cost_view","成本計算"],["orders_view","查看訂購紀錄"],["orders_edit","新增/編輯訂購紀錄"],["orders_import","匯入訂購Excel"],["accounting_view","查看/操作核銷"],["reports_view","查看報表分析"],["reports_export","匯出報表"],["users_manage","使用者管理"],["actlog_view","查看操作紀錄"],["sales_view","查看業務管理"],["sales_edit","新增/編輯工作單"]];
 const DEFAULT_PERMS = {
   "admin":    {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true},
   "manager":  {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true},
@@ -3500,6 +3539,255 @@ async function refreshUsage(){
   }catch(e){}
 
   toast('用量資料已更新','ok');
+}
+
+
+// ══════════════════════════════════════════════
+// 業務管理 / 生產工作通知單
+// ══════════════════════════════════════════════
+const SALE_STATUS_COLOR={進行中:'b-info',已完成:'b-success',暫停:'b-warning',取消:'b-danger'};
+
+function initSalesPage(){
+  if(!isDemo&&!DB.sales_loaded){
+    loadSalesFromDB();
+  } else {
+    renderSales();
+  }
+}
+
+async function loadSalesFromDB(){
+  try{
+    const{data,error}=await _db.from('work_orders_sales').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    DB.sales=data||[];
+    DB.sales_loaded=true;
+  }catch(e){
+    DB.sales=DB.sales||[];
+  }
+  renderSales();
+}
+
+function renderSales(){
+  const q=(document.getElementById('saleQ')?.value||'').toLowerCase();
+  const stF=document.getElementById('saleStF')?.value||'';
+  const rows=(DB.sales||[]).filter(s=>{
+    const matchQ=!q||[s.order_no,s.customer,s.model,s.machine_name,s.salesperson].some(v=>(v||'').toLowerCase().includes(q));
+    const matchSt=!stF||s.status===stF;
+    return matchQ&&matchSt;
+  });
+  // 統計
+  const all=DB.sales||[];
+  document.getElementById('sale-total').textContent=all.length;
+  document.getElementById('sale-active').textContent=all.filter(s=>s.status==='進行中').length;
+  const thisMonth=new Date().toISOString().slice(0,7);
+  document.getElementById('sale-month').textContent=all.filter(s=>(s.delivery_date||'').startsWith(thisMonth)).length;
+  document.getElementById('sale-done').textContent=all.filter(s=>s.status==='已完成').length;
+
+  document.getElementById('salesBody').innerHTML=rows.length?rows.map((s,i)=>`<tr>
+    <td style="color:var(--text3);font-size:12px;">${i+1}</td>
+    <td style="font-weight:600;">${s.order_no||'-'}</td>
+    <td>${s.customer||'-'}</td>
+    <td style="color:var(--text2);">${s.model||'-'}</td>
+    <td>${s.machine_name||'-'}</td>
+    <td style="text-align:right;">${s.qty||1}</td>
+    <td style="white-space:nowrap;">${s.delivery_date||'-'}</td>
+    <td>${s.salesperson||'-'}</td>
+    <td><span class="badge ${SALE_STATUS_COLOR[s.status]||'b-gray'}">${s.status||'進行中'}</span></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm" onclick="openSalesForm('${s.id}')">✎ 編輯</button>
+      <button class="btn btn-sm" onclick="printWorkOrder('${s.id}')">🖨 列印</button>
+    </td>
+  </tr>`).join(''):'<tr class="empty-row"><td colspan="10">尚無工作單</td></tr>';
+}
+
+function openSalesForm(id){
+  const s=id?(DB.sales||[]).find(x=>x.id===id):null;
+  const d=document.createElement('div');
+  d.id='salesModal';
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;';
+  const statusOpts=['進行中','已完成','暫停','取消'].map(v=>`<option value="${v}"${(s?.status||'進行中')===v?' selected':''}>${v}</option>`).join('');
+  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(760px,96vw);box-shadow:0 8px 40px #0005;margin:auto;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px;">💼 ${s?'編輯':'新增'}生產工作通知單</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>工單號碼 *</label><input id="sf-no" value="${s?.order_no||''}" placeholder="例：C12D002-04"></div>
+      <div class="fg"><label>狀態</label><select id="sf-status">${statusOpts}</select></div>
+      <div class="fg"><label>客戶名稱 *</label><input id="sf-customer" value="${s?.customer||''}" placeholder="客戶公司名稱"></div>
+      <div class="fg"><label>接單業務</label><input id="sf-salesperson" value="${s?.salesperson||''}" placeholder="業務姓名"></div>
+      <div class="fg"><label>機型</label><input id="sf-model" value="${s?.model||''}" placeholder="例：DJ-C1000"></div>
+      <div class="fg"><label>台數</label><input type="number" id="sf-qty" value="${s?.qty||1}" min="1"></div>
+      <div class="fg" style="grid-column:1/-1;"><label>機器名稱</label><input id="sf-machine" value="${s?.machine_name||''}" placeholder="完整機器名稱"></div>
+      <div class="fg" style="grid-column:1/-1;"><label>客戶指定要求</label><textarea id="sf-req" rows="3" style="width:100%;padding:9px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;">${s?.requirements||''}</textarea></div>
+      <div class="fg"><label>交貨日期</label><input type="date" id="sf-delivery" value="${s?.delivery_date||''}"></div>
+      <div class="fg"><label>包裝方式/嘜頭</label><input id="sf-packaging" value="${s?.packaging||''}" placeholder="庫存機轉出 / 一般包裝"></div>
+      <div class="fg"><label>設計者</label><input id="sf-designer" value="${s?.designer||''}"></div>
+      <div class="fg"><label>專案負責人</label><input id="sf-pm" value="${s?.pm||''}"></div>
+      <div class="fg"><label>生管</label><input id="sf-production" value="${s?.production_manager||''}"></div>
+      <div class="fg"><label>製表人</label><input id="sf-maker" value="${s?.maker||''}" placeholder="${currentUser}"></div>
+      <div class="fg" style="grid-column:1/-1;"><label>規格內容（機台規格/系統說明）</label><textarea id="sf-spec" rows="5" style="width:100%;padding:9px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;">${s?.spec_content||''}</textarea></div>
+      <div class="fg" style="grid-column:1/-1;"><label>備註</label><textarea id="sf-note" rows="2" style="width:100%;padding:9px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;">${s?.note||''}</textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      ${s?`<button onclick="deleteSalesOrder('${s.id}')" style="padding:10px 16px;background:#e53935;color:white;border:none;border-radius:8px;cursor:pointer;">🗑 刪除</button>`:''}
+      <button onclick="document.getElementById('salesModal').remove()" style="padding:10px 16px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-left:auto;">取消</button>
+      ${s?`<button onclick="printWorkOrder('${s.id}')" style="padding:10px 16px;background:#43a047;color:white;border:none;border-radius:8px;cursor:pointer;">🖨 列印/PDF</button>`:''}
+      <button onclick="saveSalesOrder(${s?`'${s.id}'`:'null'})" style="padding:10px 20px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">💾 儲存</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+}
+
+async function saveSalesOrder(id){
+  const order_no=(document.getElementById('sf-no')?.value||'').trim();
+  const customer=(document.getElementById('sf-customer')?.value||'').trim();
+  if(!order_no||!customer){toast('請填寫工單號和客戶名稱','err');return;}
+  const rec={
+    order_no, customer,
+    model:document.getElementById('sf-model')?.value||'',
+    machine_name:document.getElementById('sf-machine')?.value||'',
+    requirements:document.getElementById('sf-req')?.value||'',
+    qty:parseInt(document.getElementById('sf-qty')?.value)||1,
+    delivery_date:document.getElementById('sf-delivery')?.value||'',
+    packaging:document.getElementById('sf-packaging')?.value||'',
+    salesperson:document.getElementById('sf-salesperson')?.value||'',
+    designer:document.getElementById('sf-designer')?.value||'',
+    pm:document.getElementById('sf-pm')?.value||'',
+    production_manager:document.getElementById('sf-production')?.value||'',
+    maker:document.getElementById('sf-maker')?.value||currentUser,
+    spec_content:document.getElementById('sf-spec')?.value||'',
+    note:document.getElementById('sf-note')?.value||'',
+    status:document.getElementById('sf-status')?.value||'進行中',
+  };
+  if(!isDemo){
+    if(id){
+      const{error}=await _db.from('work_orders_sales').update(rec).eq('id',id);
+      if(error){toast('儲存失敗：'+error.message,'err');return;}
+    } else {
+      const{error}=await _db.from('work_orders_sales').insert([rec]);
+      if(error){toast('儲存失敗：'+error.message,'err');return;}
+    }
+    await loadSalesFromDB();
+  } else {
+    if(id){const s=(DB.sales||[]).find(x=>x.id===id);if(s)Object.assign(s,rec);}
+    else{rec.id='sale'+Date.now();if(!DB.sales)DB.sales=[];DB.sales.unshift(rec);}
+    renderSales();
+  }
+  document.getElementById('salesModal')?.remove();
+  toast(id?'工作單已更新 ✅':'工作單已新增 ✅','ok');
+}
+
+async function deleteSalesOrder(id){
+  if(!confirm('確定刪除此工作單？'))return;
+  if(!isDemo){
+    const{error}=await _db.from('work_orders_sales').delete().eq('id',id);
+    if(error){toast('刪除失敗：'+error.message,'err');return;}
+    await loadSalesFromDB();
+  } else {
+    DB.sales=(DB.sales||[]).filter(x=>x.id!==id);
+    renderSales();
+  }
+  document.getElementById('salesModal')?.remove();
+  toast('已刪除','ok');
+}
+
+function printWorkOrder(id){
+  const s=(DB.sales||[]).find(x=>x.id===id);
+  if(!s){toast('找不到工作單','err');return;}
+  const today=new Date();
+  const roc=today.getFullYear()-1911;
+  const mm=String(today.getMonth()+1).padStart(2,'0');
+  const dd=String(today.getDate()).padStart(2,'0');
+  const w=window.open('','_blank','width=900,height=700');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>生產工作通知單 ${s.order_no}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'微軟正黑體','Microsoft JhengHei',sans-serif;font-size:12px;color:#000;padding:16px;}
+    .no-print{display:flex;gap:8px;margin-bottom:16px;}
+    @media print{.no-print{display:none!important;}}
+    h1{font-size:18px;text-align:center;margin-bottom:4px;}
+    h2{font-size:13px;text-align:center;margin-bottom:12px;font-weight:normal;}
+    table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+    td,th{border:1px solid #000;padding:4px 8px;vertical-align:top;}
+    .th{background:#f0f0f0;font-weight:bold;text-align:center;white-space:nowrap;}
+    .sec{font-weight:bold;background:#e8e8e8;font-size:11px;}
+    .sign{border-top:1px solid #000;padding-top:16px;display:flex;gap:0;}
+    .sign-box{flex:1;text-align:center;font-size:11px;padding:8px 4px;border-right:1px solid #000;}
+    .sign-box:last-child{border-right:none;}
+  </style>
+  </head><body>
+  <div class="no-print">
+    <button onclick="window.print()" style="padding:8px 20px;background:#185FA5;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨 列印 / 存成PDF</button>
+    <button onclick="saveAsJpegSales()" style="padding:8px 20px;background:#3B6D11;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">📷 下載JPEG</button>
+  </div>
+  <h1>大佶（佶榮）機電股份有限公司</h1>
+  <h2>生產工作通知單 ${s.order_no||''}</h2>
+  <table>
+    <tr>
+      <td class="th" style="width:15%;">NO.</td>
+      <td style="width:25%;">${s.order_no||''}</td>
+      <td class="th" style="width:15%;">日期</td>
+      <td>${roc}年${mm}月${dd}日</td>
+    </tr>
+    <tr>
+      <td class="th">客戶名稱</td><td colspan="3">${s.customer||''}</td>
+    </tr>
+    <tr>
+      <td class="th">機型</td><td colspan="3">${s.model||''}</td>
+    </tr>
+    <tr>
+      <td class="th">機器名稱</td><td colspan="3">${s.machine_name||''}</td>
+    </tr>
+    <tr>
+      <td class="th">台數</td><td>${s.qty||1} 台</td>
+      <td class="th">交貨日期</td><td>${s.delivery_date||''}</td>
+    </tr>
+    <tr>
+      <td class="th">包裝方式/嘜頭</td><td colspan="3">${s.packaging||''}</td>
+    </tr>
+  </table>
+  ${s.requirements?`<table><tr><td class="sec">客戶指定要求</td></tr><tr><td style="white-space:pre-wrap;min-height:40px;">${s.requirements}</td></tr></table>`:''}
+  ${s.spec_content?`<table><tr><td class="sec">規格說明</td></tr><tr><td style="white-space:pre-wrap;min-height:60px;">${s.spec_content}</td></tr></table>`:''}
+  ${s.note?`<table><tr><td class="sec">備註</td></tr><tr><td style="white-space:pre-wrap;">${s.note}</td></tr></table>`:''}
+  <div class="sign" style="border:1px solid #000;display:flex;">
+    <div class="sign-box">銷售部</div>
+    <div class="sign-box">廠務部</div>
+    <div class="sign-box">電控</div>
+    <div class="sign-box">採購</div>
+  </div>
+  <br>
+  <div class="sign" style="border:1px solid #000;display:flex;">
+    <div class="sign-box">接單業務<br><br>${s.salesperson||''}</div>
+    <div class="sign-box">設計者<br><br>${s.designer||''}</div>
+    <div class="sign-box">生管<br><br>${s.production_manager||''}</div>
+    <div class="sign-box">專案負責人<br><br>${s.pm||''}</div>
+    <div class="sign-box">製表<br><br>${s.maker||''}</div>
+  </div>
+  <script>
+  async function saveAsJpegSales(){
+    const btn=document.querySelectorAll('.no-print button')[1];
+    btn.textContent='產生中...';btn.disabled=true;
+    if(!window.html2canvas){
+      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    }
+    document.querySelectorAll('.no-print').forEach(el=>el.style.visibility='hidden');
+    const canvas=await html2canvas(document.body,{scale:2,backgroundColor:'#ffffff'});
+    document.querySelectorAll('.no-print').forEach(el=>el.style.visibility='');
+    const a=document.createElement('a');a.download='工作單_${s.order_no}.jpg';a.href=canvas.toDataURL('image/jpeg',0.92);a.click();
+    btn.textContent='📷 下載JPEG';btn.disabled=false;
+  }
+  <\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+function exportSalesCSV(){
+  const data=DB.sales||[];
+  if(!data.length){toast('無資料','inf');return;}
+  const keys=['order_no','customer','model','machine_name','qty','delivery_date','salesperson','status','requirements','spec_content','note'];
+  const hdrs=['工單號','客戶','機型','機器名稱','台數','交貨日期','接單業務','狀態','客戶要求','規格說明','備註'];
+  const csv=[hdrs.join(','),...data.map(r=>keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(','))].join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='業務工作單_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV已下載','ok');
 }
 
 async function exportCSV(tbl){
