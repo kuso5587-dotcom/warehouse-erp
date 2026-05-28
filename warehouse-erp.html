@@ -302,7 +302,6 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-inbound" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
         <div class="nitem" id="nav-outbound" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
         <div class="nitem" id="nav-inventory" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
-        <div class="nitem" id="nav-locations" onclick="goto('locations',this)"><span class="ic">🗂️</span>倉位管理</div>
         <div class="nslabel">🛒 採購管理</div>
         <div class="nitem" id="nav-cost" onclick="goto('cost',this)"><span class="ic">💰</span>成本計算</div>
         <div class="nitem" id="nav-quote" onclick="goto('quote',this)"><span class="ic">📋</span>詢價單</div>
@@ -340,45 +339,6 @@ tr:hover td{background:var(--bg3);}
           </div>
         </div>
 
-        <div class="page" id="page-locations">
-          <!-- 分區 Tab -->
-          <div class="card" style="margin-bottom:12px;padding:12px 14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-              <div style="display:flex;gap:4px;flex-wrap:wrap;" id="zoneTabs">
-                <button class="zone-tab active" onclick="switchZone('ALL',this)">📦 全部</button>
-              </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                <span class="badge b-success">空閒</span>
-                <span class="badge b-warning">低量</span>
-                <span class="badge b-danger">滿載</span>
-                <span class="badge b-info">保留</span>
-                <button class="btn btn-primary btn-sm" onclick="openModal('location')">+ 新增倉位</button>
-              </div>
-            </div>
-          </div>
-          <!-- 倉位圖 -->
-          <div class="card">
-            <div class="card-hd">
-              <span class="card-title" id="zoneTitle">全部倉位</span>
-              <div class="drag-hint" style="margin:0;">✋ 拖曳移動順序 ／ 點 ✎ 編輯</div>
-            </div>
-            <div class="loc-grid" id="locGrid">載入中...</div>
-          </div>
-          <!-- 倉位清單 -->
-          <div class="card">
-            <div class="card-hd">
-              <span class="card-title">倉位清單</span>
-              <div style="display:flex;gap:8px;">
-                <input id="locSearch" placeholder="搜尋倉位..." oninput="renderLoc()" style="padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:12px;width:140px;">
-              </div>
-            </div>
-            <div class="table-wrap"><table>
-              <thead><tr><th>倉位編號</th><th>自訂名稱</th><th>倉區</th><th>庫存料件數</th><th>安全量</th><th>狀態</th><th>操作</th></tr></thead>
-              <tbody id="locBody"><tr class="empty-row"><td colspan="7">載入中...</td></tr></tbody>
-            </table></div>
-          </div>
-        </div>
-
         <div class="page" id="page-inbound">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
             <div class="tab-bar" style="flex:1;max-width:320px;"><div class="tab-item active" id="ib-all" onclick="ibF('all')">全部</div><div class="tab-item" id="ib-pending" onclick="ibF('pending')">待入庫</div><div class="tab-item" id="ib-done" onclick="ibF('done')">已完成</div></div>
@@ -396,6 +356,16 @@ tr:hover td{background:var(--bg3);}
         </div>
 
         <div class="page" id="page-inventory">
+          <!-- 倉位管理卡片 -->
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-hd">
+              <span class="card-title">🗂️ 倉位管理</span>
+              <button class="btn btn-primary btn-sm" onclick="openModal('addloc')">＋ 新增倉位</button>
+            </div>
+            <div id="locListBody" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;">
+              <div style="color:var(--text3);font-size:13px;">載入中...</div>
+            </div>
+          </div>
           <!-- 倉區分頁 -->
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;" id="invZoneTabs">
             <button class="zone-tab active" onclick="switchInvZone('ALL',this)">📦 全部</button>
@@ -403,7 +373,7 @@ tr:hover td{background:var(--bg3);}
           <div class="card" style="margin:0;">
             <div class="card-hd">
               <span class="card-title" id="invZoneTitle">全部庫存</span>
-              <div style="display:flex;gap:8px;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-primary btn-sm" onclick="openModal('material')">+ 新增料件</button>
                 <button class="btn btn-sm" onclick="openModal('adjust')">庫存調整</button>
               </div>
@@ -805,7 +775,7 @@ const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
 
-const PT={dashboard:'總覽儀表板',locations:'倉位管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
+const PT={dashboard:'總覽儀表板',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
 function goto(p,el,label,bnavEl){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
@@ -955,7 +925,7 @@ async function launchApp(){
 }
 
 function setupRT(){
-  ['locations','materials','inventory','inbound','outbound','activity_log'].forEach(t=>{
+  ['materials','inventory','inbound','outbound','activity_log'].forEach(t=>{
     _db.channel('rt-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{loadT(t);refreshDash();}).subscribe();
   });
 }
@@ -966,7 +936,6 @@ function applyNavPerms(){
   // 每個 nav 對應的權限 key
   const navMap={
     'nav-dashboard':'dashboard_view',
-    'nav-locations':'locations_view',
     'nav-inbound':'inbound_view',
     'nav-outbound':'outbound_view',
     'nav-inventory':'inventory_view',
@@ -999,9 +968,9 @@ function renderOnline(users){
   document.getElementById('onlineAvatars').innerHTML=h;document.getElementById('topAvatars').innerHTML=h;
 }
 
-async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));renderAll();}
+async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));renderAll();}
 async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];}catch(e){console.warn(t,e.message);}}
-function renderAll(){loadCustomRoles();refreshDash();renderLoc();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
+function renderAll(){loadCustomRoles();refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
 function seedDemo(){
   const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
@@ -1239,7 +1208,48 @@ function switchInvZone(zone,el){
   renderINV();
 }
 
+
+function renderLocList(){
+  const el=document.getElementById('locListBody');
+  if(!el) return;
+  const locs=DB.locations||[];
+  if(!locs.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:13px;">尚無倉位，點右上角新增</div>';
+    return;
+  }
+  el.innerHTML=locs.map(l=>{
+    const name=l.custom_name||`${l.zone||'?'}-${l.row_no||'?'}-${l.col_no||'?'}`;
+    const invCnt=DB.inventory.filter(iv=>iv.location_id===l.id&&iv.qty>0).length;
+    return`<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;min-width:120px;position:relative;">
+      <div style="font-weight:700;font-size:13px;">${name}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px;">${l.zone||''}區 · ${invCnt}種庫存</div>
+      ${l.note?`<div style="font-size:11px;color:var(--text3);">${l.note}</div>`:''}
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <button class="btn btn-sm" style="font-size:11px;padding:3px 8px;" onclick="openModal('editloc','${l.id}')">✎ 修改</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:3px 8px;color:var(--red);" onclick="confirmDeleteLoc('${l.id}','${name}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function confirmDeleteLoc(id, name){
+  if(!confirm(`確定刪除倉位「${name}」？\n（此倉位若有庫存資料將無法刪除）`)) return;
+  const inUse=DB.inventory.some(iv=>iv.location_id===id&&iv.qty>0);
+  if(inUse){ toast('此倉位仍有庫存，無法刪除','err'); return; }
+  if(!isDemo){
+    const{error}=await _db.from('locations').delete().eq('id',id);
+    if(error){ toast('刪除失敗：'+error.message,'err'); return; }
+    await loadT('locations');
+  } else {
+    DB.locations=DB.locations.filter(x=>x.id!==id);
+  }
+  toast('倉位已刪除','ok');
+  renderLocList();
+  renderINV();
+}
+
 function renderINV(){
+  renderLocList();
   // 更新倉區 tab
   const zones=['ALL',...new Set(DB.locations.map(l=>l.zone).filter(Boolean).sort())];
   const tabsEl=document.getElementById('invZoneTabs');
@@ -1298,7 +1308,10 @@ function renderINV(){
       <td style="color:var(--text2);">${safeQty>0?safeQty.toLocaleString():'-'}</td>
       <td>${m?.unit||'件'}</td>
       <td><span class="badge ${isLow?'b-danger':'b-success'}">${isLow?'⚠ 低量':'正常'}</span></td>
-      <td><button class="btn btn-sm" onclick="openModal('adjust','${iv.id}')">調整</button></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sm" onclick="openModal('adjust','${iv.id}')">調整</button>
+        <button class="btn btn-sm" onclick="openModal('editloc','${l?.id||''}')">✎櫃位</button>
+      </td>
     </tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="7">此區尚無庫存資料</td></tr>';
 }
@@ -1368,6 +1381,45 @@ function renderSup(){
     </tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="7">尚無符合的供應商</td></tr>';
 }
+
+async function saveNewLoc(){
+  const zone=(document.getElementById('f-loc-zone')?.value||'').trim();
+  const row=(document.getElementById('f-loc-row')?.value||'').trim();
+  const col=(document.getElementById('f-loc-col')?.value||'').trim();
+  const name=(document.getElementById('f-loc-name')?.value||'').trim();
+  const note=(document.getElementById('f-loc-note')?.value||'').trim();
+  if(!zone){ toast('請填寫區域','err'); return; }
+  const rec={zone, row_no:row, col_no:col, custom_name:name||`${zone}-${row}-${col}`, note, status:'ok'};
+  if(!isDemo){
+    const{error}=await _db.from('locations').insert([rec]);
+    if(error){ toast('新增失敗：'+error.message,'err'); return; }
+    await loadT('locations');
+  } else {
+    rec.id='loc'+Date.now();
+    DB.locations.push(rec);
+  }
+  closeModal(); toast('倉位已新增 ✅','ok'); renderLocList(); renderINV();
+}
+
+async function saveEditLoc(id){
+  const zone=(document.getElementById('f-loc-zone')?.value||'').trim();
+  const row=(document.getElementById('f-loc-row')?.value||'').trim();
+  const col=(document.getElementById('f-loc-col')?.value||'').trim();
+  const name=(document.getElementById('f-loc-name')?.value||'').trim();
+  const note=(document.getElementById('f-loc-note')?.value||'').trim();
+  if(!zone){ toast('請填寫區域','err'); return; }
+  const upd={zone, row_no:row, col_no:col, custom_name:name||`${zone}-${row}-${col}`, note};
+  if(!isDemo){
+    const{error}=await _db.from('locations').update(upd).eq('id',id);
+    if(error){ toast('修改失敗：'+error.message,'err'); return; }
+    await loadT('locations');
+  } else {
+    const l=DB.locations.find(x=>x.id===id);
+    if(l) Object.assign(l,upd);
+  }
+  closeModal(); toast('倉位已更新 ✅','ok'); renderLocList(); renderINV();
+}
+
 async function saveNewOrder(){
   const name=(document.getElementById('f-ord-name')?.value||'').trim();
   const sup=(document.getElementById('f-ord-sup')?.value||'').trim();
@@ -1503,7 +1555,7 @@ function renderPermissions(role){
   const base=DEFAULT_PERMS[role]||DEFAULT_PERMS['operator'];
   editingPerms=Object.assign({},base);
   const groups=[
-    {label:'🏭 倉庫管理',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust','locations_view','locations_edit']},
+    {label:'🏭 倉庫管理',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust']},
     {label:'🛒 採購模組',items:['purchase_view','purchase_add','purchase_approve','supplier_view','supplier_edit','quote_view','quote_edit','cost_view']},
     {label:'📑 訂購紀錄',items:['orders_view','orders_edit','orders_import','accounting_view']},
     {label:'📈 報表與系統',items:['reports_view','reports_export','production_view','production_edit','users_manage','actlog_view']},
@@ -1733,6 +1785,39 @@ function openModal(type,extraId){
           <button class="btn" onclick="closeModal()">取消</button>
           <button class="btn btn-primary" onclick="saveAdj('${id||''}','${m?.id||''}')">確認調整</button>
         </div>`;
+    }},
+    addloc:{t:'新增/編輯櫃位',h:()=>{
+      const zones=[...new Set(DB.locations.map(l=>l.zone).filter(Boolean))].sort();
+      return`<div class="fg"><label>區域（倉區）</label>
+        <input id="f-loc-zone" placeholder="例：A、B、冷藏區" value="" list="zone-list">
+        <datalist id="zone-list">${zones.map(z=>`<option value="${z}">`).join('')}</datalist>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>排號</label><input id="f-loc-row" placeholder="例：1、01"></div>
+        <div class="fg"><label>列號</label><input id="f-loc-col" placeholder="例：1、01"></div>
+      </div>
+      <div class="fg"><label>自訂名稱（選填）</label><input id="f-loc-name" placeholder="例：A區1排1列、冷藏櫃1"></div>
+      <div class="fg"><label>備註</label><input id="f-loc-note" placeholder="說明此倉位用途"></div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveNewLoc()">新增</button>
+      </div>`;
+    }},
+    editloc:{t:'修改櫃位',h:(id)=>{
+      const l=DB.locations.find(x=>x.id===id);
+      if(!l) return '找不到此櫃位';
+      return`<div class="fg"><label>區域</label><input id="f-loc-zone" value="${l.zone||''}"></div>
+      <div class="form-row">
+        <div class="fg"><label>排號</label><input id="f-loc-row" value="${l.row_no||''}"></div>
+        <div class="fg"><label>列號</label><input id="f-loc-col" value="${l.col_no||''}"></div>
+      </div>
+      <div class="fg"><label>自訂名稱</label><input id="f-loc-name" value="${l.custom_name||''}"></div>
+      <div class="fg"><label>備註</label><input id="f-loc-note" value="${l.note||''}"></div>
+      <div class="modal-foot">
+        <button class="btn btn-danger" onclick="deleteLoc('${id}')">🗑 刪除</button>
+        <button class="btn" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditLoc('${id}')">💾 儲存</button>
+      </div>`;
     }},
     purchase:{t:'建立採購單',h:()=>{
       const supOpts=DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
@@ -3247,19 +3332,23 @@ async function importOrdersFile(input){
     const batch=toInsert.slice(i,i+BATCH).map(cleanRec);
     const{error}=await _db.from('orders').insert(batch);
     if(error){
-      console.warn(`第${i/BATCH+1}批失敗(${batch.length}筆):`, error.message);
-      // 批次失敗→逐筆重試
+      console.warn(`第${Math.floor(i/BATCH)+1}批失敗(${batch.length}筆):`, error.code, error.message);
+      // 批次失敗→逐筆用 upsert 重試（避免重複 key 問題）
       for(const rec of batch){
         const clean=cleanRec(rec);
-        const{error:e2}=await _db.from('orders').insert([clean]);
+        const{error:e2}=await _db.from('orders').upsert([clean],{onConflict:'id',ignoreDuplicates:true});
         if(e2){
-          failed++;
-          if(failMsgs.length<5) failMsgs.push(`[${clean.name}] ${e2.message}`);
-          console.error('單筆失敗:', JSON.stringify(clean), e2.message);
+          // upsert 也失敗→最後用純 insert，記錄錯誤
+          const{error:e3}=await _db.from('orders').insert([clean]);
+          if(e3){
+            failed++;
+            if(failMsgs.length<5) failMsgs.push(`[${clean.name||'?'}] ${e3.message}`);
+            console.error('單筆失敗:', clean.name, e3.code, e3.message);
+          } else done++;
         } else done++;
       }
     } else { done+=batch.length; }
-    if(i%200===0) toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
+    toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
   }
 
   // ── 步驟11：重新全量載入 ──
