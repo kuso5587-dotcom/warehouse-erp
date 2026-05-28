@@ -309,9 +309,9 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-supplier" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
         <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
+        <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
         <div class="nslabel">💼 業務管理</div>
         <div class="nitem" id="nav-sales" onclick="goto('sales',this)"><span class="ic">📋</span>生產工作單</div>
-        <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
         <div class="nslabel">⚙️ 系統管理</div>
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
@@ -3605,26 +3605,44 @@ function openSalesForm(id){
   const d=document.createElement('div');
   d.id='salesModal';
   d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;';
-  const statusOpts=['進行中','已完成','暫停','取消'].map(v=>`<option value="${v}"${(s?.status||'進行中')===v?' selected':''}>${v}</option>`).join('');
-  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(760px,96vw);box-shadow:0 8px 40px #0005;margin:auto;">
-    <div style="font-size:16px;font-weight:700;margin-bottom:16px;">💼 ${s?'編輯':'新增'}生產工作通知單</div>
+  const isNew=!s||s.machine_type==='新機'||!s.machine_type;
+  const today=new Date().toISOString().slice(0,10);
+  const inp='width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;';
+  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(780px,96vw);box-shadow:0 8px 40px #0005;margin:auto;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📋 ${s?'編輯':'新增'}生產工作通知單</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="fg"><label>工單號碼 *</label><input id="sf-no" value="${s?.order_no||''}" placeholder="例：C12D002-04"></div>
-      <div class="fg"><label>狀態</label><select id="sf-status">${statusOpts}</select></div>
-      <div class="fg"><label>客戶名稱 *</label><input id="sf-customer" value="${s?.customer||''}" placeholder="客戶公司名稱"></div>
-      <div class="fg"><label>接單業務</label><input id="sf-salesperson" value="${s?.salesperson||''}" placeholder="業務姓名"></div>
-      <div class="fg"><label>機型</label><input id="sf-model" value="${s?.model||''}" placeholder="例：DJ-C1000"></div>
-      <div class="fg"><label>台數</label><input type="number" id="sf-qty" value="${s?.qty||1}" min="1"></div>
-      <div class="fg" style="grid-column:1/-1;"><label>機器名稱</label><input id="sf-machine" value="${s?.machine_name||''}" placeholder="完整機器名稱"></div>
-      <div class="fg" style="grid-column:1/-1;"><label>客戶指定要求</label><textarea id="sf-req" rows="3" style="width:100%;padding:9px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;">${s?.requirements||''}</textarea></div>
-      <div class="fg"><label>交貨日期</label><input type="date" id="sf-delivery" value="${s?.delivery_date||''}"></div>
-      <div class="fg"><label>包裝方式/嘜頭</label><input id="sf-packaging" value="${s?.packaging||''}" placeholder="庫存機轉出 / 一般包裝"></div>
-      <div class="fg"><label>設計者</label><input id="sf-designer" value="${s?.designer||''}"></div>
-      <div class="fg"><label>專案負責人</label><input id="sf-pm" value="${s?.pm||''}"></div>
-      <div class="fg"><label>生管</label><input id="sf-production" value="${s?.production_manager||''}"></div>
-      <div class="fg"><label>製表人</label><input id="sf-maker" value="${s?.maker||''}" placeholder="${currentUser}"></div>
-      <div class="fg" style="grid-column:1/-1;"><label>規格內容（機台規格/系統說明）</label><textarea id="sf-spec" rows="5" style="width:100%;padding:9px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;">${s?.spec_content||''}</textarea></div>
-      <div class="fg" style="grid-column:1/-1;"><label>備註</label><textarea id="sf-note" rows="2" style="width:100%;padding:9px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;">${s?.note||''}</textarea></div>
+      <div class="fg"><label>工單號碼 *</label><input id="sf-no" style="${inp}" value="${s?.order_no||''}" placeholder="例：C12D002-04"></div>
+      <div class="fg"><label>開單日期</label><input type="date" id="sf-issue-date" style="${inp}" value="${s?.issue_date||today}"></div>
+      <div class="fg"><label>客戶名稱 *</label><input id="sf-customer" style="${inp}" value="${s?.customer||''}" placeholder="客戶公司名稱"></div>
+      <div class="fg"><label>交貨日期</label><input type="date" id="sf-delivery" style="${inp}" value="${s?.delivery_date||''}"></div>
+      <div class="fg"><label>機型</label><input id="sf-model" style="${inp}" value="${s?.model||''}" placeholder="例：DJ-C1000"></div>
+      <div class="fg"><label>台數</label><input type="number" id="sf-qty" style="${inp}" value="${s?.qty||1}" min="1"></div>
+      <div class="fg" style="grid-column:1/-1;"><label>機器名稱</label><input id="sf-machine" style="${inp}" value="${s?.machine_name||''}" placeholder="完整機器名稱"></div>
+      <div class="fg" style="grid-column:1/-1;">
+        <label>機台類型</label>
+        <div style="display:flex;gap:24px;margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">
+            <input type="radio" name="sf-mtype" value="新機" ${isNew?'checked':''} style="width:16px;height:16px;"> 新機
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">
+            <input type="radio" name="sf-mtype" value="中古維修機" ${!isNew?'checked':''} style="width:16px;height:16px;"> 中古維修機
+          </label>
+        </div>
+      </div>
+      <div class="fg" style="grid-column:1/-1;"><label>客戶指定要求</label><textarea id="sf-req" rows="3" style="${inp}resize:vertical;">${s?.requirements||''}</textarea></div>
+      <div class="fg"><label>油漆色號</label><input id="sf-paint" style="${inp}" value="${s?.paint_color||''}" placeholder="例：#60 淺沙色、原機色"></div>
+      <div class="fg"><label>製表人</label><input id="sf-maker" style="${inp}" value="${s?.maker||currentUser}"></div>
+      <div class="fg" style="grid-column:1/-1;">
+        <label style="display:block;margin-bottom:6px;">列印簽名欄人員（接單業務 / 設計者 / 生管 / 專案負責人）</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input id="sf-salesperson" style="${inp}" value="${s?.salesperson||''}" placeholder="接單業務">
+          <input id="sf-designer" style="${inp}" value="${s?.designer||''}" placeholder="設計者">
+          <input id="sf-production" style="${inp}" value="${s?.production_manager||''}" placeholder="生管">
+          <input id="sf-pm" style="${inp}" value="${s?.pm||''}" placeholder="專案負責人">
+        </div>
+      </div>
+      <div class="fg" style="grid-column:1/-1;"><label>規格內容（機台規格/系統說明）</label><textarea id="sf-spec" rows="6" style="${inp}resize:vertical;">${s?.spec_content||''}</textarea></div>
+      <div class="fg" style="grid-column:1/-1;"><label>備註</label><textarea id="sf-note" rows="2" style="${inp}resize:vertical;">${s?.note||''}</textarea></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
       ${s?`<button onclick="deleteSalesOrder('${s.id}')" style="padding:10px 16px;background:#e53935;color:white;border:none;border-radius:8px;cursor:pointer;">🗑 刪除</button>`:''}
@@ -3646,8 +3664,10 @@ async function saveSalesOrder(id){
     machine_name:document.getElementById('sf-machine')?.value||'',
     requirements:document.getElementById('sf-req')?.value||'',
     qty:parseInt(document.getElementById('sf-qty')?.value)||1,
+    issue_date:document.getElementById('sf-issue-date')?.value||'',
     delivery_date:document.getElementById('sf-delivery')?.value||'',
-    packaging:document.getElementById('sf-packaging')?.value||'',
+    machine_type:document.querySelector('input[name="sf-mtype"]:checked')?.value||'新機',
+    paint_color:document.getElementById('sf-paint')?.value||'',
     salesperson:document.getElementById('sf-salesperson')?.value||'',
     designer:document.getElementById('sf-designer')?.value||'',
     pm:document.getElementById('sf-pm')?.value||'',
@@ -3655,7 +3675,7 @@ async function saveSalesOrder(id){
     maker:document.getElementById('sf-maker')?.value||currentUser,
     spec_content:document.getElementById('sf-spec')?.value||'',
     note:document.getElementById('sf-note')?.value||'',
-    status:document.getElementById('sf-status')?.value||'進行中',
+    status:'進行中',
   };
   if(!isDemo){
     if(id){
@@ -3692,75 +3712,120 @@ async function deleteSalesOrder(id){
 function printWorkOrder(id){
   const s=(DB.sales||[]).find(x=>x.id===id);
   if(!s){toast('找不到工作單','err');return;}
-  const today=new Date();
-  const roc=today.getFullYear()-1911;
-  const mm=String(today.getMonth()+1).padStart(2,'0');
-  const dd=String(today.getDate()).padStart(2,'0');
-  const w=window.open('','_blank','width=900,height=700');
+  const issueDate=s.issue_date||new Date().toISOString().slice(0,10);
+  const [iy,im,id2]=(issueDate||'').split('-');
+  const iRoc=parseInt(iy||2025)-1911;
+  const w=window.open('','_blank','width=1100,height=750');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>生產工作通知單 ${s.order_no}</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'微軟正黑體','Microsoft JhengHei',sans-serif;font-size:12px;color:#000;padding:16px;}
-    .no-print{display:flex;gap:8px;margin-bottom:16px;}
+    @page{size:A4 landscape;margin:12mm 14mm;}
+    body{font-family:'微軟正黑體','Microsoft JhengHei',Arial,sans-serif;font-size:11px;color:#000;background:#fff;}
+    .no-print{display:flex;gap:8px;padding:10px 16px;background:#f5f5f5;border-bottom:1px solid #ddd;}
     @media print{.no-print{display:none!important;}}
-    h1{font-size:18px;text-align:center;margin-bottom:4px;}
-    h2{font-size:13px;text-align:center;margin-bottom:12px;font-weight:normal;}
-    table{width:100%;border-collapse:collapse;margin-bottom:10px;}
-    td,th{border:1px solid #000;padding:4px 8px;vertical-align:top;}
-    .th{background:#f0f0f0;font-weight:bold;text-align:center;white-space:nowrap;}
-    .sec{font-weight:bold;background:#e8e8e8;font-size:11px;}
-    .sign{border-top:1px solid #000;padding-top:16px;display:flex;gap:0;}
-    .sign-box{flex:1;text-align:center;font-size:11px;padding:8px 4px;border-right:1px solid #000;}
+    .page{padding:10px 16px;}
+    h1{font-size:17px;text-align:center;font-weight:bold;margin-bottom:2px;}
+    h2{font-size:12px;text-align:center;margin-bottom:10px;color:#333;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+    td{border:1px solid #444;padding:4px 7px;vertical-align:middle;}
+    .lbl{background:#ebebeb;font-weight:bold;white-space:nowrap;text-align:center;width:80px;}
+    .sec{font-weight:bold;background:#d5d5d5;font-size:10px;letter-spacing:1px;text-align:center;}
+    .sign-wrap{display:flex;border:1px solid #444;margin-top:6px;}
+    .sign-box{flex:1;border-right:1px solid #444;padding:4px 6px;text-align:center;}
     .sign-box:last-child{border-right:none;}
+    .sign-name{font-size:12px;font-weight:bold;min-height:18px;}
+    .sign-line{border-bottom:1px solid #777;height:32px;margin:3px 6px 2px;}
+    .sign-label{font-size:9px;color:#555;margin-top:2px;}
+    .badge{display:inline-block;padding:1px 8px;border:1px solid #444;border-radius:3px;font-size:10px;font-weight:bold;}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+    .two-col > *:first-child{border-right:none;}
   </style>
   </head><body>
   <div class="no-print">
-    <button onclick="window.print()" style="padding:8px 20px;background:#185FA5;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨 列印 / 存成PDF</button>
-    <button onclick="saveAsJpegSales()" style="padding:8px 20px;background:#3B6D11;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">📷 下載JPEG</button>
+    <button onclick="window.print()" style="padding:7px 18px;background:#185FA5;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;">🖨 列印 / 儲存PDF</button>
+    <button onclick="saveAsJpegSales()" style="padding:7px 18px;background:#3B6D11;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;">📷 下載JPEG</button>
+    <span style="margin-left:8px;color:#555;font-size:12px;">列印時請選「橫向」/「A4」</span>
   </div>
-  <h1>大佶（佶榮）機電股份有限公司</h1>
-  <h2>生產工作通知單 ${s.order_no||''}</h2>
-  <table>
-    <tr>
-      <td class="th" style="width:15%;">NO.</td>
-      <td style="width:25%;">${s.order_no||''}</td>
-      <td class="th" style="width:15%;">日期</td>
-      <td>${roc}年${mm}月${dd}日</td>
-    </tr>
-    <tr>
-      <td class="th">客戶名稱</td><td colspan="3">${s.customer||''}</td>
-    </tr>
-    <tr>
-      <td class="th">機型</td><td colspan="3">${s.model||''}</td>
-    </tr>
-    <tr>
-      <td class="th">機器名稱</td><td colspan="3">${s.machine_name||''}</td>
-    </tr>
-    <tr>
-      <td class="th">台數</td><td>${s.qty||1} 台</td>
-      <td class="th">交貨日期</td><td>${s.delivery_date||''}</td>
-    </tr>
-    <tr>
-      <td class="th">包裝方式/嘜頭</td><td colspan="3">${s.packaging||''}</td>
-    </tr>
-  </table>
-  ${s.requirements?`<table><tr><td class="sec">客戶指定要求</td></tr><tr><td style="white-space:pre-wrap;min-height:40px;">${s.requirements}</td></tr></table>`:''}
-  ${s.spec_content?`<table><tr><td class="sec">規格說明</td></tr><tr><td style="white-space:pre-wrap;min-height:60px;">${s.spec_content}</td></tr></table>`:''}
-  ${s.note?`<table><tr><td class="sec">備註</td></tr><tr><td style="white-space:pre-wrap;">${s.note}</td></tr></table>`:''}
-  <div class="sign" style="border:1px solid #000;display:flex;">
-    <div class="sign-box">銷售部</div>
-    <div class="sign-box">廠務部</div>
-    <div class="sign-box">電控</div>
-    <div class="sign-box">採購</div>
-  </div>
-  <br>
-  <div class="sign" style="border:1px solid #000;display:flex;">
-    <div class="sign-box">接單業務<br><br>${s.salesperson||''}</div>
-    <div class="sign-box">設計者<br><br>${s.designer||''}</div>
-    <div class="sign-box">生管<br><br>${s.production_manager||''}</div>
-    <div class="sign-box">專案負責人<br><br>${s.pm||''}</div>
-    <div class="sign-box">製表<br><br>${s.maker||''}</div>
+  <div class="page">
+    <h1>大佶（佶榮）機電股份有限公司</h1>
+    <h2>生 產 工 作 通 知 單</h2>
+    <table>
+      <tr>
+        <td class="lbl">工單號碼</td>
+        <td style="font-weight:bold;font-size:13px;width:200px;">${s.order_no||''}</td>
+        <td class="lbl">開單日期</td>
+        <td style="width:120px;">${iRoc}年${im||''}月${id2||''}日</td>
+        <td class="lbl">機台類型</td>
+        <td><span class="badge">${s.machine_type||'新機'}</span></td>
+        <td class="lbl">台數</td>
+        <td style="font-weight:bold;text-align:center;">${s.qty||1} 台</td>
+      </tr>
+      <tr>
+        <td class="lbl">客戶名稱</td>
+        <td colspan="3" style="font-weight:bold;font-size:13px;">${s.customer||''}</td>
+        <td class="lbl">交貨日期</td>
+        <td colspan="3" style="font-weight:bold;">${s.delivery_date||''}</td>
+      </tr>
+      <tr>
+        <td class="lbl">機型</td>
+        <td colspan="3">${s.model||''}</td>
+        <td class="lbl">油漆色號</td>
+        <td colspan="3">${s.paint_color||''}</td>
+      </tr>
+      <tr>
+        <td class="lbl">機器名稱</td>
+        <td colspan="7" style="font-size:12px;">${s.machine_name||''}</td>
+      </tr>
+    </table>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <div>
+        ${s.requirements?`<table style="height:100%;"><tr><td class="sec">客 戶 指 定 要 求 內 容</td></tr><tr><td style="white-space:pre-wrap;min-height:80px;line-height:1.7;vertical-align:top;">${s.requirements}</td></tr></table>`:'<table style="height:100%;"><tr><td class="sec">客 戶 指 定 要 求 內 容</td></tr><tr><td style="min-height:80px;"></td></tr></table>'}
+      </div>
+      <div>
+        ${s.spec_content?`<table style="height:100%;"><tr><td class="sec">規 格 說 明</td></tr><tr><td style="white-space:pre-wrap;min-height:80px;line-height:1.7;vertical-align:top;">${s.spec_content}</td></tr></table>`:'<table style="height:100%;"><tr><td class="sec">規 格 說 明</td></tr><tr><td style="min-height:80px;"></td></tr></table>'}
+      </div>
+    </div>
+
+    ${s.note?`<table style="margin-bottom:8px;"><tr><td class="sec">備 註</td></tr><tr><td style="white-space:pre-wrap;min-height:24px;">${s.note}</td></tr></table>`:''}
+
+    <div style="font-size:10px;color:#555;margin-bottom:3px;">▼ 部門確認</div>
+    <div class="sign-wrap" style="margin-bottom:8px;">
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">銷 售 部</div></div>
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">廠 務 部</div></div>
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">電 　 控</div></div>
+      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">採 　 購</div></div>
+    </div>
+
+    <div style="font-size:10px;color:#555;margin-bottom:3px;">▼ 人員簽名</div>
+    <div class="sign-wrap">
+      <div class="sign-box">
+        <div class="sign-name">${s.salesperson||'　'}</div>
+        <div class="sign-line"></div>
+        <div class="sign-label">接 單 業 務</div>
+      </div>
+      <div class="sign-box">
+        <div class="sign-name">${s.designer||'　'}</div>
+        <div class="sign-line"></div>
+        <div class="sign-label">設 計 者</div>
+      </div>
+      <div class="sign-box">
+        <div class="sign-name">${s.production_manager||'　'}</div>
+        <div class="sign-line"></div>
+        <div class="sign-label">生 　 管</div>
+      </div>
+      <div class="sign-box">
+        <div class="sign-name">${s.pm||'　'}</div>
+        <div class="sign-line"></div>
+        <div class="sign-label">專 案 負 責 人</div>
+      </div>
+      <div class="sign-box">
+        <div class="sign-name">${s.maker||'　'}</div>
+        <div class="sign-line"></div>
+        <div class="sign-label">製 　 表</div>
+      </div>
+    </div>
   </div>
   <script>
   async function saveAsJpegSales(){
@@ -3769,17 +3834,17 @@ function printWorkOrder(id){
     if(!window.html2canvas){
       await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
     }
-    document.querySelectorAll('.no-print').forEach(el=>el.style.visibility='hidden');
-    const canvas=await html2canvas(document.body,{scale:2,backgroundColor:'#ffffff'});
-    document.querySelectorAll('.no-print').forEach(el=>el.style.visibility='');
-    const a=document.createElement('a');a.download='工作單_${s.order_no}.jpg';a.href=canvas.toDataURL('image/jpeg',0.92);a.click();
+    const page=document.querySelector('.page');
+    document.querySelectorAll('.no-print').forEach(el=>el.style.display='none');
+    const canvas=await html2canvas(page,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    document.querySelectorAll('.no-print').forEach(el=>el.style.display='flex');
+    const a=document.createElement('a');a.download='工作單_${s.order_no}.jpg';a.href=canvas.toDataURL('image/jpeg',0.95);a.click();
     btn.textContent='📷 下載JPEG';btn.disabled=false;
   }
   <\/script>
   </body></html>`);
   w.document.close();
 }
-
 function exportSalesCSV(){
   const data=DB.sales||[];
   if(!data.length){toast('無資料','inf');return;}
