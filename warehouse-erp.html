@@ -925,7 +925,7 @@ async function launchApp(){
 }
 
 function setupRT(){
-  ['materials','inventory','inbound','outbound','activity_log'].forEach(t=>{
+  ['locations','materials','inventory','inbound','outbound','activity_log'].forEach(t=>{
     _db.channel('rt-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{loadT(t);refreshDash();}).subscribe();
   });
 }
@@ -968,13 +968,19 @@ function renderOnline(users){
   document.getElementById('onlineAvatars').innerHTML=h;document.getElementById('topAvatars').innerHTML=h;
 }
 
-async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));renderAll();}
+async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));renderAll();}
 async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];}catch(e){console.warn(t,e.message);}}
 function renderAll(){loadCustomRoles();refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
 function seedDemo(){
   const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
-  DB.locations=[];
+  DB.locations=[
+    {id:'A11',zone:'A',row_no:'1',col_no:'1',custom_name:'A區1排1列',status:'ok'},
+    {id:'A12',zone:'A',row_no:'1',col_no:'2',custom_name:'A區1排2列',status:'ok'},
+    {id:'B11',zone:'B',row_no:'1',col_no:'1',custom_name:'B區1排1列',status:'ok'},
+    {id:'B12',zone:'B',row_no:'1',col_no:'2',custom_name:'B區1排2列',status:'ok'},
+    {id:'C11',zone:'C',row_no:'1',col_no:'1',custom_name:'C區1排1列',status:'ok'},
+  ];
   const demoNames={'A11':'零件架A','A12':'零件架B','B11':'備料區1','C11':'冷藏區'};
   zones.forEach(z=>{for(let r=1;r<=3;r++)for(let c=1;c<=4;c++){const id=`${z}${r}${c}`;DB.locations.push({id,zone:z,row_no:r.toString().padStart(2,'0'),col_no:c.toString().padStart(2,'0'),capacity:1000,safe_qty:100,status:sts[Math.floor(Math.random()*sts.length)],custom_name:demoNames[id]||null,sort_order:DB.locations.length,created_at:new Date().toISOString()});}});
   DB.materials=[{id:'m1',code:'SCR-M8-020',name:'螺絲M8×20',unit:'件',safe_qty:200,created_at:new Date().toISOString()},{id:'m2',code:'PCB-001',name:'PCB基板',unit:'片',safe_qty:100,created_at:new Date().toISOString()},{id:'m3',code:'CAP-100U',name:'電容100μF',unit:'顆',safe_qty:500,created_at:new Date().toISOString()},{id:'m4',code:'RES-1K',name:'電阻1kΩ',unit:'顆',safe_qty:1000,created_at:new Date().toISOString()},{id:'m5',code:'MTR-DRV',name:'馬達驅動板',unit:'片',safe_qty:50,created_at:new Date().toISOString()}];
