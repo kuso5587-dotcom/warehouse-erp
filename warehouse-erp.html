@@ -356,13 +356,13 @@ tr:hover td{background:var(--bg3);}
         </div>
 
         <div class="page" id="page-inventory">
-          <!-- 倉位管理卡片 -->
+          <!-- 倉位管理卡片（折疊式）-->
           <div class="card" style="margin-bottom:12px;">
-            <div class="card-hd">
-              <span class="card-title">🗂️ 倉位管理</span>
-              <button class="btn btn-primary btn-sm" onclick="openModal('addloc')">＋ 新增倉位</button>
+            <div class="card-hd" onclick="toggleLocPanel()" style="cursor:pointer;user-select:none;">
+              <span class="card-title">🗂️ 倉位管理 <span id="locToggleIcon" style="font-size:12px;color:var(--text3);">▶ 點擊展開</span></span>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openModal('addloc')">＋ 新增倉位</button>
             </div>
-            <div id="locListBody" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;">
+            <div id="locListBody" style="display:none;flex-wrap:wrap;gap:8px;padding:8px 0 4px;">
               <div style="color:var(--text3);font-size:13px;">載入中...</div>
             </div>
           </div>
@@ -1215,6 +1215,17 @@ function switchInvZone(zone,el){
 }
 
 
+
+function toggleLocPanel(){
+  const body=document.getElementById('locListBody');
+  const icon=document.getElementById('locToggleIcon');
+  if(!body) return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'flex';
+  if(icon) icon.textContent=isOpen?'▶ 點擊展開':'▼ 點擊收合';
+  if(!isOpen) renderLocList();
+}
+
 function renderLocList(){
   const el=document.getElementById('locListBody');
   if(!el) return;
@@ -1407,24 +1418,7 @@ async function saveNewLoc(){
   closeModal(); toast('倉位已新增 ✅','ok'); renderLocList(); renderINV();
 }
 
-async function saveEditLoc(id){
-  const zone=(document.getElementById('f-loc-zone')?.value||'').trim();
-  const row=(document.getElementById('f-loc-row')?.value||'').trim();
-  const col=(document.getElementById('f-loc-col')?.value||'').trim();
-  const name=(document.getElementById('f-loc-name')?.value||'').trim();
-  const note=(document.getElementById('f-loc-note')?.value||'').trim();
-  if(!zone){ toast('請填寫區域','err'); return; }
-  const upd={zone, row_no:row, col_no:col, custom_name:name||`${zone}-${row}-${col}`, note};
-  if(!isDemo){
-    const{error}=await _db.from('locations').update(upd).eq('id',id);
-    if(error){ toast('修改失敗：'+error.message,'err'); return; }
-    await loadT('locations');
-  } else {
-    const l=DB.locations.find(x=>x.id===id);
-    if(l) Object.assign(l,upd);
-  }
-  closeModal(); toast('倉位已更新 ✅','ok'); renderLocList(); renderINV();
-}
+
 
 async function saveNewOrder(){
   const name=(document.getElementById('f-ord-name')?.value||'').trim();
@@ -1737,24 +1731,7 @@ function openModal(type,extraId){
     }},
     outbound:{t:'新增出庫申請',h:()=>{const mo=DB.materials.map(m=>`<option value="${m.id}">${m.code} ${m.name}</option>`).join('');const lo=DB.locations.map(l=>`<option value="${l.id}">${locLabel(l)} (${locCode(l)})</option>`).join('');return`<div class="form-row"><div class="fg"><label>料件</label><select id="f-mat">${mo}</select></div><div class="fg"><label>來源倉位</label><select id="f-loc">${lo}</select></div></div><div class="form-row"><div class="fg"><label>申請數量</label><input type="number" id="f-qty" placeholder="50"></div><div class="fg"><label>申請部門</label><select id="f-dept"><option>生產部</option><option>維修部</option><option>工程部</option><option>品管部</option></select></div></div><div class="fg"><label>優先度</label><select id="f-pri"><option value="urgent">緊急</option><option value="normal" selected>一般</option><option value="low">低</option></select></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveOB()">建立申請</button></div>`;}},
     location:{t:'新增倉位',h:()=>`<div class="form-row"><div class="fg"><label>倉區（英文字母）</label><input id="f-zone" placeholder="A" maxlength="2"></div><div class="fg"><label>排號</label><input id="f-row" placeholder="01"></div></div><div class="form-row"><div class="fg"><label>格號</label><input id="f-col" placeholder="01"></div><div class="fg"><label>狀態</label><select id="f-status"><option value="empty">空閒</option><option value="reserved">保留</option><option value="disabled">停用</option></select></div></div><div class="form-row"><div class="fg"><label>容量</label><input type="number" id="f-cap" placeholder="1000"></div><div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" placeholder="100"></div></div><div class="fg"><label>自訂名稱（選填）</label><input id="f-cname" placeholder="例：冷藏區1、零件架A"></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveLoc()">建立倉位</button></div>`},
-    editloc:{t:'編輯倉位',h:(id)=>{
-      const l=DB.locations.find(x=>x.id===id);
-      if(!l)return'<p>找不到倉位</p>';
-      const code=`${l.zone}-${l.row_no}-${l.col_no}`;
-      const stOpts=['empty','low','full','reserved','disabled'].map(s=>`<option value="${s}"${l.status===s?' selected':''}>${sLbl(s)}</option>`).join('');
-      return`<div class="fg"><label>倉位編號</label><input value="${code}" readonly></div>
-        <div class="fg"><label>自訂名稱（可空白）</label><input id="f-cname" placeholder="例：冷藏區1、零件架A" value="${l.custom_name||''}"></div>
-        <div class="form-row">
-          <div class="fg"><label>狀態</label><select id="f-status">${stOpts}</select></div>
-          <div class="fg"><label>容量</label><input type="number" id="f-cap" value="${l.capacity||1000}"></div>
-        </div>
-        <div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" value="${l.safe_qty||100}"></div>
-        <div class="modal-foot">
-          <button class="btn btn-danger" onclick="deleteLoc('${id}')">🗑 刪除倉位</button>
-          <button class="btn" onclick="closeModal()">取消</button>
-          <button class="btn btn-primary" onclick="saveEditLoc('${id}')">儲存變更</button>
-        </div>`;
-    }},
+
     material:{t:'新增料件',h:()=>`<div class="form-row"><div class="fg"><label>料號</label><input id="f-code" placeholder="SCR-M8-020"></div><div class="fg"><label>品名</label><input id="f-name" placeholder="螺絲M8×20"></div></div><div class="form-row"><div class="fg"><label>單位</label><input id="f-unit" placeholder="件"></div><div class="fg"><label>安全庫存量</label><input type="number" id="f-safe" placeholder="100"></div></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveMat()">建立料件</button></div>`},
     adjust:{t:'庫存調整',h:(id)=>{
       const iv=DB.inventory.find(r=>r.id===id);
