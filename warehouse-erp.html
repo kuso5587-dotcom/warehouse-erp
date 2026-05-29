@@ -756,19 +756,13 @@ tr:hover td{background:var(--bg3);}
           <div class="card">
             <div class="card-hd">
               <span class="card-title">🤝 客戶管理</span>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary btn-sm" onclick="openCustomerForm(null,'domestic')">＋ 國內客戶</button>
-                <button class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;" onclick="openCustomerForm(null,'foreign')">✈️ 國外客戶</button>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 新增客戶</button>
                 <button class="btn btn-sm" onclick="exportCustomersCSV()">📥 匯出CSV</button>
               </div>
             </div>
-            <div class="tab-bar" style="margin:0 0 10px;">
-              <div class="tab-item active" id="cust-tab-all" onclick="switchCustTab('all')">全部</div>
-              <div class="tab-item" id="cust-tab-domestic" onclick="switchCustTab('domestic')">🏠 國內</div>
-              <div class="tab-item" id="cust-tab-foreign" onclick="switchCustTab('foreign')">✈️ 國外</div>
-            </div>
             <div class="search-row">
-              <input id="custQ" placeholder="搜尋客戶名稱、聯絡人、電話、國家..." oninput="renderCustomers()" style="flex:1;">
+              <input id="custQ" placeholder="搜尋客戶名稱、聯絡人、電話..." oninput="renderCustomers()" style="flex:1;">
             </div>
             <div class="table-wrap"><table>
               <thead><tr>
@@ -1001,6 +995,19 @@ async function launchApp(){
     setupRT();
   }
   loadAll();
+  // 若 2 秒後供應商仍是空的，自動重試一次
+  if(!isDemo){
+    setTimeout(async()=>{
+      if(!DB.suppliers||DB.suppliers.length===0){
+        console.log('[retry] 供應商空，重新載入...');
+        await loadT('suppliers');
+        await loadT('sup_categories');
+        await loadT('materials');
+        await loadT('inventory');
+        renderAll();
+      }
+    },2000);
+  }
 }
 
 function setupRT(){
@@ -1049,52 +1056,9 @@ function renderOnline(users){
   document.getElementById('onlineAvatars').innerHTML=h;document.getElementById('topAvatars').innerHTML=h;
 }
 
-async function loadAll(){
-  if(isDemo){renderAll();return;}
-  // 先從 localStorage 還原關鍵資料，確保頁面立刻顯示
-  const supBak=restoreFromLocal('suppliers_bak');
-  if(supBak&&supBak.length) DB.suppliers=supBak;
-  const userBak=restoreFromLocal('erp_users_bak');
-  if(userBak&&userBak.length) DB.users=userBak;
-  // 先渲染（讓用戶立刻看到資料）
-  renderAll();
-  // 背景從 Supabase 更新（不影響現有顯示）
-  await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));
-  if(!DB.users||!DB.users.length) restoreUsersFromLocal();
-  renderAll();
-}
-async function loadT(t){
-  if(isDemo)return;
-  const keyMap={'activity_log':'actlog','erp_users':'users'};
-  const key=keyMap[t]||t;
-  try{
-    const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});
-    if(error)throw error;
-    if(data&&data.length){
-      DB[key]=data;
-      // 有資料就備份
-      backupToLocal(t+'_bak',data);
-      if(t==='erp_users') backupUsersToLocal();
-    } else {
-      // Supabase 空 → 從備份還原，絕不覆蓋現有資料
-      const bak=restoreFromLocal(t+'_bak');
-      if(bak&&bak.length){
-        DB[key]=bak;
-        console.warn('[loadT]',t,'Supabase空，從備份還原',bak.length,'筆');
-      }
-      // 若現有記憶體有資料，保留不動
-      if(t==='erp_users') restoreUsersFromLocal();
-    }
-  }catch(e){
-    console.error('[loadT]',t,e.message);
-    const bak=restoreFromLocal(t+'_bak');
-    if(bak&&bak.length) DB[key]=bak;
-    if(t==='erp_users') restoreUsersFromLocal();
-  }
-}
-function backupToLocal(k,data){try{localStorage.setItem(k,JSON.stringify(data));}catch(e){}}
-function restoreFromLocal(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
-function renderAll(){loadCustomRoles();loadNavOrder();refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
+async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));if(!DB.users||!DB.users.length){restoreUsersFromLocal();}renderAll();}
+async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];if(t==='erp_users'){if(data&&data.length)backupUsersToLocal();else if(!data||!data.length)restoreUsersFromLocal();}}catch(e){console.warn(t,e.message);if(t==='erp_users')restoreUsersFromLocal();}}
+function renderAll(){loadCustomRoles();refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
 function seedDemo(){
   const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
@@ -2994,71 +2958,72 @@ function printQuoteForm(){
 function printQuote(id){
   const q=(DB.quotes||[]).find(x=>x.id===id);if(!q)return;
   let items=[];try{items=JSON.parse(q.items||'[]');}catch(e){}
-  const itemRows=items.map((it,i)=>
-    '<tr><td style="text-align:center;">'+(i+1)+'</td>'
-    +'<td>'+(it.name||'')+(it.spec?'<br><span style="color:#666;font-size:11px;">'+it.spec+'</span>':'')+'</td>'
+  const today=new Date();
+  const dateStr=today.getFullYear()+'/'+(today.getMonth()+1)+'/'+today.getDate();
+  const itemRows=items.map((it,idx)=>
+    '<tr><td style="text-align:center;">'+(idx+1)+'</td>'
+    +'<td>'+(it.name||'')+(it.spec?'<br><span style="font-size:11px;color:#666;">'+it.spec+'</span>':'')+'</td>'
     +'<td style="text-align:center;">'+(it.qty||1)+'</td>'
     +'<td style="text-align:center;">'+(it.unit||'件')+'</td>'
     +'<td style="text-align:right;">'+(it.ref_price?'NT$'+it.ref_price:'')+'</td>'
     +'<td></td>'
-    +'<td>'+(it.note||'')+'</td>'
-    +'</tr>'
+    +'<td>'+(it.note||'')+'</td></tr>'
   ).join('');
-  const coInfo=`統編：52517787　電話：04-23914588　傳真：04-24915603`;
-  const today=new Date();
-  const dateStr=today.getFullYear()+'/'+(today.getMonth()+1)+'/'+ today.getDate();
+
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>詢價單 '+q.order_no+'</title>'
-  +'<style>'
-  +'*{box-sizing:border-box;}'
-  +'body{font-family:"Microsoft JhengHei",sans-serif;padding:24px;max-width:800px;margin:0 auto;font-size:13px;}'
-  +'.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #185FA5;padding-bottom:12px;margin-bottom:16px;}'
-  +'.co-logo{width:60px;height:60px;object-fit:contain;margin-right:12px;}'
-  +'.co-name{font-size:18px;font-weight:bold;color:#185FA5;}'
-  +'.co-info{font-size:11px;color:#666;margin-top:4px;line-height:1.8;}'
-  +'.doc-title{font-size:22px;font-weight:bold;text-align:right;color:#185FA5;}'
-  +'.doc-no{font-size:12px;color:#666;text-align:right;margin-top:4px;}'
-  +'.to-box{background:#f5f8fc;border:1px solid #B5D4F4;border-radius:6px;padding:12px 16px;margin-bottom:16px;}'
-  +'.to-box b{color:#185FA5;}'
-  +'table{width:100%;border-collapse:collapse;margin-bottom:16px;}'
-  +'th{background:#185FA5;color:white;padding:8px 10px;text-align:left;font-size:12px;}'
-  +'td{padding:8px 10px;border-bottom:1px solid #e0e0e0;vertical-align:middle;}'
-  +'tr:nth-child(even) td{background:#f9f9f9;}'
-  +'.note-box{background:#FAEEDA;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;}'
-  +'.footer{font-size:12px;color:#666;text-align:center;margin-top:24px;}'
-  +'.no-print{display:flex;gap:8px;margin-bottom:16px;}'
-  +'@media print{.no-print{display:none!important;}}'
-  +'</style></head><body>'
-  +'<div class="no-print">'
-  +'<button onclick="window.print()" style="padding:10px 24px;background:#185FA5;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨 列印 / 存成PDF</button>'
-  +'<button id="jpegBtn" style="padding:10px 24px;background:#3B6D11;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">📷 下載 JPEG（傳 Line）</button>'
-  +'</div>'
-  +'<div class="header">'
-  +'<div style="display:flex;align-items:center;">'
-  +'<div><div class="co-name">大佶機電股份有限公司</div>'
-  +'<div class="co-info">'+coInfo+'<br>採購：'+(q.operator||currentUser)+'</div></div>'
-  +'</div>'
-  +'<div><div class="doc-title">詢　價　單</div>'
-  +'<div class="doc-no">單號：'+q.order_no+'<br>日期：'+dateStr+'</div></div>'
-  +'</div>'
-  +'<div class="to-box">受文廠商：<b>'+(q.supplier||'')+'</b>'
-  +(q.contact?'　聯絡人：'+q.contact:'')
-  +(q.fax?'　傳真：'+q.fax:'')
-  +'</div>'
-  +'<table><thead><tr>'
-  +'<th style="width:40px;">項次</th><th>品名／規格</th>'
-  +'<th style="width:60px;text-align:center;">數量</th>'
-  +'<th style="width:60px;text-align:center;">單位</th>'
-  +'<th style="width:80px;text-align:right;">參考單價</th>'
-  +'<th style="width:80px;">報價單價</th>'
-  +'<th style="width:80px;">備註</th>'
-  +'</tr></thead><tbody>'+itemRows+'</tbody></table>'
-  +(q.note?'<div class="note-box">備註：'+q.note+'</div>':'<div class="note-box">備註：以下規格煩請提供報價，有效期限：　　年　　月　　日，謝謝。</div>')
-  +'<div class="footer">請於收到本詢價單後儘速回覆，謝謝。</div>'
-  +'</body></html>';
+    +'<style>'
+    +'*{box-sizing:border-box;}'
+    +'body{font-family:"Microsoft JhengHei",sans-serif;padding:24px;max-width:800px;margin:0 auto;font-size:13px;}'
+    +'.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #185FA5;padding-bottom:12px;margin-bottom:16px;}'
+    +'.co-name{font-size:18px;font-weight:bold;color:#185FA5;}'
+    +'.co-info{font-size:11px;color:#666;margin-top:4px;line-height:1.8;}'
+    +'.doc-title{font-size:22px;font-weight:bold;text-align:right;color:#185FA5;}'
+    +'.doc-no{font-size:12px;color:#666;text-align:right;margin-top:4px;}'
+    +'.to-box{background:#f5f8fc;border:1px solid #B5D4F4;border-radius:6px;padding:12px 16px;margin-bottom:16px;}'
+    +'.to-box b{color:#185FA5;}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:16px;}'
+    +'th{background:#185FA5;color:white;padding:8px 10px;text-align:left;font-size:12px;}'
+    +'td{padding:8px 10px;border-bottom:1px solid #e0e0e0;vertical-align:middle;}'
+    +'tr:nth-child(even) td{background:#f9f9f9;}'
+    +'.note-box{background:#FAEEDA;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;}'
+    +'.footer{margin-top:24px;border-top:1px solid #eee;padding-top:12px;font-size:12px;color:#666;text-align:center;}'
+    +'.no-print{display:flex;gap:8px;margin-bottom:16px;}'
+    +'@media print{.no-print{display:none!important;}}'
+    +'</style></head><body>'
+    +'<div class="no-print">'
+    +'<button onclick="window.print()" style="padding:10px 24px;background:#185FA5;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨 列印／存成PDF</button>'
+    +'<button id="jpegBtn" style="padding:10px 24px;background:#3B6D11;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">📷 下載 JPEG（傳 Line）</button>'
+    +'</div>'
+    +'<div class="header">'
+    +'<div>'
+    +'<div style="display:flex;align-items:center;gap:10px;">'
+    +'<img src="https://nqwjisztneznwihoozjq.supabase.co/storage/v1/object/public/assets/logo.png" style="height:50px;" onerror="this.style.display=\'none\'">'
+    +'<div>'
+    +'<div class="co-name">大佶機電股份有限公司</div>'
+    +'<div class="co-info">統編：52517787　電話：04-23914588　傳真：04-24915603<br>採購：'+(q.operator||currentUser)+'</div>'
+    +'</div></div></div>'
+    +'<div><div class="doc-title">詢　價　單</div>'
+    +'<div class="doc-no">單號：'+q.order_no+'<br>日期：'+dateStr+'</div>'
+    +'</div></div>'
+    +'<div class="to-box">受文廠商：<b>'+(q.supplier||'')+'</b>'
+    +(q.contact?'　聯絡人：'+q.contact:'')
+    +(q.fax?'　傳真：'+q.fax:'')
+    +'</div>'
+    +'<table><thead><tr>'
+    +'<th style="width:40px;">項次</th><th>品名／規格</th>'
+    +'<th style="width:60px;text-align:center;">數量</th>'
+    +'<th style="width:60px;text-align:center;">單位</th>'
+    +'<th style="width:90px;text-align:right;">參考單價</th>'
+    +'<th style="width:90px;">報價單價</th>'
+    +'<th style="width:80px;">備註</th>'
+    +'</tr></thead><tbody>'+itemRows+'</tbody></table>'
+    +(q.note?'<div class="note-box">備註：'+q.note+'</div>':'<div class="note-box">備註：以下規格煩請提供報價，有效期限：　　年　　月　　日，謝謝。</div>')
+    +'<div class="footer">請於收到本詢價單後儘速回覆，謝謝。</div>'
+    +'</body></html>';
+
   const w=window.open('','_blank');
   w.document.write(html);
   w.document.close();
-  // 綁定 JPEG 按鈕（避免 script 標籤問題）
   w.onload=function(){
     const btn=w.document.getElementById('jpegBtn');
     if(!btn)return;
@@ -3312,7 +3277,6 @@ async function saveSup(){
   } else {
     rec.id='s'+Date.now();DB.suppliers.push(rec);addLog('設定','供應商','新增供應商 '+name);
   }
-  if(DB.suppliers&&DB.suppliers.length) backupToLocal('suppliers_bak',DB.suppliers);
   closeModal();toast('供應商新增成功 ✅','ok');renderSup();renderLog();
 }
 
@@ -3331,9 +3295,7 @@ async function saveEditSup(id){
     try{
       const res=await _db.from('suppliers').update(updates).eq('id',id);
       if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
-      // 直接更新記憶體，不依賴 loadT
-      Object.assign(s,updates);
-      backupToLocal('suppliers_bak',DB.suppliers);
+      await loadT('suppliers');
     }catch(e){toast('儲存失敗：'+e.message,'err');return;}
   } else {Object.assign(s,updates);}
   closeModal();toast('供應商已更新 ✅','ok');renderSup();
@@ -4249,12 +4211,7 @@ async function loadCustomersFromDB(){
 
 function renderCustomers(){
   const q=(document.getElementById('custQ')?.value||'').toLowerCase();
-  const tab=window._custTab||'all';
-  const rows=(DB.customers||[]).filter(c=>{
-    if(tab==='domestic'&&c.customer_type==='foreign')return false;
-    if(tab==='foreign'&&c.customer_type!=='foreign')return false;
-    return true;
-  }).filter(c=>
+  const rows=(DB.customers||[]).filter(c=>
     !q||[c.name,c.contact,c.phone,c.address,c.salesperson].some(v=>(v||'').toLowerCase().includes(q))
   );
   document.getElementById('customersBody').innerHTML=rows.length?rows.map((c,i)=>
@@ -4275,9 +4232,8 @@ function renderCustomers(){
   ).join(''):'<tr class="empty-row"><td colspan="11">尚無客戶資料</td></tr>';
 }
 
-function openCustomerForm(id,defaultType){
+function openCustomerForm(id){
   const c=id?(DB.customers||[]).find(x=>x.id===id):null;
-  const ctype=c?.customer_type||defaultType||'domestic';
   const d=document.createElement('div');
   d.id='custModal';
   d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;';
@@ -4606,24 +4562,6 @@ function navOrderMove(idx,dir){
   renderNavOrderList();
 }
 
-
-function loadNavOrder(){
-  try{
-    const saved=localStorage.getItem('erp_nav_order');
-    if(!saved)return;
-    const order=JSON.parse(saved);
-    if(!order||!order.length)return;
-    const sidebar=document.querySelector('.sidebar-nav,.nav-list,#sidebarNav,[class*="nav"]');
-    // 按儲存的 id 順序重排
-    order.forEach(id=>{
-      const el=document.getElementById(id);
-      if(el&&el.parentElement){
-        el.parentElement.appendChild(el);
-      }
-    });
-  }catch(e){ console.warn('loadNavOrder failed',e); }
-}
-
 function applyNavOrder(){
   const items=window._navOrder||[];
   const fixed=window._navFixed||[];
@@ -4660,215 +4598,6 @@ function exportSalesCSV(){
   const csv=[hdrs.join(','),...data.map(r=>keys.map(k=>'"'+((r[k]||'').toString().replace(/"/g,'""'))+'"').join(','))].join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
   a.download='業務工作單_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV已下載','ok');
-}
-
-
-// ══════ 供應商 Excel 匯出 ══════
-
-// ══════ 從詢價單還原供應商名單 ══════
-async function restoreSuppliersFromQuotes(){
-  toast('讀取詢價單廠商...','inf');
-  let quoteSuppliers=[];
-  if(!isDemo){
-    const{data,error}=await _db.from('quotes').select('supplier').neq('supplier','');
-    if(error){toast('讀取失敗：'+error.message,'err');return;}
-    quoteSuppliers=[...new Set((data||[]).map(q=>q.supplier).filter(Boolean))].sort();
-  } else {
-    quoteSuppliers=[...new Set((DB.quotes||[]).map(q=>q.supplier).filter(Boolean))].sort();
-  }
-  if(!quoteSuppliers.length){toast('詢價單沒有廠商資料','inf');return;}
-  const existing=new Set((DB.suppliers||[]).map(s=>s.name));
-  const toAdd=quoteSuppliers.filter(n=>!existing.has(n));
-  const d=document.createElement('div');
-  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
-  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(460px,92vw);box-shadow:0 8px 40px #0005;">'
-    +'<div style="font-weight:700;font-size:15px;margin-bottom:12px;">🔄 從詢價單還原供應商</div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:8px;">'
-    +'詢價單共有 <b>'+quoteSuppliers.length+'</b> 個廠商'
-    +(toAdd.length?'，其中 <b style="color:#e65100;">'+toAdd.length+'</b> 個尚未在供應商管理':'，全部已存在')
-    +'</div>'
-    +(toAdd.length
-      ? '<div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;max-height:200px;overflow-y:auto;margin-bottom:14px;">'
-        +toAdd.map(n=>'<div style="padding:3px 0;border-bottom:1px solid var(--border2);">➕ '+n+'</div>').join('')+'</div>'
-      : '<div style="color:var(--text3);font-size:13px;margin-bottom:14px;">所有廠商都已在供應商管理中。</div>'
-    )
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
-    +'<button id="restoreCloseBtn" style="padding:9px 18px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;">關閉</button>'
-    +(toAdd.length?'<button id="restoreConfirmBtn" style="padding:9px 20px;background:#e65100;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">✅ 新增 '+toAdd.length+' 筆</button>':'')
-    +'</div></div>';
-  document.body.appendChild(d);
-  document.getElementById('restoreCloseBtn').onclick=()=>d.remove();
-  if(toAdd.length){
-    document.getElementById('restoreConfirmBtn').onclick=()=>doRestoreSuppliersFromQuotes(toAdd,d);
-  }
-}
-
-async function doRestoreSuppliersFromQuotes(names,modal){
-  modal?.remove();
-  toast('還原中...','inf');
-  let done=0,failed=0;
-  const insertedRecs=[];
-  if(!isDemo){
-    for(const name of names){
-      const rec={name,tax_id:'',contact:'',phone:'',items:'',
-        status:'active',category_id:null,created_at:new Date().toISOString()};
-      const{data:inserted,error}=await _db.from('suppliers').insert([rec]).select();
-      if(error){failed++;console.error('還原失敗:',name,error.message);}
-      else{done++;insertedRecs.push((inserted&&inserted[0])||rec);}
-    }
-    // 直接加入記憶體，不用 loadT
-    if(!DB.suppliers)DB.suppliers=[];
-    DB.suppliers=[...insertedRecs,...DB.suppliers];
-    backupToLocal('suppliers_bak',DB.suppliers);
-  } else {
-    names.forEach(name=>{
-      const r={id:'s'+Date.now()+Math.random(),name,status:'active',note:'從詢價單還原',created_at:new Date().toISOString()};
-      DB.suppliers.push(r);done++;
-    });
-    backupToLocal('suppliers_bak',DB.suppliers);
-  }
-  renderSup();
-  toast(done>0?'✅ 已還原 '+done+' 筆':'❌ 還原失敗',done>0?'ok':'err');
-  alert('✅ 成功還原 '+done+' 筆\n❌ 失敗 '+failed+' 筆');
-}
-
-// ══════ 供應商 Excel 匯入 ══════
-async function importSuppliersExcel(input){
-  const file=input.files[0];if(!file)return;input.value='';
-  toast('讀取中...','inf');
-  if(!window.XLSX){
-    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
-  }
-  const buf=await file.arrayBuffer();
-  const wb=XLSX.read(buf,{type:'array'});
-  const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-  if(!rows.length){toast('Excel 無資料','err');return;}
-
-  // 偵測 Supabase 實際欄位
-  let safeFields=new Set(['name','contact','phone','tax_id','items','status','category_id','note','created_at']);
-  if(!isDemo){
-    try{
-      const testRec={name:'__probe__',created_at:new Date().toISOString(),fax:'',mobile:'',email:'',address:'',payment:''};
-      const{error:te}=await _db.from('suppliers').insert([testRec]);
-      if(!te){
-        await _db.from('suppliers').delete().eq('name','__probe__');
-        safeFields=new Set(['name','contact','phone','fax','mobile','email','address','tax_id','items','payment','status','category_id','note','created_at']);
-      }
-    }catch(e){}
-  }
-
-  const colMap={'分類':'_cat','供應商名稱':'name','供應商':'name','聯絡人':'contact',
-    '電話':'phone','傳真':'fax','手機':'mobile','Email':'email','email':'email',
-    '地址':'address','統一編號':'tax_id','統編':'tax_id','供應品項':'items',
-    '付款條件':'payment','狀態':'status','備註':'note'};
-  const stMap={'合作中':'active','觀察中':'watch','停止合作':'inactive','active':'active','watch':'watch','inactive':'inactive'};
-
-  const toInsert=[];const skipRows=[];
-  rows.forEach((row,i)=>{
-    const raw={};
-    Object.entries(row).forEach(([k,v])=>{const m=colMap[k.trim()];if(m)raw[m]=String(v||'').trim();});
-    if(!raw.name){skipRows.push(i+2);return;}
-    const extra=[];
-    const rec={name:raw.name,status:stMap[raw.status]||'active',created_at:new Date().toISOString()};
-    ['contact','phone','fax','mobile','email','address','tax_id','items','payment'].forEach(f=>{
-      if(!raw[f])return;
-      if(safeFields.has(f))rec[f]=raw[f];
-      else extra.push(f+':'+raw[f]);
-    });
-    const catName=raw._cat||'';
-    const cat=(DB.sup_categories||[]).find(c=>c.name===catName);
-    if(cat)rec.category_id=cat.id;
-    let noteArr=[];
-    if(catName&&!cat)noteArr.push('[分類:'+catName+']');
-    if(raw.note)noteArr.push(raw.note);
-    if(extra.length)noteArr.push(extra.join('、'));
-    if(noteArr.length)rec.note=noteArr.join(' ');
-    toInsert.push(rec);
-  });
-
-  if(!toInsert.length){toast('沒有有效資料（需有「供應商名稱」欄）','err');return;}
-
-  const d=document.createElement('div');
-  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
-  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(440px,92vw);box-shadow:0 8px 40px #0005;">'
-    +'<div style="font-weight:700;font-size:15px;margin-bottom:12px;">📤 確認匯入供應商</div>'
-    +'<div style="color:var(--text2);font-size:13px;margin-bottom:4px;">✅ 有效資料：<b>'+toInsert.length+'</b> 筆'
-    +(skipRows.length?' &nbsp;⏭ 略過空白：'+skipRows.length+' 筆':'')+'</div>'
-    +'<div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;max-height:160px;overflow-y:auto;margin-bottom:14px;">'
-    +toInsert.slice(0,10).map(r=>'<div style="padding:3px 0;border-bottom:1px solid var(--border2);"><b>'+r.name+'</b> <span style="color:var(--text3);">'+(r.phone||'')+(r.contact?' · '+r.contact:'')+'</span></div>').join('')
-    +(toInsert.length>10?'<div style="color:var(--text3);padding-top:4px;">...還有 '+(toInsert.length-10)+' 筆</div>':'')
-    +'</div>'
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
-    +'<button id="impCancelBtn" style="padding:9px 18px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;">取消</button>'
-    +'<button id="impConfirmBtn" style="padding:9px 20px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">✅ 確認匯入</button>'
-    +'</div></div>';
-  document.body.appendChild(d);
-  document.getElementById('impCancelBtn').onclick=()=>d.remove();
-  document.getElementById('impConfirmBtn').onclick=()=>doImportSuppliers(toInsert,d);
-}
-
-async function doImportSuppliers(records,modal){
-  modal?.remove();
-  toast('匯入中...','inf');
-  let done=0,failed=0;
-  const failMsgs=[];
-  const insertedRecs=[];
-
-  if(!isDemo){
-    for(let i=0;i<records.length;i++){
-      const r=records[i];
-      if(!r.name){failed++;continue;}
-      const rec={
-        name:r.name, tax_id:r.tax_id||'', contact:r.contact||'',
-        phone:r.phone||'', items:r.items||'', status:r.status||'active',
-        category_id:null, created_at:new Date().toISOString(),
-      };
-      const{data:inserted,error}=await _db.from('suppliers').insert([rec]).select();
-      if(error){
-        failed++;
-        const msg='['+r.name+'] '+error.message;
-        if(failMsgs.length<5)failMsgs.push(msg);
-        if(failed===1)toast('❌ '+msg,'err');
-        // 即使 Supabase 失敗，也把資料存在本地
-        rec.id='local_'+Date.now()+'_'+i;
-        insertedRecs.push(rec);
-      } else {
-        done++;
-        // 用 Supabase 回傳的真實 id
-        insertedRecs.push((inserted&&inserted[0])||rec);
-      }
-      if(i%10===0)toast('匯入中... '+(done+failed)+'/'+records.length,'inf');
-    }
-    // 直接更新記憶體，不等 loadT（因為 RLS 可能擋讀取）
-    if(!DB.suppliers)DB.suppliers=[];
-    DB.suppliers=[...insertedRecs,...DB.suppliers];
-    // 存 localStorage 備份
-    backupToLocal('suppliers_bak',DB.suppliers);
-
-  } else {
-    records.forEach(r=>{
-      const rec={...r,id:'s'+Date.now()+Math.random(),status:r.status||'active',created_at:new Date().toISOString()};
-      DB.suppliers.push(rec);
-      insertedRecs.push(rec);
-      done++;
-    });
-    backupToLocal('suppliers_bak',DB.suppliers);
-  }
-
-  renderSup();
-  toast(done>0?'✅ 成功 '+done+' 筆（'+failed+' 失敗）':'❌ 全部失敗',done>0?'ok':'err');
-  alert('匯入完成！\n✅ 成功：'+done+' 筆\n❌ 失敗：'+failed+' 筆'+(failMsgs.length?'\n\n原因：\n'+failMsgs.join('\n'):''));
-}
-
-// ══════ 客戶分頁切換 ══════
-function switchCustTab(tab){
-  window._custTab=tab;
-  ['all','domestic','foreign'].forEach(t=>{
-    const el=document.getElementById('cust-tab-'+t);
-    if(el)el.classList.toggle('active',t===tab);
-  });
-  renderCustomers();
 }
 
 async function exportCSV(tbl){
@@ -5322,6 +5051,101 @@ window.onload=async()=>{
     }
   }
 };
+async function exportSuppliersExcel(){
+  toast('準備匯出...','inf');
+  let data=[];
+  if(!isDemo){
+    const{data:d,error}=await _db.from('suppliers').select('*');
+    if(error){toast('讀取失敗：'+error.message,'err');return;}
+    data=d||[];
+  } else { data=[...DB.suppliers||[]]; }
+  if(!data.length){toast('無供應商資料','inf');return;}
+  if(!window.XLSX){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  }
+  const cols=[
+    {k:'category',l:'分類'},{k:'name',l:'供應商名稱'},{k:'contact',l:'聯絡人'},
+    {k:'phone',l:'電話'},{k:'tax_id',l:'統一編號'},{k:'items',l:'供應品項'},
+    {k:'status',l:'狀態'},{k:'note',l:'備註'}
+  ];
+  const stMap={active:'合作中',watch:'觀察中',inactive:'停止合作'};
+  const wsData=[cols.map(c=>c.l)];
+  data.forEach(r=>wsData.push(cols.map(c=>{
+    let v=r[c.k]??'';
+    if(c.k==='status') v=stMap[v]||v;
+    return v;
+  })));
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:10},{wch:16},{wch:22},{wch:18},{wch:12},{wch:36},{wch:10},{wch:28}];
+  XLSX.utils.book_append_sheet(wb,'供應商清單',ws);
+  XLSX.writeFile(wb,'供應商清單_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('✅ 已下載 Excel','ok');
+}
+
+async function importSuppliersExcel(input){
+  const file=input.files[0];if(!file)return;input.value='';
+  toast('讀取中...','inf');
+  if(!window.XLSX){
+    await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+  }
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+  if(!rows.length){toast('Excel 無資料','err');return;}
+  const colMap={'分類':'_cat','供應商名稱':'name','供應商':'name','聯絡人':'contact',
+    '電話':'phone','統一編號':'tax_id','統編':'tax_id','供應品項':'items','狀態':'status','備註':'note'};
+  const stMap={'合作中':'active','觀察中':'watch','停止合作':'inactive','active':'active','watch':'watch','inactive':'inactive'};
+  const toInsert=[];const skip=[];
+  rows.forEach((row,i)=>{
+    const raw={};
+    Object.entries(row).forEach(([k,v])=>{const m=colMap[k.trim()];if(m)raw[m]=String(v||'').trim();});
+    if(!raw.name){skip.push(i+2);return;}
+    const rec={name:raw.name,tax_id:raw.tax_id||'',contact:raw.contact||'',
+      phone:raw.phone||'',items:raw.items||'',status:stMap[raw.status]||'active',
+      category_id:null,created_at:new Date().toISOString()};
+    if(raw.note) rec.note=raw.note;
+    const catName=raw._cat||'';
+    const cat=(DB.sup_categories||[]).find(c=>c.name===catName);
+    if(cat) rec.category_id=cat.id;
+    toInsert.push(rec);
+  });
+  if(!toInsert.length){toast('沒有有效資料','err');return;}
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(420px,92vw);box-shadow:0 8px 40px #0005;">'
+    +'<div style="font-weight:700;font-size:15px;margin-bottom:12px;">📤 確認匯入供應商</div>'
+    +'<div style="font-size:13px;margin-bottom:8px;">共 <b>'+toInsert.length+'</b> 筆，略過空白 '+skip.length+' 筆</div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;max-height:150px;overflow-y:auto;margin-bottom:14px;">'
+    +toInsert.slice(0,10).map(r=>'<div style="padding:2px 0;border-bottom:1px solid var(--border2);">'+r.name+(r.phone?' · '+r.phone:'')+'</div>').join('')
+    +(toInsert.length>10?'<div style="color:var(--text3);">...還有 '+(toInsert.length-10)+' 筆</div>':'')
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+    +'<button id="supImpCancel" style="padding:9px 18px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;">取消</button>'
+    +'<button id="supImpConfirm" style="padding:9px 20px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">✅ 確認匯入</button>'
+    +'</div></div>';
+  document.body.appendChild(d);
+  document.getElementById('supImpCancel').onclick=()=>d.remove();
+  document.getElementById('supImpConfirm').onclick=async()=>{
+    d.remove();toast('匯入中...','inf');
+    let done=0,failed=0,msgs=[];
+    for(const rec of toInsert){
+      if(!isDemo){
+        const{error}=await _db.from('suppliers').insert([rec]);
+        if(error){failed++;if(msgs.length<3)msgs.push('['+rec.name+'] '+error.message);}
+        else done++;
+      } else {
+        rec.id='s'+Date.now()+Math.random();DB.suppliers.push(rec);done++;
+      }
+    }
+    if(!isDemo) await loadT('suppliers');
+    renderSup();
+    alert('匯入完成！\n✅ 成功：'+done+' 筆\n❌ 失敗：'+failed+' 筆'+(msgs.length?'\n\n原因：\n'+msgs.join('\n'):''));
+    toast(done+' 筆匯入成功','ok');
+  };
+}
+
 </script>
 </body>
 </html>
