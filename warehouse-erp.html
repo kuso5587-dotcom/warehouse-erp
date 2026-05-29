@@ -1599,29 +1599,31 @@ function renderPermissions(role){
     {label:'🏭 倉庫管理',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust']},
     {label:'🛒 採購模組',items:['purchase_view','purchase_add','purchase_approve','supplier_view','supplier_edit','quote_view','quote_edit','cost_view']},
     {label:'📑 訂購紀錄',items:['orders_view','orders_edit','orders_import','accounting_view']},
+    {label:'💼 業務管理',items:['sales_view','sales_edit']},
     {label:'📈 報表與系統',items:['reports_view','reports_export','production_view','production_edit','users_manage','actlog_view']},
   ];
   const permNameMap=Object.fromEntries(PERM_ITEMS);
   let html='';
   groups.forEach(g=>{
-    html+=`<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 0 4px;letter-spacing:.5px;">${g.label}</div>`;
+    html+='<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 0 4px;letter-spacing:.5px;">'+g.label+'</div>';
     g.items.forEach(k=>{
       const on=editingPerms[k]?true:false;
       const isAdminOnly=['users_manage','actlog_view'].includes(k);
       const locked=role==='admin'&&['dashboard_view','users_manage'].includes(k);
-      html+=`<div class="perm-row">
-        <div>
-          <div style="font-size:13px;font-weight:600;">${permNameMap[k]||k}</div>
-          ${isAdminOnly?'<div style="font-size:10px;color:var(--amber-text);">⚠️ 建議僅管理員開啟</div>':''}
-        </div>
-        <button class="toggle-btn ${on?'on':'off'} ${locked?'disabled':''}"
-          onclick="${locked?'alert(\'此項目固定開啟\')':'togglePerm(\''+k+'\')'}">
-        </button>
-      </div>`;
+      html+='<div class="perm-row">'
+        +'<div>'
+        +'<div style="font-size:13px;font-weight:600;">'+(permNameMap[k]||k)+'</div>'
+        +(isAdminOnly?'<div style="font-size:10px;color:var(--amber-text);">⚠️ 建議僅管理員開啟</div>':'')
+        +'</div>'
+        +'<button class="toggle-btn '+(on?'on':'off')+'" data-key="'+k+'" data-locked="'+(locked?'1':'0')+'" onclick="handlePermToggle(this)">'
+        +'</button>'
+        +'</div>';
     });
   });
   document.getElementById('permList').innerHTML=html;
-  document.getElementById('roleDesc').innerHTML=`<span class="badge ${role==='admin'?'b-danger':role==='purchase'?'b-info':'b-gray'}">${ROLE_LABELS[role]||role}</span><br><br>${ROLE_DESC[role]||''}`;
+  const roleLabel=ROLE_LABELS[role]||role;
+  const roleBadge=role==='admin'?'b-danger':role==='purchase'||role==='warehouse'?'b-info':'b-gray';
+  document.getElementById('roleDesc').innerHTML='<span class="badge '+roleBadge+'">'+roleLabel+'</span><br><br>'+(ROLE_DESC[role]||'');
 }
 
 function addCustomRole(){
@@ -1708,9 +1710,21 @@ function loadCustomRoles(){
   }catch(e){}
 }
 
+function handlePermToggle(btn){
+  const key=btn.dataset.key;
+  const locked=btn.dataset.locked==='1';
+  if(locked){alert('此項目管理員固定開啟');return;}
+  togglePerm(key);
+}
 function togglePerm(key){
-  editingPerms[key]=!editingPerms[key];
-  renderPermissions(editingPermRole);
+  if(!editingPerms) editingPerms={};
+  editingPerms[key]=editingPerms[key]?false:true;
+  // 更新 UI 不重新 render（避免失去焦點）
+  const btn=document.querySelector('.perm-row .toggle-btn[data-key="'+key+'"]');
+  if(btn){
+    btn.classList.toggle('on', !!editingPerms[key]);
+    btn.classList.toggle('off', !editingPerms[key]);
+  }
 }
 function switchRole(r){renderPermissions(r);}
 async function savePermissions(){
@@ -2846,7 +2860,7 @@ function printQuote(id){
       ${itemRows}
     </tbody>
   </table>
-  ${q.note?`<div class="note-box"><b>備註：</b>${q.note}</div>`:''}
+  ${q.note?'<div class="note-box"><b>備註：</b>'+q.note+'</div>':''}
   <div style="margin-top:24px;border-top:1px solid #eee;padding-top:12px;font-size:12px;color:#666;">
     請於收到本詢價單後儘速回覆，謝謝。
   </div>
@@ -2855,7 +2869,7 @@ function printQuote(id){
     <button onclick="window.print()" style="padding:10px 24px;background:#185FA5;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨 列印 / 存成PDF</button>
     <button onclick="saveAsJpeg()" style="padding:10px 24px;background:#3B6D11;color:white;border:none;border-radius:6px;font-size:14px;cursor:pointer;">📷 下載 JPEG（傳 Line）</button>
   </div>
-  <script>
+  <scr'+'ipt>
   async function saveAsJpeg(){
     const btn=document.querySelector('[onclick="saveAsJpeg()"]');
     btn.textContent='產生中...';btn.disabled=true;
@@ -3545,7 +3559,7 @@ async function refreshUsage(){
 // ══════════════════════════════════════════════
 // 業務管理 / 生產工作通知單
 // ══════════════════════════════════════════════
-const SALE_STATUS_COLOR={進行中:'b-info',已完成:'b-success',暫停:'b-warning',取消:'b-danger'};
+const SALE_STATUS_COLOR={進行中:'b-info',已完成:'b-success',暫停中:'b-warning',取消:'b-danger'};
 
 function initSalesPage(){
   if(!isDemo&&!DB.sales_loaded){
@@ -3605,9 +3619,10 @@ function openSalesForm(id){
   const d=document.createElement('div');
   d.id='salesModal';
   d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;';
-  const isNew=!s||s.machine_type==='新機'||!s.machine_type;
+  const mtype=s?.machine_type||'新機';
   const today=new Date().toISOString().slice(0,10);
   const inp='width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;';
+  const stOpts=['進行中','暫停中','已完成'].map(v=>`<option value="${v}"${(s?.status||'進行中')===v?' selected':''}>${v}</option>`).join('');
   d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(780px,96vw);box-shadow:0 8px 40px #0005;margin:auto;">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📋 ${s?'編輯':'新增'}生產工作通知單</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -3617,34 +3632,22 @@ function openSalesForm(id){
       <div class="fg"><label>交貨日期</label><input type="date" id="sf-delivery" style="${inp}" value="${s?.delivery_date||''}"></div>
       <div class="fg"><label>機型</label><input id="sf-model" style="${inp}" value="${s?.model||''}" placeholder="例：DJ-C1000"></div>
       <div class="fg"><label>台數</label><input type="number" id="sf-qty" style="${inp}" value="${s?.qty||1}" min="1"></div>
+      <div class="fg"><label>狀態</label><select id="sf-status" style="${inp}">${stOpts}</select></div>
+      <div class="fg"><label>製表人</label><input id="sf-maker" style="${inp}" value="${s?.maker||currentUser}"></div>
       <div class="fg" style="grid-column:1/-1;"><label>機器名稱</label><input id="sf-machine" style="${inp}" value="${s?.machine_name||''}" placeholder="完整機器名稱"></div>
       <div class="fg" style="grid-column:1/-1;">
         <label>機台類型</label>
         <div style="display:flex;gap:24px;margin-top:8px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">
-            <input type="radio" name="sf-mtype" value="新機" ${isNew?'checked':''} style="width:16px;height:16px;"> 新機
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;">
-            <input type="radio" name="sf-mtype" value="中古維修機" ${!isNew?'checked':''} style="width:16px;height:16px;"> 中古維修機
-          </label>
+          ${['新機','中古維修機','外購機'].map(v=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;"><input type="radio" name="sf-mtype" value="${v}" ${mtype===v?'checked':''} style="width:16px;height:16px;"> ${v}</label>`).join('')}
         </div>
       </div>
-      <div class="fg" style="grid-column:1/-1;"><label>客戶指定要求</label><textarea id="sf-req" rows="3" style="${inp}resize:vertical;">${s?.requirements||''}</textarea></div>
       <div class="fg"><label>油漆色號</label><input id="sf-paint" style="${inp}" value="${s?.paint_color||''}" placeholder="例：#60 淺沙色、原機色"></div>
-      <div class="fg"><label>製表人</label><input id="sf-maker" style="${inp}" value="${s?.maker||currentUser}"></div>
-      <div class="fg" style="grid-column:1/-1;">
-        <label style="display:block;margin-bottom:6px;">列印簽名欄人員（接單業務 / 設計者 / 生管 / 專案負責人）</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <input id="sf-salesperson" style="${inp}" value="${s?.salesperson||''}" placeholder="接單業務">
-          <input id="sf-designer" style="${inp}" value="${s?.designer||''}" placeholder="設計者">
-          <input id="sf-production" style="${inp}" value="${s?.production_manager||''}" placeholder="生管">
-          <input id="sf-pm" style="${inp}" value="${s?.pm||''}" placeholder="專案負責人">
-        </div>
-      </div>
-      <div class="fg" style="grid-column:1/-1;"><label>規格內容（機台規格/系統說明）</label><textarea id="sf-spec" rows="6" style="${inp}resize:vertical;">${s?.spec_content||''}</textarea></div>
+      <div class="fg"></div>
+      <div class="fg" style="grid-column:1/-1;"><label>規格內容（機台規格/系統說明）</label><textarea id="sf-spec" rows="12" style="${inp}resize:vertical;">${s?.spec_content||''}</textarea></div>
       <div class="fg" style="grid-column:1/-1;"><label>備註</label><textarea id="sf-note" rows="2" style="${inp}resize:vertical;">${s?.note||''}</textarea></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+    <div style="font-size:11px;color:var(--text3);margin:8px 0 4px;">※ 接單業務、設計者、生管、專案負責人請於列印後手動填寫或儲存後在列印版本輸入</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
       ${s?`<button onclick="deleteSalesOrder('${s.id}')" style="padding:10px 16px;background:#e53935;color:white;border:none;border-radius:8px;cursor:pointer;">🗑 刪除</button>`:''}
       <button onclick="document.getElementById('salesModal').remove()" style="padding:10px 16px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-left:auto;">取消</button>
       ${s?`<button onclick="printWorkOrder('${s.id}')" style="padding:10px 16px;background:#43a047;color:white;border:none;border-radius:8px;cursor:pointer;">🖨 列印/PDF</button>`:''}
@@ -3662,7 +3665,7 @@ async function saveSalesOrder(id){
     order_no, customer,
     model:document.getElementById('sf-model')?.value||'',
     machine_name:document.getElementById('sf-machine')?.value||'',
-    requirements:document.getElementById('sf-req')?.value||'',
+
     qty:parseInt(document.getElementById('sf-qty')?.value)||1,
     issue_date:document.getElementById('sf-issue-date')?.value||'',
     delivery_date:document.getElementById('sf-delivery')?.value||'',
@@ -3675,7 +3678,7 @@ async function saveSalesOrder(id){
     maker:document.getElementById('sf-maker')?.value||currentUser,
     spec_content:document.getElementById('sf-spec')?.value||'',
     note:document.getElementById('sf-note')?.value||'',
-    status:'進行中',
+    status:document.getElementById('sf-status')?.value||'進行中',
   };
   if(!isDemo){
     if(id){
@@ -3713,144 +3716,176 @@ function printWorkOrder(id){
   const s=(DB.sales||[]).find(x=>x.id===id);
   if(!s){toast('找不到工作單','err');return;}
   const issueDate=s.issue_date||new Date().toISOString().slice(0,10);
-  const [iy,im,id2]=(issueDate||'').split('-');
+  const [iy,im,id2]=(issueDate||'--').split('-');
   const iRoc=parseInt(iy||2025)-1911;
-  const w=window.open('','_blank','width=1100,height=750');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>生產工作通知單 ${s.order_no}</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    @page{size:A4 landscape;margin:12mm 14mm;}
-    body{font-family:'微軟正黑體','Microsoft JhengHei',Arial,sans-serif;font-size:11px;color:#000;background:#fff;}
-    .no-print{display:flex;gap:8px;padding:10px 16px;background:#f5f5f5;border-bottom:1px solid #ddd;}
-    @media print{.no-print{display:none!important;}}
-    .page{padding:10px 16px;}
-    h1{font-size:17px;text-align:center;font-weight:bold;margin-bottom:2px;}
-    h2{font-size:12px;text-align:center;margin-bottom:10px;color:#333;}
-    table{width:100%;border-collapse:collapse;margin-bottom:8px;}
-    td{border:1px solid #444;padding:4px 7px;vertical-align:middle;}
-    .lbl{background:#ebebeb;font-weight:bold;white-space:nowrap;text-align:center;width:80px;}
-    .sec{font-weight:bold;background:#d5d5d5;font-size:10px;letter-spacing:1px;text-align:center;}
-    .sign-wrap{display:flex;border:1px solid #444;margin-top:6px;}
-    .sign-box{flex:1;border-right:1px solid #444;padding:4px 6px;text-align:center;}
-    .sign-box:last-child{border-right:none;}
-    .sign-name{font-size:12px;font-weight:bold;min-height:18px;}
-    .sign-line{border-bottom:1px solid #777;height:32px;margin:3px 6px 2px;}
-    .sign-label{font-size:9px;color:#555;margin-top:2px;}
-    .badge{display:inline-block;padding:1px 8px;border:1px solid #444;border-radius:3px;font-size:10px;font-weight:bold;}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:0;}
-    .two-col > *:first-child{border-right:none;}
-  </style>
-  </head><body>
-  <div class="no-print">
-    <button onclick="window.print()" style="padding:7px 18px;background:#185FA5;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;">🖨 列印 / 儲存PDF</button>
-    <button onclick="saveAsJpegSales()" style="padding:7px 18px;background:#3B6D11;color:white;border:none;border-radius:5px;cursor:pointer;font-size:13px;">📷 下載JPEG</button>
-    <span style="margin-left:8px;color:#555;font-size:12px;">列印時請選「橫向」/「A4」</span>
-  </div>
-  <div class="page">
-    <h1>大佶（佶榮）機電股份有限公司</h1>
-    <h2>生 產 工 作 通 知 單</h2>
-    <table>
-      <tr>
-        <td class="lbl">工單號碼</td>
-        <td style="font-weight:bold;font-size:13px;width:200px;">${s.order_no||''}</td>
-        <td class="lbl">開單日期</td>
-        <td style="width:120px;">${iRoc}年${im||''}月${id2||''}日</td>
-        <td class="lbl">機台類型</td>
-        <td><span class="badge">${s.machine_type||'新機'}</span></td>
-        <td class="lbl">台數</td>
-        <td style="font-weight:bold;text-align:center;">${s.qty||1} 台</td>
-      </tr>
-      <tr>
-        <td class="lbl">客戶名稱</td>
-        <td colspan="3" style="font-weight:bold;font-size:13px;">${s.customer||''}</td>
-        <td class="lbl">交貨日期</td>
-        <td colspan="3" style="font-weight:bold;">${s.delivery_date||''}</td>
-      </tr>
-      <tr>
-        <td class="lbl">機型</td>
-        <td colspan="3">${s.model||''}</td>
-        <td class="lbl">油漆色號</td>
-        <td colspan="3">${s.paint_color||''}</td>
-      </tr>
-      <tr>
-        <td class="lbl">機器名稱</td>
-        <td colspan="7" style="font-size:12px;">${s.machine_name||''}</td>
-      </tr>
-    </table>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-      <div>
-        ${s.requirements?`<table style="height:100%;"><tr><td class="sec">客 戶 指 定 要 求 內 容</td></tr><tr><td style="white-space:pre-wrap;min-height:80px;line-height:1.7;vertical-align:top;">${s.requirements}</td></tr></table>`:'<table style="height:100%;"><tr><td class="sec">客 戶 指 定 要 求 內 容</td></tr><tr><td style="min-height:80px;"></td></tr></table>'}
-      </div>
-      <div>
-        ${s.spec_content?`<table style="height:100%;"><tr><td class="sec">規 格 說 明</td></tr><tr><td style="white-space:pre-wrap;min-height:80px;line-height:1.7;vertical-align:top;">${s.spec_content}</td></tr></table>`:'<table style="height:100%;"><tr><td class="sec">規 格 說 明</td></tr><tr><td style="min-height:80px;"></td></tr></table>'}
-      </div>
-    </div>
+  const w=window.open('','_blank','width=1200,height=820');
 
-    ${s.note?`<table style="margin-bottom:8px;"><tr><td class="sec">備 註</td></tr><tr><td style="white-space:pre-wrap;min-height:24px;">${s.note}</td></tr></table>`:''}
-
-    <div style="font-size:10px;color:#555;margin-bottom:3px;">▼ 部門確認</div>
-    <div class="sign-wrap" style="margin-bottom:8px;">
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">銷 售 部</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">廠 務 部</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">電 　 控</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-label">採 　 購</div></div>
-    </div>
-
-    <div style="font-size:10px;color:#555;margin-bottom:3px;">▼ 人員簽名</div>
-    <div class="sign-wrap">
-      <div class="sign-box">
-        <div class="sign-name">${s.salesperson||'　'}</div>
-        <div class="sign-line"></div>
-        <div class="sign-label">接 單 業 務</div>
-      </div>
-      <div class="sign-box">
-        <div class="sign-name">${s.designer||'　'}</div>
-        <div class="sign-line"></div>
-        <div class="sign-label">設 計 者</div>
-      </div>
-      <div class="sign-box">
-        <div class="sign-name">${s.production_manager||'　'}</div>
-        <div class="sign-line"></div>
-        <div class="sign-label">生 　 管</div>
-      </div>
-      <div class="sign-box">
-        <div class="sign-name">${s.pm||'　'}</div>
-        <div class="sign-line"></div>
-        <div class="sign-label">專 案 負 責 人</div>
-      </div>
-      <div class="sign-box">
-        <div class="sign-name">${s.maker||'　'}</div>
-        <div class="sign-line"></div>
-        <div class="sign-label">製 　 表</div>
-      </div>
-    </div>
-  </div>
-  <script>
-  async function saveAsJpegSales(){
-    const btn=document.querySelectorAll('.no-print button')[1];
-    btn.textContent='產生中...';btn.disabled=true;
-    if(!window.html2canvas){
-      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
-    }
-    const page=document.querySelector('.page');
-    document.querySelectorAll('.no-print').forEach(el=>el.style.display='none');
-    const canvas=await html2canvas(page,{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    document.querySelectorAll('.no-print').forEach(el=>el.style.display='flex');
-    const a=document.createElement('a');a.download='工作單_${s.order_no}.jpg';a.href=canvas.toDataURL('image/jpeg',0.95);a.click();
-    btn.textContent='📷 下載JPEG';btn.disabled=false;
-  }
-  <\/script>
-  </body></html>`);
+  // 寫入 HTML（不含規格/備註文字，之後用 DOM 填入）
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+  +'<title>生產工作通知單 '+s.order_no+'</title>'
+  +'<style>'
+  +'*{margin:0;padding:0;box-sizing:border-box;}'
+  +'@page{size:A4 landscape;margin:7mm 9mm;}'
+  +'html,body{font-family:"微軟正黑體","Microsoft JhengHei",Arial,sans-serif;font-size:11pt;color:#000;background:#fff;}'
+  +'.no-print{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:7px 12px;background:#f5f5f5;border-bottom:1px solid #ddd;}'
+  +'@media print{.no-print{display:none!important;}}'
+  +'.page{padding:5px 8px;display:flex;flex-direction:column;height:calc(100vh - 48px);}'
+  +'@media print{.page{height:183mm;}}'
+  +'h1{font-size:15pt;text-align:center;font-weight:bold;margin-bottom:0;}'
+  +'h2{font-size:10.5pt;text-align:center;letter-spacing:6px;margin-bottom:4px;}'
+  +'table{width:100%;border-collapse:collapse;margin-bottom:3px;}'
+  +'td{border:1px solid #444;padding:2px 5px;vertical-align:middle;font-size:10pt;}'
+  +'.lbl{background:#ebebeb;font-weight:bold;white-space:nowrap;text-align:center;font-size:9pt;width:60px;}'
+  +'.spec-area{flex:1;display:flex;border:1px solid #444;margin-bottom:3px;min-height:0;overflow:hidden;}'
+  +'.spec-hd{background:#d5d5d5;font-weight:bold;font-size:9pt;text-align:center;padding:2px;border-bottom:1px solid #444;}'
+  +'.spec-col-wrap{flex:1;display:flex;flex-direction:column;border-right:1px solid #bbb;}'
+  +'.spec-col-wrap:last-child{border-right:none;}'
+  +'.spec-col{flex:1;padding:4px 7px;font-size:10pt;line-height:1.6;white-space:pre-wrap;overflow:hidden;word-break:break-word;}'
+  +'.sign-wrap{display:flex;border:1px solid #444;margin-bottom:2px;}'
+  +'.sign-box{flex:1;border-right:1px solid #444;text-align:center;padding:2px 3px;}'
+  +'.sign-box:last-child{border-right:none;}'
+  +'.sign-name{font-size:10pt;font-weight:bold;min-height:13px;}'
+  +'.sign-line{border-bottom:1px solid #777;height:22px;margin:1px 5px;}'
+  +'.sign-label{font-size:8.5pt;color:#444;}'
+  +'.badge{display:inline-block;padding:0 5px;border:1px solid #444;border-radius:2px;font-size:9pt;font-weight:bold;}'
+  +'</style></head><body>'
+  +'<div class="no-print">'
+  +'<button onclick="window.print()" style="padding:5px 14px;background:#185FA5;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;">🖨 列印/PDF</button>'
+  +'<button id="jpegBtn" onclick="saveJpeg()" style="padding:5px 14px;background:#3B6D11;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;">📷 JPEG</button>'
+  +'<span style="color:#ccc;margin:0 2px;">|</span>'
+  +'<span style="font-size:11px;font-weight:600;">簽名欄：</span>'
+  +'<input id="p-sales" placeholder="接單業務" style="width:76px;padding:3px 5px;border:1px solid #ccc;border-radius:4px;font-size:11px;">'
+  +'<input id="p-design" placeholder="設計者" style="width:66px;padding:3px 5px;border:1px solid #ccc;border-radius:4px;font-size:11px;">'
+  +'<input id="p-pm" placeholder="生管" style="width:52px;padding:3px 5px;border:1px solid #ccc;border-radius:4px;font-size:11px;">'
+  +'<input id="p-proj" placeholder="專案負責人" style="width:86px;padding:3px 5px;border:1px solid #ccc;border-radius:4px;font-size:11px;">'
+  +'<button onclick="applyNames()" style="padding:3px 9px;background:#555;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">套用</button>'
+  +'<span style="font-size:10px;color:#888;margin-left:4px;">列印選「橫向 A4」</span>'
+  +'</div>'
+  +'<div class="page">'
+  +'<h1>大佶（佶榮）機電股份有限公司</h1>'
+  +'<h2>生 產 工 作 通 知 單</h2>'
+  +'<table>'
+  +'<tr>'
+  +'<td class="lbl">工單號碼</td><td style="font-weight:bold;font-size:12pt;width:140px;">'+s.order_no+'</td>'
+  +'<td class="lbl">開單日期</td><td style="width:100px;">'+iRoc+'年'+im+'月'+id2+'日</td>'
+  +'<td class="lbl">機台類型</td><td style="width:88px;"><span class="badge">'+(s.machine_type||'新機')+'</span></td>'
+  +'<td class="lbl">台數</td><td style="font-weight:bold;text-align:center;width:38px;">'+(s.qty||1)+'</td>'
+  +'</tr>'
+  +'<tr>'
+  +'<td class="lbl">客戶名稱</td><td colspan="3" style="font-weight:bold;font-size:12pt;">'+(s.customer||'')+'</td>'
+  +'<td class="lbl">交貨日期</td><td colspan="3" style="font-weight:bold;">'+(s.delivery_date||'')+'</td>'
+  +'</tr>'
+  +'<tr>'
+  +'<td class="lbl">機型</td><td colspan="3">'+(s.model||'')+'</td>'
+  +'<td class="lbl">油漆色號</td><td colspan="3">'+(s.paint_color||'')+'</td>'
+  +'</tr>'
+  +'<tr><td class="lbl">機器名稱</td><td colspan="7">'+(s.machine_name||'')+'</td></tr>'
+  +'</table>'
+  +'<div class="spec-area">'
+  +'<div class="spec-col-wrap"><div class="spec-hd">規 格 說 明</div><div class="spec-col" id="col1"></div></div>'
+  +'<div class="spec-col-wrap" id="col2wrap" style="display:none;"><div class="spec-hd">（ 續 ）</div><div class="spec-col" id="col2"></div></div>'
+  +'</div>'
+  +(s.note?'<table style="margin-bottom:3px;"><tr><td class="lbl" style="width:50px;">備註</td><td id="note-td" style="font-size:10pt;"></td></tr></table>':'')
+  +'<div class="sign-wrap" style="margin-bottom:2px;">'
+  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">銷 售 部</div></div>'
+  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">廠 務 部</div></div>'
+  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">電 　 控</div></div>'
+  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">採 　 購</div></div>'
+  +'</div>'
+  +'<div class="sign-wrap">'
+  +'<div class="sign-box"><div class="sign-name" id="sn-sales">'+(s.salesperson||'')+'</div><div class="sign-line"></div><div class="sign-label">接 單 業 務</div></div>'
+  +'<div class="sign-box"><div class="sign-name" id="sn-design">'+(s.designer||'')+'</div><div class="sign-line"></div><div class="sign-label">設 計 者</div></div>'
+  +'<div class="sign-box"><div class="sign-name" id="sn-pm">'+(s.production_manager||'')+'</div><div class="sign-line"></div><div class="sign-label">生 　 管</div></div>'
+  +'<div class="sign-box"><div class="sign-name" id="sn-proj">'+(s.pm||'')+'</div><div class="sign-line"></div><div class="sign-label">專 案 負 責 人</div></div>'
+  +'<div class="sign-box"><div class="sign-name">'+(s.maker||'')+'</div><div class="sign-line"></div><div class="sign-label">製 　 表</div></div>'
+  +'</div></div></body></html>');
   w.document.close();
+
+  // ─── 用 DOM 直接填入規格與備註（完全不用 template literal）───
+  const spec=s.spec_content||'';
+  const noteEl=w.document.getElementById('note-td');
+  if(noteEl) noteEl.textContent=s.note||'';
+
+  // 雙欄分配：用行數決定，超過30行就分左右欄
+  const fillSpec=()=>{
+    const col1=w.document.getElementById('col1');
+    const col2=w.document.getElementById('col2');
+    const wrap=w.document.getElementById('col2wrap');
+    if(!col1) return;
+    const lines=spec.split('\n');
+    if(lines.length<=30){
+      // 短規格：全放左欄
+      col1.textContent=spec;
+    } else {
+      // 長規格：嘗試用高度切割，若高度為0則平均切割
+      col1.textContent=spec;
+      const area=w.document.querySelector('.spec-area');
+      const avail=area?(area.offsetHeight-30):0;
+      if(avail>50){
+        // 高度正常，用二分法找切割點
+        let lo=0,hi=lines.length;
+        while(lo<hi){
+          const mid=Math.floor((lo+hi)/2);
+          col1.textContent=lines.slice(0,mid).join('\n');
+          if(col1.scrollHeight<=avail) lo=mid+1; else hi=mid;
+        }
+        const cut=Math.max(1,lo-1);
+        if(cut<lines.length){
+          wrap.style.display='flex';
+          col1.textContent=lines.slice(0,cut).join('\n');
+          col2.textContent=lines.slice(cut).join('\n');
+        }
+      } else {
+        // 高度為0（可能還在渲染），平均切割
+        const cut=Math.floor(lines.length/2);
+        wrap.style.display='flex';
+        col1.textContent=lines.slice(0,cut).join('\n');
+        col2.textContent=lines.slice(cut).join('\n');
+      }
+    }
+  };
+
+  // 等 DOM 渲染完再填，嘗試兩次確保高度正確
+  w.setTimeout(fillSpec, 100);
+  w.setTimeout(fillSpec, 500);
+
+  // 套用簽名函數
+  w.applyNames=function(){
+    const get=id=>w.document.getElementById(id);
+    get('sn-sales').textContent=get('p-sales').value||'';
+    get('sn-design').textContent=get('p-design').value||'';
+    get('sn-pm').textContent=get('p-pm').value||'';
+    get('sn-proj').textContent=get('p-proj').value||'';
+  };
+
+  // JPEG 儲存
+  w.saveJpeg=async function(){
+    const btn=w.document.getElementById('jpegBtn');
+    btn.textContent='產生中...';btn.disabled=true;
+    if(!w.html2canvas){
+      await new Promise((res,rej)=>{
+        const sc=w.document.createElement('script');
+        sc.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+        sc.onload=res;sc.onerror=rej;
+        w.document.head.appendChild(sc);
+      });
+    }
+    w.document.querySelectorAll('.no-print').forEach(el=>el.style.display='none');
+    const canvas=await w.html2canvas(w.document.querySelector('.page'),{scale:2,backgroundColor:'#fff',useCORS:true});
+    w.document.querySelectorAll('.no-print').forEach(el=>el.style.display='flex');
+    const a=w.document.createElement('a');
+    a.download='工作單_'+(s.order_no||'WO')+'.jpg';
+    a.href=canvas.toDataURL('image/jpeg',0.95);a.click();
+    btn.textContent='📷 JPEG';btn.disabled=false;
+  };
 }
 function exportSalesCSV(){
   const data=DB.sales||[];
   if(!data.length){toast('無資料','inf');return;}
   const keys=['order_no','customer','model','machine_name','qty','delivery_date','salesperson','status','requirements','spec_content','note'];
   const hdrs=['工單號','客戶','機型','機器名稱','台數','交貨日期','接單業務','狀態','客戶要求','規格說明','備註'];
-  const csv=[hdrs.join(','),...data.map(r=>keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(','))].join('\r\n');
+  const csv=[hdrs.join(','),...data.map(r=>keys.map(k=>'"'+((r[k]||'').toString().replace(/"/g,'""'))+'"').join(','))].join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
   a.download='業務工作單_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV已下載','ok');
 }
@@ -3902,7 +3937,7 @@ async function deleteCat(id){
   if(!cat)return;
   const inUse=DB.suppliers.some(s=>s.category_id===id);
   if(inUse){toast('此分類有供應商使用，無法刪除','err');return;}
-  if(!confirm(`確定刪除分類「${cat.name}」？`))return;
+  if(!confirm('確定刪除分類「'+cat.name+'」？'))return;
   if(!isDemo){
     await _db.from('sup_categories').delete().eq('id',id);
     await loadT('sup_categories');
@@ -3945,7 +3980,7 @@ async function loadOrdersFromDB(year){
       const{data,error}=await q;
       if(error)throw error;
       if(data&&data.length>0) allData=allData.concat(data);
-      if(countEl) countEl.textContent=`載入中... ${allData.length} 筆`;
+      if(countEl) countEl.textContent='載入中... '+allData.length+' 筆';
       if(!data||data.length<PAGE) break;
       from+=PAGE;
     }
@@ -3962,47 +3997,44 @@ function renderOrderYearTabs(){
   const tabsEl=document.getElementById('orderYearTabs');
   if(!tabsEl) return;
   const years=['all',...new Set((DB.orders||[]).map(o=>o.year).filter(Boolean))].sort((a,b)=>a==='all'?-1:b-a);
-  tabsEl.innerHTML=years.map(y=>`
-    <span style="display:inline-flex;align-items:center;gap:2px;">
-      <button class="zone-tab${y===currentOrderYear?' active':''}" onclick="switchOrderYear(${y==='all'?'\'all\'':y},this)">
-        ${y==='all'?'📑 全部':y+'年'}
-      </button>${y!=='all'?`<button title="修改此年份" onclick="editOrderYear(${y})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:2px 4px;">✎</button>`:''}
-    </span>`).join('');
+  tabsEl.innerHTML=years.map(y=>{
+    const editBtn=y!=='all'?'<button title="修改此年份" onclick="editOrderYear('+y+')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:2px 4px;">✎</button>':'';
+    const label=y==='all'?'📑 全部':y+'年';
+    const active=y===currentOrderYear?' active':'';
+    return'<span style="display:inline-flex;align-items:center;gap:2px;"><button class="zone-tab'+active+'" onclick="switchOrderYear('+(y==='all'?'\'all\'':y)+',this)">'+label+'</button>'+editBtn+'</span>';
+  }).join('');
   // 更新廠商下拉
   const supF=document.getElementById('orderSupF');
   if(supF){
     const sups=[...new Set((DB.orders||[]).map(o=>o.supplier).filter(Boolean))].sort();
     const cur=supF.value;
-    supF.innerHTML='<option value="">全部廠商</option>'+sups.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+    supF.innerHTML='<option value="">全部廠商</option>'+sups.map(s=>'<option value="'+s+'"'+(s===cur?' selected':'')+'>'+s+'</option>').join('');
   }
 }
 
 async function editOrderYear(oldYear){
-  const newYearStr = prompt(`將 ${oldYear} 年改為哪一年？（西元年，例：2025）`, oldYear);
+  const newYearStr = prompt('將 '+oldYear+' 年改為哪一年？（西元年，例：2025）', oldYear);
   if(!newYearStr) return;
   const newYear = parseInt(newYearStr);
   if(!newYear||newYear<2000||newYear>2099){ toast('年份無效','err'); return; }
   if(newYear===oldYear){ toast('年份相同，無需修改','inf'); return; }
 
   // 產生 SQL 讓使用者到 Supabase 執行（最可靠的方式）
-  const sql=`-- 將 ${oldYear} 年訂購紀錄全部改為 ${newYear} 年
--- 在 Supabase → SQL Editor 執行此 SQL
-
-UPDATE orders SET
-  year = ${newYear},
-  order_date = REPLACE(order_date, '${oldYear}-', '${newYear}-'),
-  arrive_date = REPLACE(arrive_date, '${oldYear}-', '${newYear}-')
-WHERE year = ${oldYear}
-   OR order_date LIKE '${oldYear}-%'
-   OR arrive_date LIKE '${oldYear}-%';
-
--- 若有 plan_date 欄位，再加這行：
--- UPDATE orders SET plan_date = REPLACE(plan_date, '${oldYear}-', '${newYear}-') WHERE plan_date LIKE '${oldYear}-%';
-`;
+  const sql='-- 將 '+oldYear+' 年訂購紀錄全部改為 '+newYear+' 年\n'
+    +'-- 在 Supabase → SQL Editor 執行此 SQL\n\n'
+    +'UPDATE orders SET\n'
+    +'  year = '+newYear+',\n'
+    +"  order_date = REPLACE(order_date, '"+oldYear+"-', '"+newYear+"-'),\n"
+    +"  arrive_date = REPLACE(arrive_date, '"+oldYear+"-', '"+newYear+"-')\n"
+    +'WHERE year = '+oldYear+'\n'
+    +"   OR order_date LIKE '"+oldYear+"-%'\n"
+    +"   OR arrive_date LIKE '"+oldYear+"-%';\n\n"
+    +'-- 若有 plan_date 欄位，再加這行：\n'
+    +"-- UPDATE orders SET plan_date = REPLACE(plan_date, '"+oldYear+"-', '"+newYear+"-') WHERE plan_date LIKE '"+oldYear+"-%';\n";
 
   // 顯示 SQL 並複製到剪貼簿
   const choice = confirm(
-    `請到 Supabase → SQL Editor 執行以下 SQL 才能同步日期：\n\n${sql}\n\n按「確定」複製 SQL 到剪貼簿\n按「取消」只更新本機畫面（重新整理後會還原）`
+    '請到 Supabase → SQL Editor 執行以下 SQL 才能同步日期：\n\n'+sql+'\n\n按「確定」複製 SQL 到剪貼簿\n按「取消」只更新本機畫面（重新整理後會還原）'
   );
   if(choice){
     try{ await navigator.clipboard.writeText(sql); toast('SQL 已複製！請到 Supabase SQL Editor 貼上執行','ok'); }
@@ -4021,7 +4053,7 @@ WHERE year = ${oldYear}
   });
   if(currentOrderYear===oldYear) currentOrderYear=newYear;
   renderOrders();
-  toast(`⚠️ 只更新了畫面，資料庫未改。請執行 SQL 才能永久儲存。`,'inf');
+  toast('⚠️ 只更新了畫面，資料庫未改。請執行 SQL 才能永久儲存。','inf');
 }
 
 function switchOrderYear(year, el){
@@ -4058,7 +4090,7 @@ function fROC(dateStr){
   if(parts.length<3) return dateStr;
   const y=parseInt(parts[0]),m=parts[1],d=parts[2];
   if(y<1912) return dateStr;
-  return `${dateStr}<br><span style="font-size:10px;color:var(--text3);">民${y-1911}/${m}/${d}</span>`;
+  return dateStr+'<br><span style="font-size:10px;color:var(--text3);">民'+(y-1911)+'/'+m+'/'+d+'</span>';
 }
 
 
@@ -4075,21 +4107,20 @@ function openColorLabelEditor(){
   const CL=getColorLabels();
   const d=document.createElement('div');
   d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
-  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:320px;box-shadow:0 8px 40px #0004;">
-    <div style="font-weight:700;font-size:15px;margin-bottom:16px;">🎨 底色名稱設定</div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      ${['green','yellow','red','blue'].map(c=>`
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:18px;">${{green:'🟢',yellow:'🟡',red:'🔴',blue:'🔵'}[c]}</span>
-        <input id="cl-${c}" value="${CL[c]}" maxlength="8"
-          style="flex:1;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
-      </div>`).join('')}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:18px;">
-      <button onclick="saveColorLabels()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;">💾 儲存</button>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>
-    </div>
-  </div>`;
+  const emojiMap={green:'🟢',yellow:'🟡',red:'🔴',blue:'🔵'};
+  const rows=['green','yellow','red','blue'].map(c=>
+    '<div style="display:flex;align-items:center;gap:8px;">'
+    +'<span style="font-size:18px;">'+emojiMap[c]+'</span>'
+    +'<input id="cl-'+c+'" value="'+CL[c]+'" maxlength="8" style="flex:1;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">'
+    +'</div>'
+  ).join('');
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:320px;box-shadow:0 8px 40px #0004;">'
+    +'<div style="font-weight:700;font-size:15px;margin-bottom:16px;">🎨 底色名稱設定</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;">'+rows+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:18px;">'
+    +'<button onclick="saveColorLabels()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;">💾 儲存</button>'
+    +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>'
+    +'</div></div>';
   document.body.appendChild(d);
 }
 function saveColorLabels(){
@@ -4157,7 +4188,7 @@ function renderOrders(){
   const start=(currentOrderPage-1)*ORDER_PAGE_SIZE;
   const pageRows=rows.slice(start,start+ORDER_PAGE_SIZE);
   const countEl=document.getElementById('orderCount');
-  if(countEl) countEl.textContent=`共 ${total.toLocaleString()} 筆，第 ${currentOrderPage}/${totalPages} 頁`;
+  if(countEl) countEl.textContent='共 '+total.toLocaleString()+' 筆，第 '+currentOrderPage+'/'+totalPages+' 頁';
   document.getElementById('orderBody').innerHTML=pageRows.length?pageRows.map(o=>{
     // 底色：先看手動標記 row_color，再看欄位關鍵字
     let rowBg='';
@@ -4172,63 +4203,67 @@ function renderOrders(){
     }
     // 核銷下拉（直接存檔）
     const accBg=o.accounting_status==='done'?'#e8f5e9':o.accounting_status==='pending'?'#fce4ec':'';
-    const accSel=`<select onchange="quickSaveAcc('${o.id}',this.value,this)" style="font-size:11px;padding:2px 3px;border-radius:4px;border:1px solid #ccc;background:${accBg||'var(--bg2)'};min-width:72px;">
-      <option value="">-</option>
-      <option value="done"${o.accounting_status==='done'?' selected':''}>✅核銷</option>
-      <option value="pending"${o.accounting_status==='pending'?' selected':''}>⏳待核銷</option>
-    </select>`;
+    const accSel='<select onchange="quickSaveAcc(\''+o.id+'\',this.value,this)" style="font-size:11px;padding:2px 3px;border-radius:4px;border:1px solid #ccc;background:'+(accBg||'var(--bg2)')+';min-width:72px;">'
+      +'<option value="">-</option>'
+      +'<option value="done"'+(o.accounting_status==='done'?' selected':'')+'>✅核銷</option>'
+      +'<option value="pending"'+(o.accounting_status==='pending'?' selected':'')+'>⏳待核銷</option>'
+      +'</select>';
     // 底色選項下拉
     const CL=getColorLabels();
-    const colorSel=`<select onchange="quickRowColor('${o.id}',this.value,this)" title="設定底色" style="font-size:11px;padding:2px 3px;border-radius:4px;border:1px solid #ccc;background:${rowBg||'var(--bg2)'};min-width:60px;">
-      <option value="">🎨</option>
-      <option value="green"${o.row_color==='green'?' selected':''}>🟢${CL.green}</option>
-      <option value="yellow"${o.row_color==='yellow'?' selected':''}>🟡${CL.yellow}</option>
-      <option value="red"${o.row_color==='red'?' selected':''}>🔴${CL.red}</option>
-      <option value="blue"${o.row_color==='blue'?' selected':''}>🔵${CL.blue}</option>
-      <option value="none"${o.row_color==='none'?' selected':''}>✖清除</option>
-    </select>`;
-    return`<tr style="${rowBg}">
-    <td style="text-align:center;color:var(--text3);font-size:12px;white-space:nowrap;">${start+pageRows.indexOf(o)+1}</td>
-    <td style="white-space:nowrap;">${fROC(o.order_date)}</td>
-    <td style="white-space:nowrap;color:var(--text2);">${fROC(o.plan_date)}</td>
-    <td style="white-space:nowrap;color:var(--text2);">${fROC(o.arrive_date)}</td>
-    <td>${o.supplier||'-'}</td>
-    <td style="font-size:12px;color:var(--text3);">${o.po_no||'-'}</td>
-    <td>${o.name||'-'}</td>
-    <td style="color:var(--text2);">${o.spec||'-'}</td>
-    <td style="text-align:right;">${(o.qty||0).toLocaleString()}</td>
-    <td style="text-align:right;">${(()=>{
+    const colorSel='<select onchange="quickRowColor(\''+o.id+'\',this.value,this)" title="設定底色" style="font-size:11px;padding:2px 3px;border-radius:4px;border:1px solid #ccc;background:'+(rowBg||'var(--bg2)')+';min-width:60px;">'
+      +'<option value="">🎨</option>'
+      +'<option value="green"'+(o.row_color==='green'?' selected':'')+'>🟢'+CL.green+'</option>'
+      +'<option value="yellow"'+(o.row_color==='yellow'?' selected':'')+'>🟡'+CL.yellow+'</option>'
+      +'<option value="red"'+(o.row_color==='red'?' selected':'')+'>🔴'+CL.red+'</option>'
+      +'<option value="blue"'+(o.row_color==='blue'?' selected':'')+'>🔵'+CL.blue+'</option>'
+      +'<option value="none"'+(o.row_color==='none'?' selected':'')+'>✖清除</option>'
+      +'</select>';
+    const actualQtyHtml=(()=>{
       const a=o.actual_qty;
       if(a===null||a===undefined||a==='') return '<span style="color:var(--text3);">-</span>';
       const diff=a-(o.qty||0);
-      if(diff<0) return `<span style="color:#c62828;font-weight:600;">${a}</span><span style="font-size:10px;color:#c62828;"> (缺${Math.abs(diff)})</span>`;
-      return `<span style="color:var(--green-text);">${a}</span>`;
-    })()}</td>
-    <td>${o.unit||'件'}</td>
-    <td style="text-align:right;">${o.unit_price?'NT$'+(o.unit_price||0).toLocaleString():'-'}</td>
-    <td style="text-align:right;font-weight:600;">${o.amount?'NT$'+(o.amount||0).toLocaleString():'-'}</td>
-    <td>${accSel}</td>
-    <td>${colorSel}</td>
-    <td><button class="btn btn-sm" onclick="openModal('editorder','${o.id}')">✎</button></td>
-  </tr>`;}).join(''):'<tr class="empty-row"><td colspan="16">尚無資料</td></tr>';
+      if(diff<0) return '<span style="color:#c62828;font-weight:600;">'+a+'</span><span style="font-size:10px;color:#c62828;"> (缺'+Math.abs(diff)+')</span>';
+      return '<span style="color:var(--green-text);">'+a+'</span>';
+    })();
+    return '<tr style="'+rowBg+'">'
+      +'<td style="text-align:center;color:var(--text3);font-size:12px;white-space:nowrap;">'+(start+pageRows.indexOf(o)+1)+'</td>'
+      +'<td style="white-space:nowrap;">'+fROC(o.order_date)+'</td>'
+      +'<td style="white-space:nowrap;color:var(--text2);">'+fROC(o.plan_date)+'</td>'
+      +'<td style="white-space:nowrap;color:var(--text2);">'+fROC(o.arrive_date)+'</td>'
+      +'<td>'+(o.supplier||'-')+'</td>'
+      +'<td style="font-size:12px;color:var(--text3);">'+(o.po_no||'-')+'</td>'
+      +'<td>'+(o.name||'-')+'</td>'
+      +'<td style="color:var(--text2);">'+(o.spec||'-')+'</td>'
+      +'<td style="text-align:right;">'+(o.qty||0).toLocaleString()+'</td>'
+      +'<td style="text-align:right;">'+actualQtyHtml+'</td>'
+      +'<td>'+(o.unit||'件')+'</td>'
+      +'<td style="text-align:right;">'+(o.unit_price?'NT$'+(o.unit_price||0).toLocaleString():'-')+'</td>'
+      +'<td style="text-align:right;font-weight:600;">'+(o.amount?'NT$'+(o.amount||0).toLocaleString():'-')+'</td>'
+      +'<td>'+accSel+'</td>'
+      +'<td>'+colorSel+'</td>'
+      +'<td><button class="btn btn-sm" onclick="openModal(\'editorder\',\''+o.id+'\')">✎</button></td>'
+      +'</tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="16">尚無資料</td></tr>';
   // 分頁按鈕
   const pager=document.getElementById('orderPager');
   if(pager){
     let btns='';
-    if(currentOrderPage>1) btns+=`<button class="btn btn-sm" onclick="goOrderPage(${currentOrderPage-1})">← 上頁</button>`;
+    if(currentOrderPage>1) btns+='<button class="btn btn-sm" onclick="goOrderPage('+(currentOrderPage-1)+')">← 上頁</button>';
     const start2=Math.max(1,currentOrderPage-2),end2=Math.min(totalPages,currentOrderPage+2);
-    for(let i=start2;i<=end2;i++) btns+=`<button class="btn btn-sm${i===currentOrderPage?' btn-primary':''}" onclick="goOrderPage(${i})">${i}</button>`;
-    if(currentOrderPage<totalPages) btns+=`<button class="btn btn-sm" onclick="goOrderPage(${currentOrderPage+1})">下頁 →</button>`;
-    btns+=`<span style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:13px;">
-      跳至第<input type="number" min="1" max="${totalPages}" id="pageJump" value="${currentOrderPage}"
-        style="width:52px;padding:4px 6px;border:1px solid var(--border2);border-radius:4px;text-align:center;"
-        onkeydown="if(event.key==='Enter'){const v=parseInt(this.value);if(v>=1&&v<=${totalPages})goOrderPage(v);}">
-      頁 / 共${totalPages}頁
-      <button class="btn btn-sm" onclick="const v=parseInt(document.getElementById('pageJump').value);if(v>=1&&v<=${totalPages})goOrderPage(v);">GO</button>
-    </span>`;
+    for(let i=start2;i<=end2;i++) btns+='<button class="btn btn-sm'+(i===currentOrderPage?' btn-primary':'')+'" onclick="goOrderPage('+i+')">'+i+'</button>';
+    if(currentOrderPage<totalPages) btns+='<button class="btn btn-sm" onclick="goOrderPage('+(currentOrderPage+1)+')">下頁 →</button>';
+    btns+='<span style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:13px;">'
+         +'跳至第<input type="number" min="1" max="'+totalPages+'" id="pageJump" value="'+currentOrderPage+'"'
+         +' style="width:52px;padding:4px 6px;border:1px solid var(--border2);border-radius:4px;text-align:center;"'
+         +' onkeydown="if(event.key===\'Enter\'){jumpOrderPage();}">'
+         +'頁 / 共'+totalPages+'頁'
+         +' <button class="btn btn-sm" onclick="jumpOrderPage()">GO</button>'
+         +'</span>';
     pager.innerHTML=btns;
   }
 }
+
+function jumpOrderPage(){const v=parseInt(document.getElementById('pageJump')?.value);const total=Math.max(1,Math.ceil(((DB.orders||[]).length)/ORDER_PAGE_SIZE));if(v>=1&&v<=total)goOrderPage(v);}
 
 function goOrderPage(p){currentOrderPage=p;renderOrders();document.getElementById('page-orders')?.scrollTo(0,0);}
 
