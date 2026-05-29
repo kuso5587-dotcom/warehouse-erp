@@ -296,6 +296,9 @@ tr:hover td{background:var(--bg3);}
         <div class="online-dot"></div>
       </div>
       <div class="nav">
+        <div class="nslabel">💼 業務管理</div>
+        <div class="nitem" id="nav-customers" onclick="goto('customers',this)"><span class="ic">🤝</span>客戶管理</div>
+        <div class="nitem" id="nav-sales" onclick="goto('sales',this)"><span class="ic">📋</span>生產工作單</div>
         <div class="nslabel">🏭 倉庫管理</div>
         <div class="nitem active" id="nav-dashboard" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
         <div class="nitem" id="nav-inbound" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
@@ -309,9 +312,8 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
         <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
-        <div class="nslabel">💼 業務管理</div>
-        <div class="nitem" id="nav-sales" onclick="goto('sales',this)"><span class="ic">📋</span>生產工作單</div>
         <div class="nslabel">⚙️ 系統管理</div>
+        <div class="nitem" id="nav-navorder" onclick="openNavOrderEditor()"><span class="ic">🔀</span>側欄排序</div>
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
         <div class="nitem" id="nav-actlog" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
@@ -659,6 +661,7 @@ tr:hover td{background:var(--bg3);}
                   📂 匯入 Excel
                   <input type="file" accept=".xlsx,.xls,.csv" onchange="importOrdersFile(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
                 </label>
+                <button class="btn btn-sm" style="color:#e53935;border-color:#e53935;" onclick="deleteYearOrders()">🗑 刪除年份</button>
               </div>
             </div>
             <div class="search-row" style="flex-wrap:wrap;gap:8px;">
@@ -712,12 +715,17 @@ tr:hover td{background:var(--bg3);}
             <div class="stat-card"><div class="stat-label">本月交貨</div><div class="stat-val" id="sale-month">-</div></div>
             <div class="stat-card"><div class="stat-label">已完成</div><div class="stat-val" id="sale-done">-</div></div>
           </div>
+          <!-- 年份分頁 -->
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;align-items:center;" id="saleYearTabs">
+            <button class="zone-tab active" onclick="switchSaleYear('all',this)">📋 全部</button>
+          </div>
           <div class="card">
             <div class="card-hd">
               <span class="card-title">📋 生產工作通知單</span>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-primary btn-sm" onclick="openSalesForm()">＋ 新增工作單</button>
                 <button class="btn btn-sm" onclick="exportSalesCSV()">📥 匯出CSV</button>
+                <button class="btn btn-sm" onclick="openSignConfigEditor()">⚙️ 簽名欄設定</button>
               </div>
             </div>
             <div class="search-row" style="flex-wrap:wrap;gap:8px;">
@@ -726,17 +734,39 @@ tr:hover td{background:var(--bg3);}
                 <option value="">全部狀態</option>
                 <option value="進行中">進行中</option>
                 <option value="已完成">已完成</option>
-                <option value="暫停">暫停</option>
+                <option value="暫停中">暫停中</option>
                 <option value="取消">取消</option>
               </select>
             </div>
             <div class="table-wrap"><table>
               <thead><tr>
                 <th>#</th><th>工單號</th><th>客戶</th><th>機型</th><th>機器名稱</th>
-                <th style="text-align:right;">台數</th><th>交貨日期</th><th>接單業務</th>
+                <th style="text-align:right;">台數</th><th>開單日期</th><th>交貨日期</th>
                 <th>狀態</th><th>操作</th>
               </tr></thead>
               <tbody id="salesBody"><tr class="empty-row"><td colspan="10">尚無工作單</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div class="page" id="page-customers">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">🤝 客戶管理</span>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 新增客戶</button>
+                <button class="btn btn-sm" onclick="exportCustomersCSV()">📥 匯出CSV</button>
+              </div>
+            </div>
+            <div class="search-row">
+              <input id="custQ" placeholder="搜尋客戶名稱、聯絡人、電話..." oninput="renderCustomers()" style="flex:1;">
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr>
+                <th>#</th><th>客戶名稱</th><th>聯絡人</th><th>電話</th><th>傳真</th>
+                <th>地址</th><th>統編</th><th>付款條件</th><th>業務負責人</th><th>備註</th><th>操作</th>
+              </tr></thead>
+              <tbody id="customersBody"><tr class="empty-row"><td colspan="11">尚無客戶資料</td></tr></tbody>
             </table></div>
           </div>
         </div>
@@ -813,7 +843,7 @@ const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
 
-const PT={dashboard:'總覽儀表板',sales:'業務管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
+const PT={dashboard:'總覽儀表板',customers:'客戶管理',sales:'業務管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
 function goto(p,el,label,bnavEl){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
@@ -827,6 +857,7 @@ function goto(p,el,label,bnavEl){
   if(p==='quote'){initQuotePage();}
   if(p==='orders'){initOrdersPage();}
   if(p==='usage'){initUsagePage();}
+  if(p==='customers'){initCustomersPage();}
   if(p==='sales'){initSalesPage();}
   closeSidebar();
 }
@@ -985,6 +1016,7 @@ function applyNavPerms(){
     'nav-production':'production_view',
     'nav-orders':'orders_view',
     'nav-sales':'sales_view',
+    'nav-customers':'customers_view',
     'nav-reports':'reports_view',
     'nav-users':'users_manage',
     'nav-perm':'users_manage',
@@ -1460,6 +1492,65 @@ async function saveNewLoc(){
 
 
 
+
+async function deleteYearOrders(){
+  // 取得目前有哪些年份
+  const years=[...new Set((DB.orders||[]).map(o=>o.year).filter(Boolean))].sort((a,b)=>b-a);
+  if(!years.length){toast('目前沒有訂購資料','inf');return;}
+
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
+  const yearOpts=years.map(y=>'<option value="'+y+'">'+y+'年（民國'+(y-1911)+'年）</option>').join('');
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:360px;box-shadow:0 8px 40px #0005;">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--red);">🗑 刪除整年訂購資料</div>'
+    +'<div style="background:var(--amber-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--amber-text);">⚠️ 此操作將永久刪除該年所有訂購紀錄，無法復原！</div>'
+    +'<div class="fg" style="margin-bottom:16px;"><label>選擇要刪除的年份</label>'
+    +'<select id="del-year-sel" style="width:100%;margin-top:6px;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;">'+yearOpts+'</select>'
+    +'</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;" id="del-year-count">請選擇年份</div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button onclick="closeDelYearDlg()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;">取消</button>'
+    +'<button onclick="confirmDeleteYear()" style="flex:1;padding:10px;background:#e53935;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">確認刪除</button>'
+    +'</div>'
+    +'</div>';
+  document.body.appendChild(d);
+
+  // 顯示選擇年份的筆數
+  const sel=d.querySelector('#del-year-sel');
+  const updateCount=()=>{
+    const y=parseInt(sel.value);
+    const cnt=(DB.orders||[]).filter(o=>o.year===y).length;
+    d.querySelector('#del-year-count').textContent='該年份共 '+cnt+' 筆資料將被刪除';
+  };
+  sel.addEventListener('change',updateCount);
+  updateCount();
+}
+
+function closeDelYearDlg(){document.querySelector('#del-year-sel')?.closest('[style*="position:fixed"]')?.remove();}
+async function confirmDeleteYear(){
+  const sel=document.getElementById('del-year-sel');
+  if(!sel) return;
+  const year=parseInt(sel.value);
+  const cnt=(DB.orders||[]).filter(o=>o.year===year).length;
+  const dialog=sel.closest('[style*="position:fixed"]');
+
+  if(!confirm('確定要刪除 '+year+' 年（民國'+(year-1911)+'年）共 '+cnt+' 筆訂購資料？\n\n此操作無法復原！')) return;
+
+  if(!isDemo){
+    toast('刪除中...','inf');
+    const{error}=await _db.from('orders').delete().eq('year',year);
+    if(error){toast('刪除失敗：'+error.message,'err');return;}
+    DB.orders=(DB.orders||[]).filter(o=>o.year!==year);
+    await loadOrdersFromDB();
+  } else {
+    DB.orders=(DB.orders||[]).filter(o=>o.year!==year);
+  }
+  dialog?.remove();
+  toast(year+'年資料已全部刪除（'+cnt+'筆）','ok');
+  renderOrders();
+  renderOrderYearTabs();
+}
+
 async function saveNewOrder(){
   const name=(document.getElementById('f-ord-name')?.value||'').trim();
   const sup=(document.getElementById('f-ord-sup')?.value||'').trim();
@@ -1583,22 +1674,99 @@ const ROLE_DESC={
 // 存放目前編輯中的權限（尚未儲存）
 let editingPerms={};
 
+
+// ══════════════════════════════════════════════════════════
+// 重新設計權限系統：部門 + 主管/員工 雙層角色
+// ══════════════════════════════════════════════════════════
+
+// 部門定義（可自訂新增）
+const DEFAULT_DEPARTMENTS = [
+  { id:'admin',    name:'系統管理部', icon:'👑' },
+  { id:'sales',    name:'業務部',     icon:'💼' },
+  { id:'purchase', name:'採購部',     icon:'🛒' },
+  { id:'warehouse',name:'倉管部',     icon:'🏭' },
+  { id:'readonly', name:'唯讀帳號',   icon:'👁' },
+];
+
+// 每個部門有兩個角色：主管 (manager) 和 員工 (staff)
+// 角色 key = dept_id + '_mgr' or '_staff'
+
+function getDepartments(){
+  try{
+    const custom=JSON.parse(localStorage.getItem('erp_departments')||'[]');
+    return [...DEFAULT_DEPARTMENTS,...custom];
+  }catch(e){ return DEFAULT_DEPARTMENTS; }
+}
+
+function saveDepartments(depts){
+  const custom=depts.filter(d=>!DEFAULT_DEPARTMENTS.find(x=>x.id===d.id));
+  localStorage.setItem('erp_departments',JSON.stringify(custom));
+}
+
+// 權限設定頁：重新渲染為部門+雙角色
 function renderPermissions(role){
-  editingPermRole=role;
-  // 精確比對分頁 id，支援所有角色
-  const tabMap={admin:'pt-admin',manager:'pt-manager',purchase:'pt-purchase',warehouse:'pt-warehouse',operator:'pt-op',readonly:'pt-read'};
-  Object.entries(tabMap).forEach(([r,id])=>{
-    const el=document.getElementById(id);
-    if(el) el.classList.toggle('active',r===role);
+  editingPermRole=role||'admin_mgr';
+  const depts=getDepartments();
+  const tabBar=document.getElementById('roleTabBar');
+  const permList=document.getElementById('permList');
+  const roleDesc=document.getElementById('roleDesc');
+  if(!tabBar||!permList) return;
+
+  // 建立分頁按鈕（每個部門展示兩個：主管/員工）
+  tabBar.innerHTML='';
+  depts.forEach(dept=>{
+    // 部門標籤
+    const lbl=document.createElement('span');
+    lbl.style.cssText='font-size:10px;color:var(--text3);padding:0 6px;align-self:center;white-space:nowrap;';
+    lbl.textContent=dept.icon+' '+dept.name;
+    tabBar.appendChild(lbl);
+    // 主管
+    const mBtn=document.createElement('div');
+    mBtn.className='tab-item'+(editingPermRole===dept.id+'_mgr'?' active':'');
+    mBtn.id='pt-'+dept.id+'-mgr';
+    mBtn.textContent='主管';
+    mBtn.title=dept.name+'主管';
+    mBtn.onclick=()=>renderPermissions(dept.id+'_mgr');
+    tabBar.appendChild(mBtn);
+    // 員工
+    const sBtn=document.createElement('div');
+    sBtn.className='tab-item'+(editingPermRole===dept.id+'_staff'?' active':'');
+    sBtn.id='pt-'+dept.id+'-staff';
+    sBtn.textContent='員工';
+    sBtn.title=dept.name+'員工';
+    sBtn.onclick=()=>renderPermissions(dept.id+'_staff');
+    tabBar.appendChild(sBtn);
+    // 間隔
+    const sep=document.createElement('div');
+    sep.style.cssText='width:1px;background:var(--border2);margin:2px 6px;';
+    tabBar.appendChild(sep);
   });
-  // 取本角色的當前權限（從 DEFAULT_PERMS 或 editingPerms）
-  const base=DEFAULT_PERMS[role]||DEFAULT_PERMS['operator'];
-  editingPerms=Object.assign({},base);
+  // 新增部門按鈕
+  const addBtn=document.createElement('button');
+  addBtn.className='btn btn-sm';
+  addBtn.textContent='＋ 新增部門';
+  addBtn.onclick=openAddDeptDialog;
+  tabBar.appendChild(addBtn);
+
+  // 讀取該角色的權限
+  const permKey='perm_'+editingPermRole;
+  let savedPerms={};
+  try{ savedPerms=JSON.parse(localStorage.getItem(permKey)||'{}'); }catch(e){}
+
+  // 若是主管且無設定，給主管比員工更多預設
+  if(!Object.keys(savedPerms).length){
+    const deptId=editingPermRole.replace(/_mgr$|_staff$/,'');
+    const isMgr=editingPermRole.endsWith('_mgr');
+    savedPerms=buildDefaultPerms(deptId, isMgr);
+  }
+  editingPerms=savedPerms;
+
+  // 渲染權限開關
   const groups=[
     {label:'🏭 倉庫管理',items:['dashboard_view','inbound_view','inbound_add','inbound_exec','outbound_view','outbound_add','outbound_approve','outbound_exec','inventory_view','inventory_adjust']},
     {label:'🛒 採購模組',items:['purchase_view','purchase_add','purchase_approve','supplier_view','supplier_edit','quote_view','quote_edit','cost_view']},
     {label:'📑 訂購紀錄',items:['orders_view','orders_edit','orders_import','accounting_view']},
-    {label:'💼 業務管理',items:['sales_view','sales_edit']},
+    {label:'💼 業務管理',items:['sales_view','sales_edit','customers_view','customers_edit']},
     {label:'📈 報表與系統',items:['reports_view','reports_export','production_view','production_edit','users_manage','actlog_view']},
   ];
   const permNameMap=Object.fromEntries(PERM_ITEMS);
@@ -1607,107 +1775,84 @@ function renderPermissions(role){
     html+='<div style="font-size:11px;font-weight:700;color:var(--text3);padding:10px 0 4px;letter-spacing:.5px;">'+g.label+'</div>';
     g.items.forEach(k=>{
       const on=editingPerms[k]?true:false;
-      const isAdminOnly=['users_manage','actlog_view'].includes(k);
-      const locked=role==='admin'&&['dashboard_view','users_manage'].includes(k);
+      const isAdmin=editingPermRole==='admin_mgr';
+      const locked=isAdmin&&['dashboard_view','users_manage'].includes(k);
       html+='<div class="perm-row">'
-        +'<div>'
-        +'<div style="font-size:13px;font-weight:600;">'+(permNameMap[k]||k)+'</div>'
-        +(isAdminOnly?'<div style="font-size:10px;color:var(--amber-text);">⚠️ 建議僅管理員開啟</div>':'')
-        +'</div>'
-        +'<button class="toggle-btn '+(on?'on':'off')+'" data-key="'+k+'" data-locked="'+(locked?'1':'0')+'" onclick="handlePermToggle(this)">'
-        +'</button>'
+        +'<div><div style="font-size:13px;font-weight:600;">'+(permNameMap[k]||k)+'</div></div>'
+        +'<button class="toggle-btn '+(on?'on':'off')+'" data-key="'+k+'" data-locked="'+(locked?'1':'0')+'" onclick="handlePermToggle(this)"></button>'
         +'</div>';
     });
   });
-  document.getElementById('permList').innerHTML=html;
-  const roleLabel=ROLE_LABELS[role]||role;
-  const roleBadge=role==='admin'?'b-danger':role==='purchase'||role==='warehouse'?'b-info':'b-gray';
-  document.getElementById('roleDesc').innerHTML='<span class="badge '+roleBadge+'">'+roleLabel+'</span><br><br>'+(ROLE_DESC[role]||'');
+  permList.innerHTML=html;
+
+  // 角色描述
+  const deptObj=depts.find(d=>editingPermRole.startsWith(d.id));
+  const isMgr=editingPermRole.endsWith('_mgr');
+  if(roleDesc) roleDesc.innerHTML='<span class="badge '+(deptObj?.id==='admin'?'b-danger':'b-info')+'">'+
+    (deptObj?.icon||'')+' '+(deptObj?.name||'')+' '+(isMgr?'主管':'員工')+'</span>'
+    +'<br><br>'+(isMgr?'部門主管：擁有較高權限，可審核操作':'部門員工：一般操作權限');
 }
 
-function addCustomRole(){
+function buildDefaultPerms(deptId, isMgr){
+  const base={dashboard_view:true};
+  if(deptId==='admin') return Object.fromEntries(PERM_ITEMS.map(([k])=>[k,true]));
+  if(deptId==='sales'){
+    const p={...base,sales_view:true,customers_view:true,reports_view:isMgr};
+    if(isMgr) p.sales_edit=true, p.customers_edit=true, p.reports_export=true;
+    return p;
+  }
+  if(deptId==='purchase'){
+    const p={...base,purchase_view:true,supplier_view:true,orders_view:true,quote_view:true,cost_view:isMgr};
+    if(isMgr) p.purchase_add=true, p.purchase_approve=true, p.supplier_edit=true, p.orders_edit=true, p.orders_import=true, p.quote_edit=true;
+    return p;
+  }
+  if(deptId==='warehouse'){
+    const p={...base,inbound_view:true,outbound_view:true,inventory_view:true};
+    if(isMgr) p.inbound_add=true, p.inbound_exec=true, p.outbound_add=true, p.outbound_approve=true, p.inventory_adjust=true;
+    else p.inbound_add=true, p.outbound_add=true;
+    return p;
+  }
+  return base; // readonly / others
+}
+
+async function savePermissions(){
+  const permKey='perm_'+editingPermRole;
+  localStorage.setItem(permKey,JSON.stringify(editingPerms));
+  // 若有 Supabase，可同步
+  toast('權限已儲存 ✅','ok');
+}
+
+function openAddDeptDialog(){
   const d=document.createElement('div');
   d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;';
-  d.innerHTML=`<div style="background:var(--bg);border-radius:12px;padding:24px;width:340px;box-shadow:0 8px 40px #0004;">
-    <div style="font-weight:700;font-size:15px;margin-bottom:16px;">➕ 新增部門 / 角色</div>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:12px;color:var(--text3);">部門名稱（英文，用於系統識別）</label>
-      <input id="nr-key" placeholder="例：warehouse2, accounting" maxlength="20"
-        style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
-    </div>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:12px;color:var(--text3);">顯示名稱（中文）</label>
-      <input id="nr-label" placeholder="例：會計部、菲施倉管" maxlength="10"
-        style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
-    </div>
-    <div style="margin-bottom:16px;">
-      <label style="font-size:12px;color:var(--text3);">以哪個角色為基礎複製權限</label>
-      <select id="nr-base" style="width:100%;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;">
-        <option value="operator">🔧 操作員（最少權限）</option>
-        <option value="warehouse">🏭 倉管部</option>
-        <option value="purchase">🛒 採購部</option>
-        <option value="manager">👔 主管</option>
-        <option value="readonly">👁 唯讀</option>
-      </select>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="confirmAddRole()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;">✅ 新增</button>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>
-    </div>
-  </div>`;
+  const inp='width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;margin-top:4px;';
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:340px;box-shadow:0 8px 40px #0004;">'
+    +'<div style="font-weight:700;font-size:15px;margin-bottom:16px;">➕ 新增部門</div>'
+    +'<div class="fg" style="margin-bottom:12px;"><label>部門名稱</label><input id="nd-name" style="'+inp+'" placeholder="例：財務部、工程部"></div>'
+    +'<div class="fg" style="margin-bottom:12px;"><label>圖示（Emoji）</label><input id="nd-icon" style="'+inp+'" placeholder="🏢" maxlength="4" value="🏢"></div>'
+    +'<div class="fg" style="margin-bottom:16px;"><label>部門代碼（英文）</label><input id="nd-id" style="'+inp+'" placeholder="例：finance, engineer"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;">取消</button>'
+    +'<button onclick="confirmAddDept()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">新增</button>'
+    +'</div></div>';
   document.body.appendChild(d);
 }
 
-function confirmAddRole(){
-  const key=(document.getElementById('nr-key')?.value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
-  const label=(document.getElementById('nr-label')?.value||'').trim();
-  const base=document.getElementById('nr-base')?.value||'operator';
-  if(!key||!label){ toast('請填寫部門名稱','err'); return; }
-  if(DEFAULT_PERMS[key]){ toast('此角色已存在','err'); return; }
-  // 複製基礎角色的權限
-  DEFAULT_PERMS[key]=Object.assign({},DEFAULT_PERMS[base]||{});
-  ROLE_LABELS[key]='🏷️ '+label;
-  ROLE_DESC[key]=`自訂角色：${label}（以${ROLE_LABELS[base]||base}為基礎）`;
-  // 新增分頁按鈕
-  const tabBar=document.getElementById('roleTabBar');
-  if(tabBar){
-    const btn=document.createElement('div');
-    btn.className='tab-item';
-    btn.id='pt-'+key;
-    btn.textContent='🏷️'+label;
-    btn.onclick=()=>switchRole(key);
-    tabBar.appendChild(btn);
-  }
-  // 儲存到 localStorage
-  try{
-    const saved=JSON.parse(localStorage.getItem('erp_custom_roles')||'{}');
-    saved[key]={label:'🏷️ '+label,desc:ROLE_DESC[key],perms:DEFAULT_PERMS[key]};
-    localStorage.setItem('erp_custom_roles',JSON.stringify(saved));
-  }catch(e){}
+function confirmAddDept(){
+  const name=(document.getElementById('nd-name')?.value||'').trim();
+  const icon=(document.getElementById('nd-icon')?.value||'🏢').trim();
+  const id=(document.getElementById('nd-id')?.value||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  if(!name||!id){ toast('請填寫部門名稱和代碼','err'); return; }
+  const depts=getDepartments();
+  if(depts.find(d=>d.id===id)){ toast('此代碼已存在','err'); return; }
+  const custom=JSON.parse(localStorage.getItem('erp_departments')||'[]');
+  custom.push({id,name,icon});
+  localStorage.setItem('erp_departments',JSON.stringify(custom));
   document.querySelector('[style*="position:fixed"][style*="z-index:9999"]')?.remove();
-  toast(`✅ 已新增「${label}」角色，請設定權限後儲存`,'ok');
-  switchRole(key);
+  toast('部門「'+name+'」已新增 ✅','ok');
+  renderPermissions(editingPermRole);
 }
 
-function loadCustomRoles(){
-  try{
-    const saved=JSON.parse(localStorage.getItem('erp_custom_roles')||'{}');
-    Object.entries(saved).forEach(([key,r])=>{
-      DEFAULT_PERMS[key]=r.perms||{};
-      ROLE_LABELS[key]=r.label||key;
-      ROLE_DESC[key]=r.desc||'';
-      const tabBar=document.getElementById('roleTabBar');
-      if(tabBar&&!document.getElementById('pt-'+key)){
-        const btn=document.createElement('div');
-        btn.className='tab-item';
-        btn.id='pt-'+key;
-        btn.textContent=r.label||key;
-        btn.onclick=()=>switchRole(key);
-        tabBar.appendChild(btn);
-      }
-    });
-  }catch(e){}
-}
 
 function handlePermToggle(btn){
   const key=btn.dataset.key;
@@ -2336,7 +2481,7 @@ async function saveAdj(id,matId){
 }
 
 // ══ 細部權限系統 ══
-const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view","查看進料管理"],["inbound_add","新增入庫單"],["inbound_exec","執行入庫"],["outbound_view","查看出料管理"],["outbound_add","新增出庫申請"],["outbound_approve","審核出庫"],["outbound_exec","執行出庫"],["inventory_view","查看庫存"],["inventory_adjust","庫存調整"],["locations_view","查看倉位管理"],["locations_edit","新增/編輯倉位"],["purchase_view","查看採購管理"],["purchase_add","新增採購單"],["purchase_approve","審核採購"],["supplier_view","查看供應商"],["supplier_edit","新增/編輯供應商"],["quote_view","查看詢價單"],["quote_edit","新增/編輯詢價單"],["production_view","查看生產排程"],["production_edit","新增/更新工單"],["cost_view","成本計算"],["orders_view","查看訂購紀錄"],["orders_edit","新增/編輯訂購紀錄"],["orders_import","匯入訂購Excel"],["accounting_view","查看/操作核銷"],["reports_view","查看報表分析"],["reports_export","匯出報表"],["users_manage","使用者管理"],["actlog_view","查看操作紀錄"],["sales_view","查看業務管理"],["sales_edit","新增/編輯工作單"]];
+const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view","查看進料管理"],["inbound_add","新增入庫單"],["inbound_exec","執行入庫"],["outbound_view","查看出料管理"],["outbound_add","新增出庫申請"],["outbound_approve","審核出庫"],["outbound_exec","執行出庫"],["inventory_view","查看庫存"],["inventory_adjust","庫存調整"],["locations_view","查看倉位管理"],["locations_edit","新增/編輯倉位"],["purchase_view","查看採購管理"],["purchase_add","新增採購單"],["purchase_approve","審核採購"],["supplier_view","查看供應商"],["supplier_edit","新增/編輯供應商"],["quote_view","查看詢價單"],["quote_edit","新增/編輯詢價單"],["production_view","查看生產排程"],["production_edit","新增/更新工單"],["cost_view","成本計算"],["orders_view","查看訂購紀錄"],["orders_edit","新增/編輯訂購紀錄"],["orders_import","匯入訂購Excel"],["accounting_view","查看/操作核銷"],["reports_view","查看報表分析"],["reports_export","匯出報表"],["users_manage","使用者管理"],["actlog_view","查看操作紀錄"],["sales_view","查看業務管理"],["sales_edit","新增/編輯工作單"],["customers_view","查看客戶管理"],["customers_edit","新增/編輯客戶"]];
 const DEFAULT_PERMS = {
   "admin":    {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true},
   "manager":  {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true},
@@ -3188,9 +3333,23 @@ async function importOrdersFile(input){
   }
 
   const buf = await file.arrayBuffer();
-  const wb2 = window.XLSX.read(buf, {type:'array'});
+  const wb2 = window.XLSX.read(buf, {type:'array', cellStyles:false, cellDates:false});
   const ws = wb2.Sheets[wb2.SheetNames[0]];
-  const raw = window.XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  // 展開合併儲存格：把合併儲存格的值複製到每一格
+  if(ws['!merges']){
+    for(const merge of ws['!merges']){
+      const srcCell=ws[window.XLSX.utils.encode_cell({r:merge.s.r,c:merge.s.c})];
+      if(!srcCell) continue;
+      for(let r=merge.s.r;r<=merge.e.r;r++){
+        for(let c=merge.s.c;c<=merge.e.c;c++){
+          const addr=window.XLSX.utils.encode_cell({r,c});
+          if(!ws[addr]) ws[addr]=Object.assign({},srcCell);
+        }
+      }
+    }
+  }
+  const raw = window.XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+  console.log('Excel 總行數:', raw.length, '前3行:', raw.slice(0,3));
 
   // ── 步驟3：偵測年份 ──
   let fileYear = null;
@@ -3276,8 +3435,20 @@ async function importOrdersFile(input){
   let skipped=0;
 
   for(const r of dataRows){
-    const name=String(r[C.name]||'').trim();
-    if(!name){ skipped++; continue; }
+    // 跳過條件：整列完全空白 OR (沒品名 AND 沒廠商 AND 沒採購單號)
+    const rowHasData = r.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '');
+    if(!rowHasData){ skipped++; continue; }
+    let name=String(r[C.name]||'').trim();
+    if(!name){
+      // 依序嘗試規格→採購單號→廠商→序號
+      const spec2=C.spec>=0?String(r[C.spec]||'').trim():'';
+      const po2=C.po_no>=0?String(r[C.po_no]||'').trim():'';
+      const sup2=C.supplier>=0?String(r[C.supplier]||'').trim():'';
+      if(spec2) name=spec2;
+      else if(po2) name='單號:'+po2;
+      else if(sup2) name='('+sup2+'項目)';
+      else name='第'+(toInsert.length+skipped+1)+'筆';
+    }
     const ord_date=parseDate(r[C.ord_date]);
     const parsedY=ord_date?parseInt(ord_date.slice(0,4)):NaN;
     const year=(parsedY>2000&&parsedY<2100)?parsedY:fileYear;
@@ -3344,55 +3515,67 @@ async function importOrdersFile(input){
     return out;
   };
 
-  // ── 步驟8：清空舊資料（若選清空模式）──
-  if(mode==='clear'){
-    toast(`刪除 ${fileYear} 年舊資料中...`,'inf');
-    const{error:delErr}=await _db.from('orders').delete().eq('year',fileYear);
-    if(delErr){ toast('刪除失敗：'+delErr.message,'err'); return; }
-    toast('舊資料已清空，開始匯入...','inf');
-  }
+  // ── 步驟8：安全匯入（先寫入新資料，成功後才刪舊資料）──
+  // 不再先刪後寫，避免寫入失敗導致資料全部消失
 
   // ── 步驟9：清理資料（確保每個必填欄位都有值）──
   const cleanRec=(rec)=>{
     const base=filterRec(rec);
-    // 確保必填欄位不為 null/空
     if(!base.year||isNaN(base.year)) base.year=fileYear;
     if(!base.name) base.name='(無品名)';
     if(base.qty===null||base.qty===undefined||isNaN(base.qty)) base.qty=0;
     if(!base.unit||base.unit==='') base.unit='件';
     if(base.unit_price===null||base.unit_price===undefined) base.unit_price=0;
     if(base.amount===null||base.amount===undefined) base.amount=0;
-    // 空字串日期改為 null
     if(base.order_date==='') base.order_date=null;
     if(base.plan_date==='') base.plan_date=null;
     if(base.arrive_date==='') base.arrive_date=null;
     return base;
   };
 
-  // ── 步驟10：分批寫入（每批20筆，最穩定）──
-  const BATCH=20;
+  // ── 步驟10：分批寫入（5筆/批，加 delay 防止 rate limit）──
+  const BATCH=5;
   let done=0, failed=0, failMsgs=[];
+  const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
   for(let i=0;i<toInsert.length;i+=BATCH){
     const batch=toInsert.slice(i,i+BATCH).map(cleanRec);
     const{error}=await _db.from('orders').insert(batch);
     if(error){
-      console.warn(`第${Math.floor(i/BATCH)+1}批失敗(${batch.length}筆):`, error.code, error.message);
-      // 批次失敗→逐筆用 upsert 重試（避免重複 key 問題）
+      console.warn('批次失敗 code='+error.code+' msg='+error.message);
+      // 逐筆重試
       for(const rec of batch){
         const clean=cleanRec(rec);
-        const{error:e2}=await _db.from('orders').upsert([clean],{onConflict:'id',ignoreDuplicates:true});
+        await sleep(50);
+        const{error:e2}=await _db.from('orders').insert([clean]);
         if(e2){
-          // upsert 也失敗→最後用純 insert，記錄錯誤
-          const{error:e3}=await _db.from('orders').insert([clean]);
-          if(e3){
-            failed++;
-            if(failMsgs.length<5) failMsgs.push(`[${clean.name||'?'}] ${e3.message}`);
-            console.error('單筆失敗:', clean.name, e3.code, e3.message);
-          } else done++;
+          failed++;
+          if(failMsgs.length<10) failMsgs.push('['+(clean.name||'?')+'] '+e2.code+': '+e2.message);
+          console.error('單筆失敗:', clean.name, e2.code, e2.message);
         } else done++;
       }
     } else { done+=batch.length; }
-    toast(`匯入中... ${done+failed}/${toInsert.length} 筆`,'inf');
+    // 每 50 批暫停 200ms，防止 Supabase rate limit
+    if((i/BATCH)%50===49) await sleep(200);
+    if(i%500===0||i+BATCH>=toInsert.length) toast('匯入中... '+done+'/'+(done+failed+(toInsert.length-i-BATCH))+'筆','inf');
+  }
+
+  // ── 步驟11：寫入成功後才刪除舊資料（清空模式）──
+  if(mode==='clear'){
+    if(done===0){
+      toast('❌ 寫入完全失敗，舊資料保留不刪除','err');
+    } else {
+      toast(`刪除 ${fileYear} 年舊資料中（新資料已寫入 ${done} 筆）...`,'inf');
+      // 用時間戳記區分新舊資料：只刪除寫入時間早於本次匯入的舊資料
+      // 最簡單做法：直接 delete 再確認筆數
+      const{error:delErr}=await _db.from('orders').delete().eq('year',fileYear)
+        .lt('created_at', new Date(Date.now()-3000).toISOString()); // 刪3秒前的舊資料
+      if(delErr){
+        console.warn('刪舊資料失敗（新資料已保留）:', delErr.message);
+        toast('⚠️ 新資料已寫入，但刪除舊資料失敗，請手動到 Supabase 清理','inf');
+      } else {
+        toast('舊資料已清除 ✅','ok');
+      }
+    }
   }
 
   // ── 步驟11：重新全量載入 ──
@@ -3589,15 +3772,42 @@ async function loadSalesFromDB(){
   renderSales();
 }
 
+let currentSaleYear='all';
+function switchSaleYear(y,btn){
+  currentSaleYear=y;
+  document.querySelectorAll('#saleYearTabs .zone-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderSales();
+}
+function renderSaleYearTabs(){
+  const tabsEl=document.getElementById('saleYearTabs');
+  if(!tabsEl) return;
+  const years=['all',...new Set((DB.sales||[]).map(s=>{
+    const d=s.issue_date||s.delivery_date||s.created_at||'';
+    return d?parseInt(d.slice(0,4)):null;
+  }).filter(Boolean))].sort((a,b)=>a==='all'?-1:b-a);
+  tabsEl.innerHTML=years.map(y=>{
+    const label=y==='all'?'📋 全部':y+'年（民國'+(y-1911)+'）';
+    const active=(String(y)===String(currentSaleYear)||y===currentSaleYear)?'active':'';
+    const yVal=y==='all'?"'all'":''+y; return '<button class="zone-tab '+active+'" onclick="switchSaleYear('+yVal+',this)">'+label+'</button>';
+  }).join('');
+}
 function renderSales(){
+  renderSaleYearTabs();
   const q=(document.getElementById('saleQ')?.value||'').toLowerCase();
   const stF=document.getElementById('saleStF')?.value||'';
   const rows=(DB.sales||[]).filter(s=>{
+    // 年份篩選
+    if(currentSaleYear!=='all'){
+      const d=s.issue_date||s.delivery_date||s.created_at||'';
+      const yr=d?parseInt(d.slice(0,4)):null;
+      if(yr!==parseInt(currentSaleYear)) return false;
+    }
     const matchQ=!q||[s.order_no,s.customer,s.model,s.machine_name,s.salesperson].some(v=>(v||'').toLowerCase().includes(q));
     const matchSt=!stF||s.status===stF;
     return matchQ&&matchSt;
   });
-  // 統計
+  // 統計（全部）
   const all=DB.sales||[];
   document.getElementById('sale-total').textContent=all.length;
   document.getElementById('sale-active').textContent=all.filter(s=>s.status==='進行中').length;
@@ -3605,21 +3815,23 @@ function renderSales(){
   document.getElementById('sale-month').textContent=all.filter(s=>(s.delivery_date||'').startsWith(thisMonth)).length;
   document.getElementById('sale-done').textContent=all.filter(s=>s.status==='已完成').length;
 
-  document.getElementById('salesBody').innerHTML=rows.length?rows.map((s,i)=>`<tr>
-    <td style="color:var(--text3);font-size:12px;">${i+1}</td>
-    <td style="font-weight:600;">${s.order_no||'-'}</td>
-    <td>${s.customer||'-'}</td>
-    <td style="color:var(--text2);">${s.model||'-'}</td>
-    <td>${s.machine_name||'-'}</td>
-    <td style="text-align:right;">${s.qty||1}</td>
-    <td style="white-space:nowrap;">${s.delivery_date||'-'}</td>
-    <td>${s.salesperson||'-'}</td>
-    <td><span class="badge ${SALE_STATUS_COLOR[s.status]||'b-gray'}">${s.status||'進行中'}</span></td>
-    <td style="white-space:nowrap;">
-      <button class="btn btn-sm" onclick="openSalesForm('${s.id}')">✎ 編輯</button>
-      <button class="btn btn-sm" onclick="printWorkOrder('${s.id}')">🖨 列印</button>
-    </td>
-  </tr>`).join(''):'<tr class="empty-row"><td colspan="10">尚無工作單</td></tr>';
+  document.getElementById('salesBody').innerHTML=rows.length?rows.map((s,i)=>{
+    const statusCls=SALE_STATUS_COLOR[s.status]||'b-gray';
+    return '<tr>'
+      +'<td style="color:var(--text3);font-size:12px;">'+(i+1)+'</td>'
+      +'<td style="font-weight:600;">'+(s.order_no||'-')+'</td>'
+      +'<td>'+(s.customer||'-')+'</td>'
+      +'<td style="color:var(--text2);">'+(s.model||'-')+'</td>'
+      +'<td>'+(s.machine_name||'-')+'</td>'
+      +'<td style="text-align:right;">'+(s.qty||1)+'</td>'
+      +'<td style="white-space:nowrap;">'+(s.issue_date||'-')+'</td>'
+      +'<td style="white-space:nowrap;">'+(s.delivery_date||'-')+'</td>'
+      +'<td><span class="badge '+statusCls+'">'+(s.status||'進行中')+'</span></td>'
+      +'<td style="white-space:nowrap;">'
+      +'<button class="btn btn-sm" onclick="openSalesForm(\''+s.id+'\')">✎</button> '
+      +'<button class="btn btn-sm" onclick="printWorkOrder(\''+s.id+'\')">🖨</button>'
+      +'</td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="10">尚無工作單</td></tr>';
 }
 
 function openSalesForm(id){
@@ -3720,9 +3932,71 @@ async function deleteSalesOrder(id){
   toast('已刪除','ok');
 }
 
+
+// ══════════════════════════════
+// 生產工作通知單 簽名欄設定管理
+// ══════════════════════════════
+
+// 預設簽名欄設定（存 localStorage）
+const DEFAULT_SIGN_CONFIG = {
+  dept: ['銷售部','廠務部','電控','採購'],
+  person: ['接單業務','設計者','生管','專案負責人','製表']
+};
+
+function getSignConfig(){
+  try{
+    const s=localStorage.getItem('erp_sign_config');
+    return s?JSON.parse(s):Object.assign({},DEFAULT_SIGN_CONFIG);
+  }catch(e){ return Object.assign({},DEFAULT_SIGN_CONFIG); }
+}
+function saveSignConfig(cfg){
+  localStorage.setItem('erp_sign_config',JSON.stringify(cfg));
+}
+
+function openSignConfigEditor(){
+  const cfg=getSignConfig();
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px 0;';
+  const inp='width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:var(--text);font-size:13px;margin-top:4px;';
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(520px,94vw);box-shadow:0 8px 40px #0005;margin:auto;">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:16px;">⚙️ 列印簽名欄設定</div>'
+    +'<div style="margin-bottom:16px;">'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:6px;">部門確認欄（逗號分隔，例：銷售部,廠務部,電控,採購）</div>'
+    +'<input id="sc-dept" style="'+inp+'" value="'+cfg.dept.join(',')+'"></div>'
+    +'<div style="margin-bottom:20px;">'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:6px;">人員簽名欄（逗號分隔，例：接單業務,設計者,生管,專案負責人,製表）</div>'
+    +'<input id="sc-person" style="'+inp+'" value="'+cfg.person.join(',')+'"></div>'
+    +'<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--text3);">'
+    +'💡 儲存後，下次列印時會自動套用新的簽名欄設定</div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button onclick="resetSignConfig()" style="padding:9px 14px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;">🔄 恢復預設</button>'
+    +'<button onclick="document.getElementById(\'sc-dept\')?.closest(\'[style*=fixed]\')?.remove()" style="padding:9px 14px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;margin-left:auto;">取消</button>'
+    +'<button onclick="applySignConfig()" style="padding:9px 20px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">💾 儲存</button>'
+    +'</div></div>';
+  document.body.appendChild(d);
+}
+function applySignConfig(){
+  const dept=(document.getElementById('sc-dept')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const person=(document.getElementById('sc-person')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!dept.length||!person.length){toast('部門和人員都不能為空','err');return;}
+  saveSignConfig({dept,person});
+  document.getElementById('sc-dept')?.closest('[style*="position:fixed"]')?.remove();
+  toast('簽名欄設定已儲存 ✅','ok');
+}
+function resetSignConfig(){
+  saveSignConfig(Object.assign({},DEFAULT_SIGN_CONFIG));
+  const d=document.getElementById('sc-dept');
+  const p=document.getElementById('sc-person');
+  if(d) d.value=DEFAULT_SIGN_CONFIG.dept.join(',');
+  if(p) p.value=DEFAULT_SIGN_CONFIG.person.join(',');
+  toast('已恢復預設','ok');
+}
+
+
 function printWorkOrder(id){
   const s=(DB.sales||[]).find(x=>x.id===id);
   if(!s){toast('找不到工作單','err');return;}
+  const signCfg=getSignConfig();
   const issueDate=s.issue_date||new Date().toISOString().slice(0,10);
   const [iy,im,id2]=(issueDate||'--').split('-');
   const iRoc=parseInt(iy||2025)-1911;
@@ -3772,7 +4046,7 @@ function printWorkOrder(id){
   +'</div>'
   +'<div class="page">'
   +'<h1>大佶（佶榮）機電股份有限公司</h1>'
-  +'<h2>生 產 工 作 通 知 單</h2>'
+  +'<h2>生 產 工 作 通 知 單　'+(s.order_no||'')+'</h2>'
   +'<table>'
   +'<tr>'
   +'<td class="lbl">工單號碼</td><td style="font-weight:bold;font-size:12pt;width:140px;">'+s.order_no+'</td>'
@@ -3795,19 +4069,23 @@ function printWorkOrder(id){
   +'<div class="spec-col-wrap" id="col2wrap" style="display:none;"><div class="spec-hd">（ 續 ）</div><div class="spec-col" id="col2"></div></div>'
   +'</div>'
   +(s.note?'<table style="margin-bottom:3px;"><tr><td class="lbl" style="width:50px;">備註</td><td id="note-td" style="font-size:10pt;"></td></tr></table>':'')
-  +'<div class="sign-wrap" style="margin-bottom:2px;">'
-  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">銷 售 部</div></div>'
-  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">廠 務 部</div></div>'
-  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">電 　 控</div></div>'
-  +'<div class="sign-box"><div class="sign-line"></div><div class="sign-label">採 　 購</div></div>'
-  +'</div>'
-  +'<div class="sign-wrap">'
-  +'<div class="sign-box"><div class="sign-name" id="sn-sales">'+(s.salesperson||'')+'</div><div class="sign-line"></div><div class="sign-label">接 單 業 務</div></div>'
-  +'<div class="sign-box"><div class="sign-name" id="sn-design">'+(s.designer||'')+'</div><div class="sign-line"></div><div class="sign-label">設 計 者</div></div>'
-  +'<div class="sign-box"><div class="sign-name" id="sn-pm">'+(s.production_manager||'')+'</div><div class="sign-line"></div><div class="sign-label">生 　 管</div></div>'
-  +'<div class="sign-box"><div class="sign-name" id="sn-proj">'+(s.pm||'')+'</div><div class="sign-line"></div><div class="sign-label">專 案 負 責 人</div></div>'
-  +'<div class="sign-box"><div class="sign-name">'+(s.maker||'')+'</div><div class="sign-line"></div><div class="sign-label">製 　 表</div></div>'
-  +'</div></div></body></html>');
+  +signCfg.dept.map(d=>'<div class="sign-box"><div class="dept-line"></div><div class="sign-label">'+d+'</div></div>').reduce((a,b,i,arr)=>{
+    if(i===0) return '<div class="sign-wrap" style="margin-bottom:2px;">'+b;
+    if(i===arr.length-1) return a+b+'</div>';
+    return a+b;
+  },'')
+  +(()=>{
+    const personValMap={'接單業務':s.salesperson||'','設計者':s.designer||'','生管':s.production_manager||'','專案負責人':s.pm||'','製表':s.maker||''};
+    const pidMap={'接單業務':'sn-sales','設計者':'sn-design','生管':'sn-pm','專案負責人':'sn-proj','製表':'sn-maker'};
+    let html='<div class="sign-wrap">';
+    signCfg.person.forEach((p,i)=>{
+      const pid=pidMap[p]||('sn-p'+i);
+      const val=personValMap[p]||'';
+      html+='<div class="sign-box"><div class="sign-name" id="'+pid+'">'+val+'</div><div class="sign-line"></div><div class="sign-label">'+p+'</div></div>';
+    });
+    return html+'</div>';
+  })()
+  +'</div></body></html>');
   w.document.close();
 
   // ─── 用 DOM 直接填入規格與備註（完全不用 template literal）───
@@ -3888,6 +4166,400 @@ function printWorkOrder(id){
     btn.textContent='📷 JPEG';btn.disabled=false;
   };
 }
+// ══════════════════════════════════════════════
+// 客戶管理
+// ══════════════════════════════════════════════
+if(!DB.customers) DB.customers=[];
+
+async function initCustomersPage(){
+  if(!isDemo&&!DB.customers_loaded) await loadCustomersFromDB();
+  renderCustomers();
+}
+
+async function loadCustomersFromDB(){
+  try{
+    const{data,error}=await _db.from('customers').select('*').order('name');
+    if(error) throw error;
+    DB.customers=data||[];
+    DB.customers_loaded=true;
+  }catch(e){ DB.customers=DB.customers||[]; }
+  renderCustomers();
+}
+
+function renderCustomers(){
+  const q=(document.getElementById('custQ')?.value||'').toLowerCase();
+  const rows=(DB.customers||[]).filter(c=>
+    !q||[c.name,c.contact,c.phone,c.address,c.salesperson].some(v=>(v||'').toLowerCase().includes(q))
+  );
+  document.getElementById('customersBody').innerHTML=rows.length?rows.map((c,i)=>
+    '<tr>'
+    +'<td style="color:var(--text3);font-size:12px;">'+(i+1)+'</td>'
+    +'<td style="font-weight:600;">'+(c.name||'-')+'</td>'
+    +'<td>'+(c.contact||'-')+'</td>'
+    +'<td style="white-space:nowrap;">'+(c.phone||'-')+'</td>'
+    +'<td style="white-space:nowrap;">'+(c.fax||'-')+'</td>'
+    +'<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.address||'-')+'</td>'
+    +'<td>'+(c.tax_id||'-')+'</td>'
+    +'<td>'+(c.payment_terms||'-')+'</td>'
+    +'<td>'+(c.salesperson||'-')+'</td>'
+    +'<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.note||'-')+'</td>'
+    +'<td style="white-space:nowrap;">'
+    +'<button class="btn btn-sm" onclick="openCustomerForm(\''+c.id+'\')">✎ 編輯</button></td>'
+    +'</tr>'
+  ).join(''):'<tr class="empty-row"><td colspan="11">尚無客戶資料</td></tr>';
+}
+
+function openCustomerForm(id){
+  const c=id?(DB.customers||[]).find(x=>x.id===id):null;
+  const d=document.createElement('div');
+  d.id='custModal';
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;';
+  const inp='width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;';
+  const ta='width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:13px;resize:vertical;';
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(700px,96vw);box-shadow:0 8px 40px #0005;margin:auto;">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:16px;">🤝 '+(c?'編輯':'新增')+'客戶</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+    +'<div class="fg" style="grid-column:1/-1;"><label>客戶名稱 *</label><input id="cf-name" style="'+inp+'" value="'+(c?.name||'')+'" placeholder="公司全名"></div>'
+    +'<div class="fg"><label>聯絡人</label><input id="cf-contact" style="'+inp+'" value="'+(c?.contact||'')+'" placeholder="主要聯絡窗口"></div>'
+    +'<div class="fg"><label>職稱</label><input id="cf-title" style="'+inp+'" value="'+(c?.contact_title||'')+'" placeholder="例：採購部經理"></div>'
+    +'<div class="fg"><label>電話</label><input id="cf-phone" style="'+inp+'" value="'+(c?.phone||'')+'" placeholder="02-XXXX-XXXX"></div>'
+    +'<div class="fg"><label>傳真</label><input id="cf-fax" style="'+inp+'" value="'+(c?.fax||'')+'" placeholder="02-XXXX-XXXX"></div>'
+    +'<div class="fg"><label>手機</label><input id="cf-mobile" style="'+inp+'" value="'+(c?.mobile||'')+'" placeholder="09XX-XXX-XXX"></div>'
+    +'<div class="fg"><label>Email</label><input id="cf-email" style="'+inp+'" value="'+(c?.email||'')+'" placeholder="example@company.com"></div>'
+    +'<div class="fg" style="grid-column:1/-1;"><label>公司地址</label><input id="cf-address" style="'+inp+'" value="'+(c?.address||'')+'" placeholder="縣市、鄉鎮市區、路街段號"></div>'
+    +'<div class="fg"><label>統一編號</label><input id="cf-taxid" style="'+inp+'" value="'+(c?.tax_id||'')+'" placeholder="12345678"></div>'
+    +'<div class="fg"><label>付款條件</label><input id="cf-payment" style="'+inp+'" value="'+(c?.payment_terms||'')+'" placeholder="例：月結30天、即期"></div>'
+    +'<div class="fg"><label>信用額度（NT$）</label><input type="number" id="cf-credit" style="'+inp+'" value="'+(c?.credit_limit||'')+'" placeholder="0"></div>'
+    +'<div class="fg"><label>業務負責人</label><input id="cf-sales" style="'+inp+'" value="'+(c?.salesperson||'')+'" placeholder="負責業務姓名"></div>'
+    +'<div class="fg"><label>機台類型偏好</label><input id="cf-machine-pref" style="'+inp+'" value="'+(c?.machine_pref||'')+'" placeholder="例：輪焊機、點焊機"></div>'
+    +'<div class="fg"><label>客戶等級</label>'
+    +'<select id="cf-grade" style="'+inp+'"><option value="">一般</option>'
+    +['A級-重要客戶','B級-一般客戶','C級-潛在客戶','D級-暫停往來'].map(g=>'<option value="'+g+'"'+(c?.grade===g?' selected':'')+'>'+g+'</option>').join('')
+    +'</select></div>'
+    +'<div class="fg" style="grid-column:1/-1;"><label>備註</label><textarea id="cf-note" rows="3" style="'+ta+'">'+(c?.note||'')+'</textarea></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">'
+    +(c?'<button onclick="deleteCustomer(\''+c.id+'\')" style="padding:10px 16px;background:#e53935;color:white;border:none;border-radius:8px;cursor:pointer;">🗑 刪除</button>':'')
+    +'<button onclick="document.getElementById(\'custModal\').remove()" style="padding:10px 16px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-left:auto;">取消</button>'
+    +'<button onclick="saveCustomer('+(c?'\''+c.id+'\'':'null')+')" style="padding:10px 20px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">💾 儲存</button>'
+    +'</div></div>';
+  document.body.appendChild(d);
+}
+
+async function saveCustomer(id){
+  const name=(document.getElementById('cf-name')?.value||'').trim();
+  if(!name){toast('請填寫客戶名稱','err');return;}
+  const rec={
+    name,
+    contact:      document.getElementById('cf-contact')?.value||'',
+    contact_title:document.getElementById('cf-title')?.value||'',
+    phone:        document.getElementById('cf-phone')?.value||'',
+    fax:          document.getElementById('cf-fax')?.value||'',
+    mobile:       document.getElementById('cf-mobile')?.value||'',
+    email:        document.getElementById('cf-email')?.value||'',
+    address:      document.getElementById('cf-address')?.value||'',
+    tax_id:       document.getElementById('cf-taxid')?.value||'',
+    payment_terms:document.getElementById('cf-payment')?.value||'',
+    credit_limit: parseFloat(document.getElementById('cf-credit')?.value)||null,
+    salesperson:  document.getElementById('cf-sales')?.value||'',
+    machine_pref: document.getElementById('cf-machine-pref')?.value||'',
+    grade:        document.getElementById('cf-grade')?.value||'',
+    note:         document.getElementById('cf-note')?.value||'',
+  };
+  if(!isDemo){
+    if(id){
+      const{error}=await _db.from('customers').update(rec).eq('id',id);
+      if(error){toast('儲存失敗：'+error.message,'err');return;}
+    }else{
+      const{error}=await _db.from('customers').insert([rec]);
+      if(error){toast('儲存失敗：'+error.message,'err');return;}
+    }
+    await loadCustomersFromDB();
+  }else{
+    if(id){const x=(DB.customers||[]).find(c=>c.id===id);if(x)Object.assign(x,rec);}
+    else{rec.id='cust'+Date.now();if(!DB.customers)DB.customers=[];DB.customers.push(rec);}
+    renderCustomers();
+  }
+  document.getElementById('custModal')?.remove();
+  toast(id?'客戶已更新 ✅':'客戶已新增 ✅','ok');
+}
+
+async function deleteCustomer(id){
+  if(!confirm('確定刪除此客戶？'))return;
+  if(!isDemo){
+    const{error}=await _db.from('customers').delete().eq('id',id);
+    if(error){toast('刪除失敗：'+error.message,'err');return;}
+    await loadCustomersFromDB();
+  }else{
+    DB.customers=(DB.customers||[]).filter(c=>c.id!==id);
+    renderCustomers();
+  }
+  document.getElementById('custModal')?.remove();
+  toast('已刪除','ok');
+}
+
+function exportCustomersCSV(){
+  const data=DB.customers||[];
+  if(!data.length){toast('無資料','inf');return;}
+  const keys=['name','contact','contact_title','phone','fax','mobile','email','address','tax_id','payment_terms','credit_limit','salesperson','machine_pref','grade','note'];
+  const hdrs=['客戶名稱','聯絡人','職稱','電話','傳真','手機','Email','地址','統編','付款條件','信用額度','業務負責人','機台偏好','客戶等級','備註'];
+  const csv=[hdrs.join(','),...data.map(r=>keys.map(k=>'"'+((r[k]||'').toString().replace(/"/g,'""'))+'"').join(','))].join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='客戶資料_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV已下載','ok');
+}
+
+
+// ══════════════════════════════════════════════
+// 移動位置 功能
+// ══════════════════════════════════════════════
+let mlSelectedItems = []; // [{inv_id, name, spec, qty, moveQty, from_loc_id}]
+
+function initMoveLocPage(){
+  mlSelectedItems = [];
+  mlPopulateLocSelects();
+  renderMlLog();
+}
+
+function mlPopulateLocSelects(){
+  const locs = DB.locations || [];
+  const opts = '<option value="">-- 選擇倉位 --</option>'
+    + locs.map(l => '<option value="'+l.id+'">'+(l.custom_name||l.zone+'-'+l.row_no+'-'+l.col_no)+'</option>').join('');
+  const fromSel = document.getElementById('ml-from-loc');
+  const toSel   = document.getElementById('ml-to-loc');
+  if(fromSel) fromSel.innerHTML = opts;
+  if(toSel)   toSel.innerHTML   = opts;
+}
+
+function mlLoadItems(side){
+  const locId = document.getElementById('ml-from-loc')?.value;
+  const container = document.getElementById('ml-from-items');
+  if(!locId || !container){ if(container) container.innerHTML=''; return; }
+
+  const inv = (DB.inventory||[]).filter(iv => iv.location_id === locId && iv.qty > 0);
+  if(!inv.length){
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px;">此倉位無庫存</div>';
+    return;
+  }
+  const mat = (k) => (DB.materials||[]).find(m=>m.id===k)||{};
+  container.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:6px;">勾選要移動的料件：</div>'
+    + inv.map(iv => {
+      const m = mat(iv.material_id);
+      const name = m.name || iv.material_id || '-';
+      const spec = m.spec || '';
+      const already = mlSelectedItems.find(s=>s.inv_id===iv.id);
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border2);">'
+        +'<input type="checkbox" '+(already?'checked':'')+' onchange="mlToggleItem(this,\''+iv.id+'\',\''+name.replace(/'/g,"'")+'\',\''+spec.replace(/'/g,"'")+'\','+iv.qty+',\''+locId+'\')" style="width:16px;height:16px;">'
+        +'<div style="flex:1;">'
+        +'<div style="font-size:13px;font-weight:600;">'+name+'</div>'
+        +(spec?'<div style="font-size:11px;color:var(--text3);">'+spec+'</div>':'')
+        +'</div>'
+        +'<div style="font-size:13px;color:var(--text2);">庫存: '+iv.qty+(m.unit||'')+'</div>'
+        +'<input type="number" min="1" max="'+iv.qty+'" value="'+(already?already.moveQty:iv.qty)+'" '
+        +'id="ml-qty-'+iv.id+'" style="width:70px;padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:12px;">'
+        +'</div>';
+    }).join('');
+}
+
+function mlToggleItem(cb, inv_id, name, spec, maxQty, from_loc_id){
+  if(cb.checked){
+    const qty = parseInt(document.getElementById('ml-qty-'+inv_id)?.value)||maxQty;
+    if(!mlSelectedItems.find(s=>s.inv_id===inv_id)){
+      mlSelectedItems.push({inv_id, name, spec, qty: Math.min(qty,maxQty), maxQty, from_loc_id});
+    }
+  } else {
+    mlSelectedItems = mlSelectedItems.filter(s=>s.inv_id!==inv_id);
+  }
+  mlRenderSelected();
+}
+
+function mlRenderSelected(){
+  const el = document.getElementById('ml-selected-items');
+  if(!el) return;
+  if(!mlSelectedItems.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:13px;">尚未選擇料件</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:6px;">已選 '+mlSelectedItems.length+' 種料件：</div>'
+    + mlSelectedItems.map(s=>'<div style="background:var(--bg3);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:13px;">'
+      +'<b>'+s.name+'</b>'+(s.spec?' <span style="color:var(--text3);font-size:11px;">'+s.spec+'</span>':'')
+      +'<span style="float:right;font-weight:700;color:var(--blue-text);">'+s.qty+' 件</span></div>'
+    ).join('');
+}
+
+function mlClearSelected(){
+  mlSelectedItems = [];
+  mlRenderSelected();
+  // 取消所有勾選
+  document.querySelectorAll('#ml-from-items input[type=checkbox]').forEach(cb=>cb.checked=false);
+}
+
+async function mlExecuteMove(){
+  const toLoc = document.getElementById('ml-to-loc')?.value;
+  if(!toLoc){ toast('請選擇目標倉位','err'); return; }
+  if(!mlSelectedItems.length){ toast('請選擇要移動的料件','err'); return; }
+
+  const fromLoc = document.getElementById('ml-from-loc')?.value;
+  if(fromLoc === toLoc){ toast('來源和目標倉位相同','err'); return; }
+
+  const toLocName = (DB.locations||[]).find(l=>l.id===toLoc)?.custom_name || toLoc;
+  const fromLocName = (DB.locations||[]).find(l=>l.id===fromLoc)?.custom_name || fromLoc;
+
+  if(!confirm('確定將 '+mlSelectedItems.length+' 種料件\n從「'+fromLocName+'」移至「'+toLocName+'」？')) return;
+
+  let success=0, fail=0;
+  for(const item of mlSelectedItems){
+    // 更新來源倉位庫存
+    const srcInv = (DB.inventory||[]).find(iv=>iv.id===item.inv_id);
+    if(!srcInv) continue;
+    const newSrcQty = srcInv.qty - item.qty;
+
+    // 找或建立目標倉位的庫存記錄
+    const dstInv = (DB.inventory||[]).find(iv=>iv.material_id===srcInv.material_id && iv.location_id===toLoc);
+
+    if(!isDemo){
+      // 更新來源
+      const{error:e1} = await _db.from('inventory').update({qty:newSrcQty}).eq('id',item.inv_id);
+      if(e1){ fail++; continue; }
+      if(dstInv){
+        await _db.from('inventory').update({qty:dstInv.qty+item.qty}).eq('id',dstInv.id);
+      } else {
+        await _db.from('inventory').insert([{material_id:srcInv.material_id,location_id:toLoc,qty:item.qty}]);
+      }
+    } else {
+      srcInv.qty = newSrcQty;
+      if(dstInv){ dstInv.qty += item.qty; }
+      else { DB.inventory.push({id:'mv'+Date.now(),material_id:srcInv.material_id,location_id:toLoc,qty:item.qty}); }
+    }
+
+    // 記錄移動紀錄
+    const logEntry={time:new Date().toLocaleString('zh-TW'),name:item.name,qty:item.qty,from:fromLocName,to:toLocName,user:currentUser};
+    const saved=JSON.parse(localStorage.getItem('erp_moveloc_log')||'[]');
+    saved.unshift(logEntry); if(saved.length>100) saved.length=100;
+    localStorage.setItem('erp_moveloc_log',JSON.stringify(saved));
+    success++;
+  }
+
+  if(!isDemo) await loadT('inventory');
+  toast('移動完成！成功 '+success+' 種'+(fail?' 失敗 '+fail+' 種':''),'ok');
+  mlSelectedItems=[];
+  mlLoadItems('from');
+  mlRenderSelected();
+  renderMlLog();
+  renderINV();
+}
+
+function renderMlLog(){
+  const logs=JSON.parse(localStorage.getItem('erp_moveloc_log')||'[]');
+  const el=document.getElementById('mlLogBody');
+  if(!el) return;
+  el.innerHTML=logs.length?logs.map(l=>'<tr>'
+    +'<td style="font-size:12px;white-space:nowrap;">'+l.time+'</td>'
+    +'<td>'+l.name+'</td>'
+    +'<td style="text-align:right;">'+l.qty+'</td>'
+    +'<td>'+l.from+'</td>'
+    +'<td style="color:var(--green-text);">'+l.to+'</td>'
+    +'<td>'+l.user+'</td></tr>'
+  ).join(''):'<tr class="empty-row"><td colspan="6">尚無紀錄</td></tr>';
+}
+
+
+
+// ══════════════════════════════════════════════
+// 側欄排序編輯器
+// ══════════════════════════════════════════════
+function openNavOrderEditor(){
+  const sidebar=document.getElementById('sidebar');
+  if(!sidebar){toast('找不到側欄','err');return;}
+  const allEls=[...sidebar.querySelectorAll('.nslabel,.nitem')];
+  const sysIdx=allEls.findIndex(el=>el.classList.contains('nslabel')&&el.textContent.includes('系統管理'));
+  window._navOrder=sysIdx>-1?[...allEls.slice(0,sysIdx)]:[...allEls];
+  window._navFixed=sysIdx>-1?[...allEls.slice(sysIdx)]:[];
+
+  const d=document.createElement('div');
+  d.id='navOrderModal';
+  d.style.cssText='position:fixed;inset:0;background:#0007;z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;';
+  d.innerHTML='<div style="background:var(--bg);border-radius:12px;padding:24px;width:min(480px,96vw);box-shadow:0 8px 40px #0005;margin:auto;">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:4px;">🔀 側欄排序</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">點 ▲▼ 移動大綱，⚙️ 系統管理固定在底部</div>'
+    +'<div id="navOrderList" style="display:flex;flex-direction:column;gap:4px;max-height:65vh;overflow-y:auto;"></div>'
+    +'<div style="display:flex;gap:8px;margin-top:16px;">'
+    +'<button onclick="closeNavModal()" style="flex:1;padding:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;">取消</button>'
+    +'<button onclick="applyNavOrder()" style="flex:1;padding:10px;background:#185FA5;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">💾 套用</button>'
+    +'</div></div>';
+  document.body.appendChild(d);
+  renderNavOrderList();
+}
+
+function closeNavModal(){document.getElementById("navOrderModal")?.remove();}
+function renderNavOrderList(){
+  const list=document.getElementById('navOrderList');
+  if(!list) return;
+  const items=window._navOrder||[];
+  list.innerHTML=items.map((el,i)=>{
+    const isLabel=el.classList.contains('nslabel');
+    const txt=el.textContent.trim();
+    return '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;'
+      +'background:'+(isLabel?'var(--bg3)':'var(--bg2)')+';border-radius:6px;border:1px solid var(--border2);">'
+      +'<span style="flex:1;font-size:13px;font-weight:'+(isLabel?'700':'400')+';'
+      +'padding-left:'+(isLabel?'4px':'18px')+';">'+txt+'</span>'
+      +(isLabel
+        ?'<button onclick="navOrderMove('+i+',-1)" style="padding:3px 10px;border:1px solid var(--border);background:var(--bg);border-radius:4px;cursor:pointer;'+(i===0?'opacity:.3':'')+'">▲</button>'
+         +'<button onclick="navOrderMove('+i+',1)" style="padding:3px 10px;border:1px solid var(--border);background:var(--bg);border-radius:4px;cursor:pointer;'+(i===items.length-1?'opacity:.3':'')+'">▼</button>'
+        :'<span style="display:inline-block;width:72px;"></span>')
+      +'</div>';
+  }).join('');
+}
+
+function navOrderMove(idx,dir){
+  const items=window._navOrder;
+  if(!items||!items[idx]) return;
+  // 找這個大綱的子項目群組
+  let groupEnd=idx+1;
+  while(groupEnd<items.length&&items[groupEnd].classList.contains('nitem')) groupEnd++;
+  const groupLen=groupEnd-idx;
+  const newIdx=dir>0?idx+groupLen:idx-1;
+  if(newIdx<0) return;
+  // 找新位置插入點
+  if(dir>0){
+    // 往下：跳過下一個大綱和它的子項目
+    if(newIdx>=items.length) return;
+    let nextGroupEnd=newIdx+1;
+    while(nextGroupEnd<items.length&&items[nextGroupEnd].classList.contains('nitem')) nextGroupEnd++;
+    const group=items.splice(idx,groupLen);
+    items.splice(nextGroupEnd-groupLen,0,...group);
+  } else {
+    // 往上：跳到上一個大綱之前
+    if(idx===0) return;
+    // 找上一個大綱的起始
+    let prevLabelIdx=idx-1;
+    while(prevLabelIdx>0&&items[prevLabelIdx].classList.contains('nitem')) prevLabelIdx--;
+    const group=items.splice(idx,groupLen);
+    items.splice(prevLabelIdx,0,...group);
+  }
+  renderNavOrderList();
+}
+
+function applyNavOrder(){
+  const items=window._navOrder||[];
+  const fixed=window._navFixed||[];
+  const sidebar=document.getElementById('sidebar');
+  if(!sidebar){toast('找不到側欄','err');return;}
+  // 找到所有 nav 元素的父容器（通常是 sidebar 的直接子 div）
+  const firstEl=items[0]||fixed[0];
+  if(!firstEl){toast('無項目可排序','err');return;}
+  const parent=firstEl.parentElement;
+  // 取出並重新插入
+  const all=[...items,...fixed];
+  // 找到第一個 nav 元素在 parent 中的前一個兄弟（作為插入基準）
+  all.forEach(el=>el.remove());
+  all.forEach(el=>parent.appendChild(el));
+  // 儲存順序
+  localStorage.setItem('erp_nav_order', JSON.stringify(all.map(el=>el.id||el.textContent.trim().slice(0,15))));
+  document.getElementById('navOrderModal')?.remove();
+  toast('側欄順序已更新 ✅','ok');
+}
+
+
 function exportSalesCSV(){
   const data=DB.sales||[];
   if(!data.length){toast('無資料','inf');return;}
@@ -3960,7 +4632,7 @@ async function deleteCat(id){
 let currentOrderYear = 'all';
 let currentOrderPage = 1;
 const ORDER_PAGE_SIZE = 100;
-const ORDER_YEAR_LIMIT = 4000;
+const ORDER_YEAR_LIMIT = 9999;
 
 function initOrdersPage(){
   if(!isDemo && DB.orders_loaded){renderOrders();return;}
@@ -3975,25 +4647,26 @@ async function loadOrdersFromDB(year){
   const countEl=document.getElementById('orderCount');
   if(countEl) countEl.textContent='資料載入中...';
   try{
-    // 每次全量清空再重載，避免重複
     DB.orders=[];
     const PAGE=1000;
-    const MAX=ORDER_YEAR_LIMIT; // 每年份最多4000筆
     let allData=[];
     let from=0;
-    while(allData.length<MAX){
+    let safety=0;
+    while(safety<20){ // 最多載20批（2萬筆）
+      safety++;
       let q=_db.from('orders').select('*');
       if(year&&year!=='all') q=q.eq('year',year);
       q=q.order('order_date',{ascending:false}).range(from,from+PAGE-1);
       const{data,error}=await q;
-      if(error)throw error;
+      if(error) throw error;
       if(data&&data.length>0) allData=allData.concat(data);
       if(countEl) countEl.textContent='載入中... '+allData.length+' 筆';
-      if(!data||data.length<PAGE) break;
+      if(!data||data.length<PAGE) break; // 沒有更多資料
       from+=PAGE;
     }
     DB.orders=allData;
     DB.orders_loaded=true;
+    if(countEl) countEl.textContent='共 '+allData.length+' 筆';
     renderOrders();
   }catch(e){
     if(countEl) countEl.textContent='載入失敗：'+e.message;
