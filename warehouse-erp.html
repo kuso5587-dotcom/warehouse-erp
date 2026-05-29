@@ -995,17 +995,10 @@ async function launchApp(){
     setupRT();
   }
   loadAll();
-  // 若 2 秒後供應商仍是空的，自動重試一次
+  // 2 秒後重試一次，確保 Supabase 連線穩定後資料都能載入
   if(!isDemo){
     setTimeout(async()=>{
-      if(!DB.suppliers||DB.suppliers.length===0){
-        console.log('[retry] 供應商空，重新載入...');
-        await loadT('suppliers');
-        await loadT('sup_categories');
-        await loadT('materials');
-        await loadT('inventory');
-        renderAll();
-      }
+      await loadAll();
     },2000);
   }
 }
@@ -1058,7 +1051,7 @@ function renderOnline(users){
 
 async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));if(!DB.users||!DB.users.length){restoreUsersFromLocal();}renderAll();}
 async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];if(t==='erp_users'){if(data&&data.length)backupUsersToLocal();else if(!data||!data.length)restoreUsersFromLocal();}}catch(e){console.warn(t,e.message);if(t==='erp_users')restoreUsersFromLocal();}}
-function renderAll(){loadCustomRoles();refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
+function renderAll(){refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
 function seedDemo(){
   const zones=['A','B','C'],sts=['empty','empty','low','full','full','reserved'];
