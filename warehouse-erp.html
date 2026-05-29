@@ -296,9 +296,8 @@ tr:hover td{background:var(--bg3);}
         <div class="online-dot"></div>
       </div>
       <div class="nav">
-        <div class="nslabel">主要功能</div>
-        <div class="nitem active" id="nav-dashboard" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
         <div class="nslabel">🏭 倉庫管理</div>
+        <div class="nitem active" id="nav-dashboard" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
         <div class="nitem" id="nav-inbound" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
         <div class="nitem" id="nav-outbound" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
         <div class="nitem" id="nav-inventory" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
@@ -3233,17 +3232,23 @@ async function importOrdersFile(input){
   const C={
     ord_date:  col(['訂購日期','訂購']),
     plan_date: col(['預計進貨','預計']),
-    arr_date:  col(['實入進貨','實入']),
-    supplier:  col(['廠商']),
-    po_no:     col(['採購單號']),
-    name:      col(['品名']),
-    spec:      col(['規格']),
-    qty:       col(['訂購數量','數量']),
+    arr_date:  col(['實入進貨','實入','實際']),
+    supplier:  col(['廠商','供應商']),
+    po_no:     col(['採購單號','單號','PO']),
+    name:      col(['品名','名稱','商品']),
+    spec:      col(['規格','型號']),
+    qty:       col(['訂購數量','數量','訂購數','Qty']),
     unit:      col(['單位']),
-    unit_price:col(['單價']),
-    amount:    col(['小計']),
+    unit_price:col(['單價','NTD','Price','unit_price','單價NTD']),
+    amount:    col(['小計NTD','小計','金額','總計','amount','合計']),
+    wo:        col(['工單','客訂','備註2','工單OR客訂']),
+    note:      col(['備註','Note']),
   };
-  console.log('欄位對應:', C, '標題:', headers);
+  // 顯示欄位對應讓使用者確認
+  const colInfo=Object.entries(C).map(([k,v])=>k+'='+v).join(', ');
+  console.log('欄位對應:', C);
+  console.log('標題列:', headers);
+  console.log('資料行數:', dataRows.length);
 
   // ── 步驟5：解析日期 ──
   const parseDate=(v)=>{
@@ -3297,8 +3302,11 @@ async function importOrdersFile(input){
     });
   }
 
-  if(!toInsert.length){ toast('沒有可匯入的資料，請確認格式','err'); return; }
-  toast(`解析完成：${toInsert.length} 筆，準備寫入...`,'inf');
+  if(!toInsert.length){
+    alert('沒有可匯入的資料！\n\n可能原因：\n1. 欄位名稱不符（品名欄找不到）\n2. 資料全部空白\n\n偵測到的標題列：\n'+headers.join(' | ')+'\n\n原始資料前3行：\n'+raw.slice(0,3).map(r=>r.join(' | ')).join('\n'));
+    toast('沒有可匯入的資料','err'); return;
+  }
+  toast('解析完成：'+toInsert.length+' 筆，準備寫入...','inf');
 
   if(isDemo){
     if(mode==='clear') DB.orders=DB.orders.filter(o=>o.year!==fileYear);
