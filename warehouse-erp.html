@@ -3238,6 +3238,7 @@ async function importOrdersFile(input){
     name:      col(['品名','名稱','商品']),
     spec:      col(['規格','型號']),
     qty:       col(['訂購數量','數量','訂購數','Qty']),
+    actual_qty:col(['實入數量','實到數量','到貨數量','實際數量']),
     unit:      col(['單位']),
     unit_price:col(['單價','NTD','Price','unit_price','單價NTD']),
     amount:    col(['小計NTD','小計','金額','總計','amount','合計']),
@@ -3245,10 +3246,8 @@ async function importOrdersFile(input){
     note:      col(['備註','Note']),
   };
   // 顯示欄位對應讓使用者確認
-  const colInfo=Object.entries(C).map(([k,v])=>k+'='+v).join(', ');
   console.log('欄位對應:', C);
   console.log('標題列:', headers);
-  console.log('資料行數:', dataRows.length);
 
   // ── 步驟5：解析日期 ──
   const parseDate=(v)=>{
@@ -3296,6 +3295,7 @@ async function importOrdersFile(input){
       name,
       spec:       String(r[C.spec]||'').trim(),
       qty,
+      actual_qty: C.actual_qty>=0 ? (toNum(r[C.actual_qty])||null) : null,
       unit:       String(r[C.unit]||'件').trim()||'件',
       unit_price,
       amount,
