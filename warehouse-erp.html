@@ -325,11 +325,11 @@ tr:hover td{background:var(--bg3);}
         <div class="nitem" id="nav-supplier" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
         <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
+        <div class="nitem" id="nav-actlog-po" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
         <div class="nslabel" id="nsl-system">⚙️ 系統管理</div>
         <div class="nitem" id="nav-navorder" onclick="openNavOrderEditor()"><span class="ic">🔀</span>側欄排序</div>
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
-        <div class="nitem" id="nav-actlog" onclick="goto('actlog',this)"><span class="ic">📋</span>操作紀錄</div>
         <div class="nitem" id="nav-usage" onclick="goto('usage',this)"><span class="ic">📡</span>系統用量</div>
       </div>
       <div class="online-sec">
@@ -882,7 +882,7 @@ tr:hover td{background:var(--bg3);}
 <div id="toast"></div>
 
 <script>
-let _db=null,isDemo=false,currentUser='使用者',currentUserRole='admin';
+let _db=null,isDemo=false,currentUser='使用者',currentUserRole='';
 let ibFV='all',obFV='all',currentZone='ALL',currentInvZone='ALL';
 let DB={locations:[],materials:[],inventory:[],inbound:[],outbound:[],actlog:[],suppliers:[],purchase:[],workorders:[],sup_categories:[],users:[],quotes:[],orders:[]};
 const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
@@ -1130,49 +1130,47 @@ function setupRT(){
 
 function applyNavPerms(){
   const {isAdmin, assigns}=getCurrentUserDepts();
-  // 額外讀取 perm（用於系統管理類項目）
   const p=getUserPerms();
 
-  // ── 各部門 nav 完全依 assigns 決定（不依賴 perm，避免角色字串解析問題）──
+  // ── 每個部門區塊嚴格只依 assigns 判斷，isAdmin 不讓倉管看到其他部門 ──
+  // 只有真正的 admin 帳號才能看到全部（currentUserRole==='admin' 或 assigns['admin']）
 
-  // 💼 業務管理區塊：只有業務儀表板、客戶管理、生產工作單
-  const hasSales = isAdmin || !!assigns['sales'];
-  _show('nav-sales-dash',  hasSales);
-  _show('nav-customers',   hasSales);
-  _show('nav-sales',       hasSales);
+  // 💼 業務管理：只有 assigns['sales'] 或 admin
+  _show('nav-sales-dash', isAdmin || !!assigns['sales']);
+  _show('nav-customers',  isAdmin || !!assigns['sales']);
+  _show('nav-sales',      isAdmin || !!assigns['sales']);
 
-  // 🏭 倉庫管理區塊：進出料、庫存
-  const hasWarehouse = isAdmin || !!assigns['warehouse'];
-  _show('nav-warehouse-dash', hasWarehouse);
-  _show('nav-inbound',        hasWarehouse);
-  _show('nav-outbound',       hasWarehouse);
-  _show('nav-inventory',      hasWarehouse);
+  // 🏭 倉庫管理：只有 assigns['warehouse'] 或 admin
+  _show('nav-warehouse-dash', isAdmin || !!assigns['warehouse']);
+  _show('nav-inbound',        isAdmin || !!assigns['warehouse']);
+  _show('nav-outbound',       isAdmin || !!assigns['warehouse']);
+  _show('nav-inventory',      isAdmin || !!assigns['warehouse']);
+  // 操作紀錄（倉庫區塊版）：倉管部門不顯示，移除
+  _show('nav-actlog-wh', false);
 
-  // 🛒 採購管理區塊：成本、詢價、採購、供應商、生產排程、訂購紀錄（訂購紀錄歸採購）
-  const hasPurchase = isAdmin || !!assigns['purchase'];
-  _show('nav-purchase-dash', hasPurchase);
-  _show('nav-cost',          hasPurchase);
-  _show('nav-quote',         hasPurchase);
-  _show('nav-purchase',      hasPurchase);
-  _show('nav-supplier',      hasPurchase);
-  _show('nav-production',    hasPurchase);
-  _show('nav-orders',        hasPurchase);
+  // 🛒 採購管理：只有 assigns['purchase'] 或 admin
+  _show('nav-purchase-dash', isAdmin || !!assigns['purchase']);
+  _show('nav-cost',          isAdmin || !!assigns['purchase']);
+  _show('nav-quote',         isAdmin || !!assigns['purchase']);
+  _show('nav-purchase',      isAdmin || !!assigns['purchase']);
+  _show('nav-supplier',      isAdmin || !!assigns['purchase']);
+  _show('nav-production',    isAdmin || !!assigns['purchase']);
+  _show('nav-orders',        isAdmin || !!assigns['purchase']);
+  // 操作紀錄（採購區塊版）：採購部門才顯示
+  _show('nav-actlog-po', isAdmin || !!assigns['purchase']);
 
-  // ⚙️ 系統管理區塊（users/perm/actlog 依 perm，navorder/usage 僅 admin）
+  // ⚙️ 系統管理：只有 admin 才看得到整個區塊
   _show('nav-navorder', isAdmin);
   _show('nav-usage',    isAdmin);
-  _show('nav-users',    isAdmin || p['users_manage']);
-  _show('nav-perm',     isAdmin || p['users_manage']);
-  // 操作紀錄：倉管部、採購部、admin 可見；純業務部門不顯示
-  const canSeeLog = isAdmin || !!assigns['warehouse'] || !!assigns['purchase'];
-  _show('nav-actlog', canSeeLog);
+  _show('nav-users',    isAdmin);
+  _show('nav-perm',     isAdmin);
 
-  // nslabel 跟隨下方項目是否有任何可見
+  // nslabel 跟隨其下項目是否有任何可見
   const labelMap={
     'nsl-sales':    ['nav-sales-dash','nav-customers','nav-sales'],
     'nsl-warehouse':['nav-warehouse-dash','nav-inbound','nav-outbound','nav-inventory'],
-    'nsl-purchase': ['nav-purchase-dash','nav-cost','nav-quote','nav-purchase','nav-supplier','nav-production','nav-orders'],
-    'nsl-system':   ['nav-navorder','nav-users','nav-perm','nav-actlog','nav-usage'],
+    'nsl-purchase': ['nav-purchase-dash','nav-cost','nav-quote','nav-purchase','nav-supplier','nav-production','nav-orders','nav-actlog-po'],
+    'nsl-system':   ['nav-navorder','nav-users','nav-perm','nav-usage'],
   };
   Object.entries(labelMap).forEach(([labelId,items])=>{
     const lbl=document.getElementById(labelId);
@@ -1635,7 +1633,10 @@ function getCurrentUserDepts(){
   if(!Object.keys(assigns).length && currentUserRole && currentUserRole!=='admin'){
     _parseRolesToAssigns(currentUserRole, assigns);
   }
-  const isAdmin=currentUserRole==='admin'||!!(assigns['admin']);
+  // isAdmin：只有 role 純粹是 'admin'，或部門指派含 admin，才算最高管理員
+  // 明確排除 warehouse_manager / purchase_manager 等被誤存為 role 的情況
+  const PURE_ADMIN_ROLES = ['admin','admin_manager','admin_staff'];
+  const isAdmin = PURE_ADMIN_ROLES.includes(currentUserRole) || !!(assigns['admin']);
   return {isAdmin, assigns};
 }
 
@@ -3522,7 +3523,8 @@ function getUserPerms(){
 
 // 檢查某項權限
 function hasPerm(key){
-  if(currentUserRole==='admin') return true;
+  const PURE_ADMIN_ROLES=['admin','admin_manager','admin_staff'];
+  if(PURE_ADMIN_ROLES.includes(currentUserRole)) return true;
   // 檢查是否有 admin 部門
   const curUser=DB.users?.find(u=>u.name===currentUser);
   if(curUser){
