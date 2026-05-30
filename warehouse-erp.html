@@ -257,17 +257,22 @@ tr:hover td{background:var(--bg3);}
   </div>
   <div class="sfield">
     <label>你的名稱</label>
-    <input id="userName" placeholder="例：王小明" maxlength="20" autocomplete="name">
+    <input id="userName" placeholder="例：王小明" maxlength="20" autocomplete="name" onkeydown="if(event.key==='Enter')document.getElementById('btnConnect').click()">
+  </div>
+  <!-- 連線狀態指示器：Key 已存時顯示，否則隱藏 -->
+  <div id="keyStatus" style="display:none;background:var(--green-bg);border:1px solid #C0DD97;border-radius:var(--r);padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--green-text);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <span>🔒 資料庫連線設定已儲存</span>
+    <button onclick="clearKeyAndReset()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;text-decoration:underline;white-space:nowrap;">重新設定</button>
   </div>
   <button class="sbtn" id="btnConnect" onclick="connectSupabase()">進入系統</button>
   <div class="sstatus" id="setupStatus"></div>
-  <div style="margin-top:14px;text-align:center;">
-    <button onclick="showAdvanced()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;">⚙ 進階設定（首次使用請點此）</button>
+  <div id="advancedToggleRow" style="margin-top:14px;text-align:center;">
+    <button onclick="showAdvanced()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;">⚙ 首次使用？點此設定連線</button>
   </div>
   <div id="advancedBox" style="display:none;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--border);">
-    <div style="background:var(--amber-bg);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber-text);line-height:1.8;">
-      ⚠ <b>首次使用請填入以下資訊，之後只需輸入名稱即可登入</b><br>
-      Supabase → Settings → API Keys → service_role → 點 Reveal → 複製
+    <div style="background:var(--blue-bg);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue-text);line-height:1.9;">
+      📌 <b>只需設定一次</b>，之後每次只要輸入名稱即可登入<br>
+      Supabase → Settings → API Keys → service_role → Reveal → 複製
     </div>
     <div class="sfield">
       <label>Project URL</label>
@@ -275,11 +280,11 @@ tr:hover td{background:var(--bg3);}
       <div class="hint">Supabase → Settings → API → Project URL</div>
     </div>
     <div class="sfield">
-      <label>Service Role Key（完整金鑰，不是 anon key）</label>
+      <label>Service Role Key</label>
       <textarea id="supaKey" placeholder="eyJhbGciOiJIUzI1NiIs..." rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-size:12px;font-family:monospace;resize:none;word-break:break-all;"></textarea>
-      <div class="hint">Supabase → Settings → API Keys → service_role secret → 點 Reveal</div>
+      <div class="hint">Supabase → Settings → API Keys → service_role secret → Reveal</div>
     </div>
-    <button class="sbtn" style="margin-top:4px;" onclick="saveAdvanced()">✅ 儲存並進入系統</button>
+    <button class="sbtn" style="margin-top:4px;" onclick="saveAdvanced()">💾 儲存設定並進入系統</button>
   </div>
   <button class="sdemo" style="display:none;" onclick="demoMode()">🖥 示範模式（單機體驗）</button></div>
 </div>
@@ -303,23 +308,24 @@ tr:hover td{background:var(--bg3);}
         <div class="online-dot"></div>
       </div>
       <div class="nav">
-        <div class="nslabel">💼 業務管理</div>
+        <div class="nslabel" id="nsl-sales">💼 業務管理</div>
+        <div class="nitem" id="nav-sales-dash" onclick="goto('sales-dash',this)"><span class="ic">📊</span>業務儀表板</div>
         <div class="nitem" id="nav-customers" onclick="goto('customers',this)"><span class="ic">🤝</span>客戶管理</div>
         <div class="nitem" id="nav-sales" onclick="goto('sales',this)"><span class="ic">📋</span>生產工作單</div>
-        <div class="nslabel">🏭 倉庫管理</div>
-        <div class="nitem active" id="nav-dashboard" onclick="goto('dashboard',this)"><span class="ic">📊</span>總覽儀表板</div>
+        <div class="nslabel" id="nsl-warehouse">🏭 倉庫管理</div>
+        <div class="nitem" id="nav-warehouse-dash" onclick="goto('warehouse-dash',this)"><span class="ic">📊</span>倉庫儀表板</div>
         <div class="nitem" id="nav-inbound" onclick="goto('inbound',this)"><span class="ic">📥</span>進料管理</div>
         <div class="nitem" id="nav-outbound" onclick="goto('outbound',this)"><span class="ic">📤</span>出料管理</div>
         <div class="nitem" id="nav-inventory" onclick="goto('inventory',this)"><span class="ic">📦</span>庫存查詢</div>
-        <div class="nslabel">🛒 採購管理</div>
+        <div class="nslabel" id="nsl-purchase">🛒 採購管理</div>
+        <div class="nitem" id="nav-purchase-dash" onclick="goto('purchase-dash',this)"><span class="ic">📊</span>採購儀表板</div>
         <div class="nitem" id="nav-cost" onclick="goto('cost',this)"><span class="ic">💰</span>成本計算</div>
         <div class="nitem" id="nav-quote" onclick="goto('quote',this)"><span class="ic">📋</span>詢價單</div>
         <div class="nitem" id="nav-purchase" onclick="goto('purchase',this)"><span class="ic">🛒</span>採購管理</div>
         <div class="nitem" id="nav-supplier" onclick="goto('supplier',this)"><span class="ic">🏭</span>供應商管理</div>
         <div class="nitem" id="nav-production" onclick="goto('production',this)"><span class="ic">⚙️</span>生產排程</div>
         <div class="nitem" id="nav-orders" onclick="goto('orders',this)"><span class="ic">📑</span>訂購紀錄</div>
-        <div class="nitem" id="nav-reports" onclick="goto('reports',this)"><span class="ic">📈</span>報表分析</div>
-        <div class="nslabel">⚙️ 系統管理</div>
+        <div class="nslabel" id="nsl-system">⚙️ 系統管理</div>
         <div class="nitem" id="nav-navorder" onclick="openNavOrderEditor()"><span class="ic">🔀</span>側欄排序</div>
         <div class="nitem" id="nav-users" onclick="goto('users',this)"><span class="ic">👥</span>使用者管理</div>
         <div class="nitem" id="nav-perm" onclick="goto('permissions',this)"><span class="ic">🔐</span>權限設定</div>
@@ -336,17 +342,36 @@ tr:hover td{background:var(--bg3);}
       <div class="page-header"><h2 id="pageTitle">總覽儀表板</h2><div id="pageActions"></div></div>
       <div class="content">
 
-        <div class="page active" id="page-dashboard">
-          <div id="dashAlerts"></div>
-          <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
-            <div class="stat-card"><div class="stat-label">今日入庫</div><div class="stat-val" id="ds-in">-</div><div class="stat-sub stat-up">入庫單筆數</div></div>
-            <div class="stat-card"><div class="stat-label">今日出庫</div><div class="stat-val" id="ds-out">-</div><div class="stat-sub stat-dn">出庫申請</div></div>
-            <div class="stat-card"><div class="stat-label">料件種類</div><div class="stat-val" id="ds-mat">-</div><div class="stat-sub">庫存總筆數</div></div>
+        <!-- 舊總覽儀表板（保留 DOM 供向後相容，但隱藏不顯示於導覽） -->
+        <div class="page" id="page-dashboard" style="display:none;">
+          <div id="dept-dash"></div>
+          <div id="admin-dash-content" style="display:none;">
+            <div id="dashAlerts"></div>
+            <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+              <div class="stat-card"><div class="stat-label">今日入庫</div><div class="stat-val" id="ds-in">-</div><div class="stat-sub stat-up">入庫單筆數</div></div>
+              <div class="stat-card"><div class="stat-label">今日出庫</div><div class="stat-val" id="ds-out">-</div><div class="stat-sub stat-dn">出庫申請</div></div>
+              <div class="stat-card"><div class="stat-label">料件種類</div><div class="stat-val" id="ds-mat">-</div><div class="stat-sub">庫存總筆數</div></div>
+            </div>
+            <div class="two-col">
+              <div class="card"><div class="card-hd"><span class="card-title">即時操作動態</span><span class="badge b-info">即時</span></div><div id="dashAct"><div style="color:var(--text3);font-size:12px;">載入中...</div></div></div>
+              <div class="card"><div class="card-hd"><span class="card-title">低量警示料件</span></div><div id="dashLow"><div style="color:var(--text3);font-size:12px;">載入中...</div></div></div>
+            </div>
           </div>
-          <div class="two-col">
-            <div class="card"><div class="card-hd"><span class="card-title">即時操作動態</span><span class="badge b-info">即時</span></div><div id="dashAct"><div style="color:var(--text3);font-size:12px;">載入中...</div></div></div>
-            <div class="card"><div class="card-hd"><span class="card-title">低量警示料件</span></div><div id="dashLow"><div style="color:var(--text3);font-size:12px;">載入中...</div></div></div>
-          </div>
+        </div>
+
+        <!-- 💼 業務管理儀表板 -->
+        <div class="page active" id="page-sales-dash">
+          <div id="sales-dash-content"></div>
+        </div>
+
+        <!-- 🏭 倉庫管理儀表板 -->
+        <div class="page" id="page-warehouse-dash">
+          <div id="warehouse-dash-content"></div>
+        </div>
+
+        <!-- 🛒 採購管理儀表板 -->
+        <div class="page" id="page-purchase-dash">
+          <div id="purchase-dash-content"></div>
         </div>
 
         <div class="page" id="page-inbound">
@@ -845,7 +870,6 @@ tr:hover td{background:var(--bg3);}
       <div class="bnav-item" onclick="goto('purchase',null,'採購',this)"><span class="ic">🛒</span>採購</div>
       <div class="bnav-item" onclick="goto('cost',null,'成本',this)"><span class="ic">💰</span>成本</div>
       <div class="bnav-item" onclick="goto('quote',null,'詢價',this)"><span class="ic">📋</span>詢價</div>
-      <div class="bnav-item" onclick="goto('reports',null,'報表',this)"><span class="ic">📈</span>報表</div>
       <div class="bnav-item" onclick="goto('actlog',null,'紀錄',this)"><span class="ic">📋</span>紀錄</div>
       <div class="bnav-item" onclick="goto('orders',null,'訂購',this)"><span class="ic">📑</span>訂購</div>
     </div>
@@ -866,7 +890,7 @@ const COLORS=['#185FA5','#3B6D11','#854F0B','#534AB7','#993556','#0F6E56'];
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
 
-const PT={dashboard:'總覽儀表板',customers:'客戶管理',sales:'業務管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
+const PT={dashboard:'總覽儀表板','sales-dash':'💼 業務管理儀表板','warehouse-dash':'🏭 倉庫管理儀表板','purchase-dash':'🛒 採購管理儀表板',customers:'客戶管理',sales:'業務管理',inbound:'進料管理',outbound:'出料管理',inventory:'庫存查詢',purchase:'採購管理',supplier:'供應商管理',production:'生產排程',reports:'報表分析',users:'使用者管理',permissions:'權限設定',actlog:'操作紀錄'};
 function goto(p,el,label,bnavEl){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
@@ -880,9 +904,47 @@ function goto(p,el,label,bnavEl){
   if(p==='quote'){initQuotePage();}
   if(p==='orders'){initOrdersPage();}
   if(p==='usage'){initUsagePage();}
+  if(p==='actlog'){renderLog();}
   if(p==='customers'){initCustomersPage();}
   if(p==='sales'){initSalesPage();}
+  if(p==='sales-dash'){renderSalesDash();}
+  if(p==='warehouse-dash'){renderWarehouseDash();}
+  if(p==='purchase-dash'){renderPurchaseDash();}
   closeSidebar();
+}
+
+// ── 初始化登入頁：根據是否有已儲存的 Key 調整 UI ──
+function initSetupPage(){
+  const key=(localStorage.getItem('erp_key')||sessionStorage.getItem('erp_key')||'').trim();
+  const keyStatus=document.getElementById('keyStatus');
+  const advToggle=document.getElementById('advancedToggleRow');
+  if(key&&key.length>20){
+    // Key 已存：顯示「已設定」狀態，隱藏「首次設定」按鈕
+    if(keyStatus){ keyStatus.style.display='flex'; }
+    if(advToggle){ advToggle.style.display='none'; }
+    // 把上次的名稱填回去
+    const savedName=localStorage.getItem('erp_user')||'';
+    if(savedName){
+      const nameEl=document.getElementById('userName');
+      if(nameEl) nameEl.value=savedName;
+    }
+  } else {
+    // Key 尚未設定：隱藏狀態列，顯示「首次設定」按鈕
+    if(keyStatus){ keyStatus.style.display='none'; }
+    if(advToggle){ advToggle.style.display='block'; }
+  }
+}
+
+function clearKeyAndReset(){
+  if(!confirm('確定要清除連線設定並重新設定？')) return;
+  localStorage.removeItem('erp_key');
+  localStorage.removeItem('erp_url');
+  sessionStorage.removeItem('erp_key');
+  sessionStorage.removeItem('erp_url');
+  // 顯示進階設定框
+  document.getElementById('keyStatus').style.display='none';
+  document.getElementById('advancedToggleRow').style.display='block';
+  showAdvanced();
 }
 
 function showAdvanced(){
@@ -890,10 +952,13 @@ function showAdvanced(){
   const isHidden=box.style.display==='none'||box.style.display==='';
   box.style.display=isHidden?'block':'none';
   if(isHidden){
-    const key=localStorage.getItem('erp_key')||'';
+    // 把已存的值填入欄位
+    const url=localStorage.getItem('erp_url')||sessionStorage.getItem('erp_url')||'https://nqwjisztneznwihoozjq.supabase.co';
+    const key=localStorage.getItem('erp_key')||sessionStorage.getItem('erp_key')||'';
+    const urlEl=document.getElementById('supaUrl');
     const keyEl=document.getElementById('supaKey');
+    if(urlEl) urlEl.value=url;
     if(keyEl&&key) keyEl.value=key;
-    // 捲動到進階設定
     setTimeout(()=>box.scrollIntoView({behavior:'smooth',block:'center'}),100);
   }
 }
@@ -983,7 +1048,21 @@ async function connectSupabase(){
       return;
     }
     currentUser=name;
-    currentUserRole=matched.role||'operator';
+    // 優先讀 localStorage 的角色設定（管理員在此處設定）
+    try{
+      const localUsers=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+      if(localUsers[name]){
+        currentUserRole=localUsers[name].role||matched.role||'operator';
+        // 把 localStorage 的擴充資料補進 matched
+        Object.assign(matched, localUsers[name]);
+      } else {
+        currentUserRole=matched.role||'operator';
+        // 把 DB 的角色同步到 localStorage，讓 getCurrentUserDepts() 第一次就能讀到
+        const roleStr=matched.roles||matched.role||'operator';
+        localUsers[name]={role:currentUserRole, roles:roleStr};
+        localStorage.setItem('erp_user_roles', JSON.stringify(localUsers));
+      }
+    }catch(e){ currentUserRole=matched.role||'operator'; }
     localStorage.setItem('erp_user',name);
     st.textContent='✅ 歡迎回來，'+name+'！';st.className='sstatus ok';
     setTimeout(launchApp,400);
@@ -1001,9 +1080,15 @@ async function launchApp(){
   document.getElementById('app').classList.add('ready');
   document.getElementById('selfAv').textContent=currentUser.slice(-2);
   document.getElementById('selfName').textContent=currentUser;
-  const roleNameMap={admin:'最高管理員',manager:'主管',operator:'操作員',readonly:'唯讀'};
+  const roleNameMap={
+    admin:'最高管理員', manager:'主管', operator:'操作員', readonly:'唯讀',
+    sales_manager:'💼 業務主管', sales_staff:'💼 業務員工',
+    warehouse_manager:'🏭 倉管主管', warehouse_staff:'🏭 倉管員工',
+    purchase_manager:'🛒 採購主管', purchase_staff:'🛒 採購員工',
+    admin_manager:'👑 系統主管', admin_staff:'👑 系統員工'
+  };
   const roleEl=document.getElementById('selfRole');
-  if(roleEl)roleEl.textContent=roleNameMap[currentUserRole]||'操作員';
+  if(roleEl) roleEl.textContent=roleNameMap[currentUserRole]||currentUserRole||'操作員';
   // 載入本機儲存的自訂權限
   try{
     const saved=JSON.parse(localStorage.getItem('erp_perms')||'{}');
@@ -1011,6 +1096,19 @@ async function launchApp(){
   }catch(e){}
   applyNavPerms();
   restoreNavOrder();
+  // 根據角色決定預設首頁
+  const {isAdmin, assigns}=getCurrentUserDepts();
+  if(isAdmin){
+    goto('sales-dash', document.getElementById('nav-sales-dash'));
+  } else if(assigns['sales']){
+    goto('sales-dash', document.getElementById('nav-sales-dash'));
+  } else if(assigns['warehouse']){
+    goto('warehouse-dash', document.getElementById('nav-warehouse-dash'));
+  } else if(assigns['purchase']){
+    goto('purchase-dash', document.getElementById('nav-purchase-dash'));
+  } else {
+    goto('sales-dash', document.getElementById('nav-sales-dash'));
+  }
   updateLive(true);renderOnline([currentUser]);
   if(!isDemo){
     setupRT();
@@ -1031,33 +1129,62 @@ function setupRT(){
 }
 
 function applyNavPerms(){
+  const {isAdmin, assigns}=getCurrentUserDepts();
+  // 額外讀取 perm（用於系統管理類項目）
   const p=getUserPerms();
-  const isAdmin=currentUserRole==='admin';
-  // 每個 nav 對應的權限 key
-  const navMap={
-    'nav-dashboard':'dashboard_view',
-    'nav-inbound':'inbound_view',
-    'nav-outbound':'outbound_view',
-    'nav-inventory':'inventory_view',
-    'nav-cost':'cost_view',
-    'nav-quote':'quote_view',
-    'nav-purchase':'purchase_view',
-    'nav-supplier':'supplier_view',
-    'nav-production':'production_view',
-    'nav-orders':'orders_view',
-    'nav-sales':'sales_view',
-    'nav-customers':'customers_view',
-    'nav-reports':'reports_view',
-    'nav-users':'users_manage',
-    'nav-perm':'users_manage',
-    'nav-actlog':'actlog_view',
+
+  // ── 各部門 nav 完全依 assigns 決定（不依賴 perm，避免角色字串解析問題）──
+
+  // 💼 業務管理區塊：只有業務儀表板、客戶管理、生產工作單
+  const hasSales = isAdmin || !!assigns['sales'];
+  _show('nav-sales-dash',  hasSales);
+  _show('nav-customers',   hasSales);
+  _show('nav-sales',       hasSales);
+
+  // 🏭 倉庫管理區塊：進出料、庫存
+  const hasWarehouse = isAdmin || !!assigns['warehouse'];
+  _show('nav-warehouse-dash', hasWarehouse);
+  _show('nav-inbound',        hasWarehouse);
+  _show('nav-outbound',       hasWarehouse);
+  _show('nav-inventory',      hasWarehouse);
+
+  // 🛒 採購管理區塊：成本、詢價、採購、供應商、生產排程、訂購紀錄（訂購紀錄歸採購）
+  const hasPurchase = isAdmin || !!assigns['purchase'];
+  _show('nav-purchase-dash', hasPurchase);
+  _show('nav-cost',          hasPurchase);
+  _show('nav-quote',         hasPurchase);
+  _show('nav-purchase',      hasPurchase);
+  _show('nav-supplier',      hasPurchase);
+  _show('nav-production',    hasPurchase);
+  _show('nav-orders',        hasPurchase);
+
+  // ⚙️ 系統管理區塊（users/perm/actlog 依 perm，navorder/usage 僅 admin）
+  _show('nav-navorder', isAdmin);
+  _show('nav-usage',    isAdmin);
+  _show('nav-users',    isAdmin || p['users_manage']);
+  _show('nav-perm',     isAdmin || p['users_manage']);
+  // 操作紀錄：倉管部、採購部、admin 可見；純業務部門不顯示
+  const canSeeLog = isAdmin || !!assigns['warehouse'] || !!assigns['purchase'];
+  _show('nav-actlog', canSeeLog);
+
+  // nslabel 跟隨下方項目是否有任何可見
+  const labelMap={
+    'nsl-sales':    ['nav-sales-dash','nav-customers','nav-sales'],
+    'nsl-warehouse':['nav-warehouse-dash','nav-inbound','nav-outbound','nav-inventory'],
+    'nsl-purchase': ['nav-purchase-dash','nav-cost','nav-quote','nav-purchase','nav-supplier','nav-production','nav-orders'],
+    'nsl-system':   ['nav-navorder','nav-users','nav-perm','nav-actlog','nav-usage'],
   };
-  Object.entries(navMap).forEach(([id,key])=>{
-    const el=document.getElementById(id);
-    if(!el) return;
-    const show=isAdmin||p[key];
-    el.style.display=show?'flex':'none';
+  Object.entries(labelMap).forEach(([labelId,items])=>{
+    const lbl=document.getElementById(labelId);
+    if(!lbl) return;
+    const anyVisible=items.some(id=>{const el=document.getElementById(id);return el&&el.style.display!=='none';});
+    lbl.style.display=anyVisible?'block':'none';
   });
+}
+
+function _show(id, visible){
+  const el=document.getElementById(id);
+  if(el) el.style.display=visible?'flex':'none';
 }
 
 function updateLive(ok){
@@ -1070,7 +1197,7 @@ function renderOnline(users){
   document.getElementById('onlineAvatars').innerHTML=h;document.getElementById('topAvatars').innerHTML=h;
 }
 
-async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));if(!DB.users||!DB.users.length){restoreUsersFromLocal();}renderAll();}
+async function loadAll(){if(isDemo){renderAll();return;}await Promise.all(['locations','materials','inventory','inbound','outbound','activity_log','suppliers','purchase','workorders','sup_categories','erp_users','quotes'].map(t=>loadT(t)));if(!DB.users||!DB.users.length){restoreUsersFromLocal();}applyNavPerms();renderAll();}
 async function loadT(t){if(isDemo)return;try{const{data,error}=await _db.from(t).select('*').order('created_at',{ascending:false});if(error)throw error;const keyMap={'activity_log':'actlog','erp_users':'users'};DB[keyMap[t]||t]=data||[];if(t==='erp_users'){if(data&&data.length)backupUsersToLocal();else if(!data||!data.length)restoreUsersFromLocal();}}catch(e){console.warn(t,e.message);if(t==='erp_users')restoreUsersFromLocal();}}
 function renderAll(){refreshDash();renderIB();renderOB();renderINV();renderPO();renderSup();renderWO();renderReports();renderLog();renderPermissions('admin');renderUsers();}
 
@@ -1386,7 +1513,446 @@ function seedDemo(){
   ];
 }
 
+
+// ── 首頁 ──
+function initHome(){
+  const el=document.getElementById('home-content');
+  if(!el) return;
+  const hour=new Date().getHours();
+  const greet=hour<6?'深夜好 🌙':hour<12?'早安 ☀️':hour<14?'午安 🌤':hour<18?'下午好 🌈':'晚安 🌃';
+  const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+  const userDeptNames=(() => {
+    const u=DB.users?.find(x=>x.name===currentUser);
+    if(!u) return '';
+    let assigns={};
+    try{assigns=JSON.parse(u.dept_assigns||'{}');}catch(e){}
+    const names=Object.entries(assigns).map(([id,lvl])=>{
+      const d=depts.find(x=>x.id===id);
+      return d?`${d.icon||''} ${d.name}（${lvl==='manager'?'主管':'員工'}）`:'';
+    }).filter(Boolean);
+    return names.join('、') || (u.dept||'');
+  })();
+
+  // 快速入口 cards
+  const shortcuts=[
+    {icon:'📥',label:'入庫作業',page:'inbound',color:'#1A5FA5'},
+    {icon:'📤',label:'出庫作業',page:'outbound',color:'#C0392B'},
+    {icon:'📦',label:'庫存查詢',page:'inventory',color:'#3B6D11'},
+    {icon:'🛒',label:'採購管理',page:'purchase',color:'#854F0B'},
+    {icon:'🏭',label:'生產工作單',page:'orders',color:'#534AB7'},
+    {icon:'📊',label:'總覽儀表板',page:'dashboard',color:'#0F6E56'},
+    {icon:'🤝',label:'客戶管理',page:'customers',color:'#185FA5'},
+    {icon:'🏭',label:'供應商管理',page:'suppliers',color:'#6B3FA0'},
+  ];
+
+  // 今日統計
+  const td=new Date().toDateString();
+  const todayIn=(DB.inbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+  const todayOut=(DB.outbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+  const lowCount=(DB.inventory||[]).filter(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;}).length;
+
+  el.innerHTML=`
+  <div style="min-height:calc(100vh - 120px);display:flex;flex-direction:column;">
+    <!-- Hero -->
+    <div style="background:linear-gradient(135deg,#1A5FA5 0%,#185FA5cc 40%,#0F6E56 100%);border-radius:16px;padding:32px 28px 28px;margin-bottom:20px;color:white;position:relative;overflow:hidden;">
+      <div style="position:absolute;right:-20px;top:-20px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none;"></div>
+      <div style="position:absolute;right:40px;bottom:-30px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;"></div>
+      <div style="font-size:13px;opacity:.8;margin-bottom:6px;">${greet}</div>
+      <div style="font-size:24px;font-weight:700;margin-bottom:4px;">${currentUser}</div>
+      ${userDeptNames?`<div style="font-size:13px;opacity:.75;margin-bottom:16px;">${userDeptNames}</div>`:'<div style="margin-bottom:16px;"></div>'}
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;">${todayIn}</div>
+          <div style="font-size:11px;opacity:.8;">今日入庫</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,.2);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;">${todayOut}</div>
+          <div style="font-size:11px;opacity:.8;">今日出庫</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,.2);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;color:${lowCount?'#FFD700':'#7FFFD4'};">${lowCount}</div>
+          <div style="font-size:11px;opacity:.8;">低量警示</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快速入口 -->
+    <div style="font-size:13px;font-weight:700;color:var(--text3);margin-bottom:10px;letter-spacing:.5px;">快速入口</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:24px;">
+      ${shortcuts.map(s=>`
+        <div onclick="goto('${s.page}',document.getElementById('nav-${s.page}'))" style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:18px 12px;cursor:pointer;text-align:center;transition:all .15s;user-select:none;"
+          onmouseover="this.style.background='var(--bg3)';this.style.transform='translateY(-2px)'"
+          onmouseout="this.style.background='var(--bg2)';this.style.transform=''"
+          onmousedown="this.style.transform='scale(.97)'" onmouseup="this.style.transform='translateY(-2px)'">
+          <div style="font-size:28px;margin-bottom:8px;">${s.icon}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${s.label}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- 最近動態 -->
+    <div style="font-size:13px;font-weight:700;color:var(--text3);margin-bottom:10px;letter-spacing:.5px;">最近倉庫動態</div>
+    <div style="background:var(--bg2);border-radius:12px;padding:12px 16px;flex:1;">
+      ${(()=>{
+        const WTYPES=['入庫','出庫','調整','庫存','倉位'];
+        const logs=[...(DB.actlog||[])].filter(l=>WTYPES.includes(l.action_type)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,6);
+        if(!logs.length) return '<div style="color:var(--text3);font-size:13px;padding:8px 0;">尚無倉庫操作紀錄</div>';
+        return logs.map(l=>{
+          const c=l.action_type==='入庫'?'var(--green)':l.action_type==='出庫'?'var(--red)':'var(--blue)';
+          return`<div class="act-item"><div class="act-dot" style="background:${c}"></div><div class="act-text"><b>${l.operator}</b>：${l.description}</div><div class="act-time">${ft(l.created_at)}</div></div>`;
+        }).join('');
+      })()}
+    </div>
+  </div>`;
+}
+
+
+// ── 部門儀表板 ──
+function getCurrentUserDepts(){
+  // 優先從 localStorage 讀（最可靠，不依賴 DB.users 載入時機）
+  let assigns={};
+  try{
+    const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+    const lrData=lr[currentUser];
+    if(lrData&&lrData.dept_assigns){
+      assigns=JSON.parse(lrData.dept_assigns);
+    } else if(lrData&&(lrData.roles||lrData.role)){
+      _parseRolesToAssigns(lrData.roles||lrData.role, assigns);
+    }
+  }catch(e){}
+  // fallback：從 DB.users 讀
+  if(!Object.keys(assigns).length){
+    const u=(DB.users||[]).find(x=>x.name===currentUser);
+    if(u){
+      try{ assigns=u._deptAssigns||JSON.parse(u.dept_assigns||'{}'); }catch(e){}
+      if(!Object.keys(assigns).length){
+        _parseRolesToAssigns(u.roles||u.role||'', assigns);
+      }
+    }
+  }
+  // 最後 fallback：從 currentUserRole 解析
+  if(!Object.keys(assigns).length && currentUserRole && currentUserRole!=='admin'){
+    _parseRolesToAssigns(currentUserRole, assigns);
+  }
+  const isAdmin=currentUserRole==='admin'||!!(assigns['admin']);
+  return {isAdmin, assigns};
+}
+
+// 解析角色字串（如 "sales_manager,warehouse_staff"）到 assigns 物件
+function _parseRolesToAssigns(rolesStr, assigns){
+  (rolesStr||'').split(',').forEach(r=>{
+    r=r.trim();
+    if(!r) return;
+    // 支援 dept_level 格式：sales_manager, warehouse_staff, purchase_manager…
+    // 以最後一個 _ 分割，前面全是 dept，後面是 level
+    const lastUs=r.lastIndexOf('_');
+    if(lastUs>0){
+      const dept=r.substring(0, lastUs);
+      const level=r.substring(lastUs+1); // manager | staff
+      if(assigns[dept]&&assigns[dept]!==level) assigns[dept]='both';
+      else assigns[dept]=level;
+    }
+  });
+}
+
+function _dCard(icon,label,val,color,page){
+  return`<div onclick="goto('${page}',document.getElementById('nav-${page}'))" style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px;cursor:pointer;text-align:center;transition:all .15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+    <div style="font-size:24px;margin-bottom:4px;">${icon}</div>
+    <div style="font-size:22px;font-weight:800;color:${color};">${val}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px;">${label}</div>
+  </div>`;
+}
+function _alert(color,border,msg,page){
+  return`<div onclick="goto('${page}',document.getElementById('nav-${page}'))" style="background:${color};border:1px solid ${border};border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:8px;cursor:pointer;">${msg}</div>`;
+}
+
+function renderDeptDash(){
+  const el=document.getElementById('dept-dash');
+  if(!el) return;
+  const {isAdmin, assigns}=getCurrentUserDepts();
+  // admin-dash-content 只有 admin 才顯示
+  const adminContent=document.getElementById('admin-dash-content');
+  if(adminContent) adminContent.style.display=isAdmin?'block':'none';
+  const td=new Date().toDateString();
+  const hour=new Date().getHours();
+  const greet=hour<6?'深夜好 🌙':hour<12?'早安 ☀️':hour<14?'午安 🌤':hour<18?'下午好 🌈':'晚安 🌃';
+
+  // ── 管理員總覽 ──
+  if(isAdmin){
+    const tIn=(DB.inbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+    const tOut=(DB.outbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+    const pendOB=(DB.outbound||[]).filter(o=>o.status==='pending').length;
+    const pendPO=(DB.purchase||[]).filter(p=>p.status==='pending'||p.status==='draft').length;
+    const activeWO=(DB.workorders||[]).filter(w=>w.status==='進行中').length;
+    const low=(DB.inventory||[]).filter(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
+    const matCount=(DB.inventory||[]).length;
+    const mInTransit=(DB.purchase||[]).filter(p=>p.status==='ordered').length;
+    const custCount=(DB.customers||[]).length;
+    const supCount=(DB.suppliers||[]).length;
+    const thisMonth=new Date().getMonth();
+    const mWO=(DB.workorders||[]).filter(w=>new Date(w.created_at||w.open_date).getMonth()===thisMonth).length;
+    el.innerHTML=`
+    <div style="background:linear-gradient(135deg,#1A3A5C,#185FA5 50%,#0F6E56);border-radius:14px;padding:20px 24px;margin-bottom:16px;color:white;">
+      <div style="font-size:11px;opacity:.7;letter-spacing:1px;">👑 最高管理員 · 全系統總覽</div>
+      <div style="font-size:20px;font-weight:700;margin-top:4px;">${greet}，${currentUser}</div>
+      <div style="display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;">
+        ${[['今日入庫',tIn],['今日出庫',tOut],['進行工單',activeWO],['低量警示',low.length]].map(([l,v])=>`
+        <div style="text-align:center;"><div style="font-size:22px;font-weight:800;">${v}</div><div style="font-size:11px;opacity:.75;">${l}</div></div>`).join('<div style="width:1px;background:rgba(255,255,255,.2)"></div>')}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+      ${_dCard('📥','今日入庫',tIn,'#1A5FA5','inbound')}
+      ${_dCard('📤','今日出庫',tOut,'#C0392B','outbound')}
+      ${_dCard('⏳','待審出庫',pendOB,pendOB?'#E67E22':'var(--text3)','outbound')}
+      ${_dCard('📦','庫存品項',matCount,'#3B6D11','inventory')}
+      ${_dCard('⚠️','低量警示',low.length,low.length?'#E74C3C':'#3B6D11','inventory')}
+      ${_dCard('🛒','待處理採購',pendPO,pendPO?'#E67E22':'var(--text3)','purchase')}
+      ${_dCard('🚚','在途採購',mInTransit,'#185FA5','purchase')}
+      ${_dCard('🏭','進行中工單',activeWO,'#534AB7','orders')}
+      ${_dCard('📋','本月工單',mWO,'#0F6E56','orders')}
+      ${_dCard('🤝','客戶數',custCount,'#185FA5','customers')}
+      ${_dCard('🏢','供應商',supCount,'#6B3FA0','suppliers')}
+    </div>
+    ${pendOB>0?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">⏳ ${pendOB} 筆出庫申請待審核</b> — 點此前往處理`,'outbound'):''}
+    ${pendPO>0?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">🛒 ${pendPO} 筆採購單待處理</b> — 點此前往確認`,'purchase'):''}
+    ${low.length?_alert('#FEECEC','#F5C6CB',`<b style="color:#C0392B;">⚠️ ${low.length} 項低於安全庫存</b>：${low.slice(0,4).map(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m?.name;}).filter(Boolean).join('、')}${low.length>4?'…':''}`,'inventory'):''}
+    `;
+    return;
+  }
+
+  const sections=[];
+
+  // ── 倉管部 ──
+  if(assigns['warehouse']){
+    const isMgr=assigns['warehouse']==='manager'||assigns['warehouse']==='both';
+    const tIn=(DB.inbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+    const tOut=(DB.outbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+    const pendOB=(DB.outbound||[]).filter(o=>o.status==='pending').length;
+    const matCount=(DB.inventory||[]).length;
+    const low=(DB.inventory||[]).filter(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
+    const activeWO=(DB.workorders||[]).filter(w=>w.status==='進行中').length;
+    sections.push(`
+    <div style="background:linear-gradient(135deg,#1A5FA5,#0F6E56);border-radius:12px;padding:18px 22px;margin-bottom:12px;color:white;">
+      <div style="font-size:11px;opacity:.7;">🏭 倉管部 · ${isMgr?'主管':'員工'}</div>
+      <div style="font-size:18px;font-weight:700;margin-top:2px;">${greet}，${currentUser}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:10px;">
+      ${_dCard('📥','今日入庫',tIn,'#1A5FA5','inbound')}
+      ${_dCard('📤','今日出庫',tOut,'#C0392B','outbound')}
+      ${isMgr?_dCard('⏳','待審出庫',pendOB,pendOB?'#E67E22':'var(--text3)','outbound'):''}
+      ${_dCard('📦','庫存品項',matCount,'#3B6D11','inventory')}
+      ${_dCard('⚠️','低量警示',low.length,low.length?'#E74C3C':'#3B6D11','inventory')}
+    </div>
+    ${pendOB>0&&isMgr?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">⏳ ${pendOB} 筆出庫申請待審核，請至出庫管理處理</b>`,'outbound'):''}
+    ${low.length?_alert('#FEECEC','#F5C6CB',`<b style="color:#C0392B;">⚠️ ${low.length} 項低於安全庫存</b>：${low.slice(0,3).map(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m?.name;}).filter(Boolean).join('、')}${low.length>3?'…':''}`,'inventory'):''}
+    `);
+  }
+
+  // ── 採購部 ──
+  if(assigns['purchase']){
+    const isMgr=assigns['purchase']==='manager'||assigns['purchase']==='both';
+    const pendPO=(DB.purchase||[]).filter(p=>p.status==='pending'||p.status==='draft').length;
+    const inTransit=(DB.purchase||[]).filter(p=>p.status==='ordered').length;
+    const supCount=(DB.suppliers||[]).length;
+    const low=(DB.inventory||[]).filter(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
+    sections.push(`
+    <div style="background:linear-gradient(135deg,#854F0B,#C0392B);border-radius:12px;padding:18px 22px;margin-bottom:12px;color:white;">
+      <div style="font-size:11px;opacity:.7;">🛒 採購部 · ${isMgr?'主管':'員工'}</div>
+      <div style="font-size:18px;font-weight:700;margin-top:2px;">${assigns['warehouse']?'採購作業':'${greet}，${currentUser}'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:10px;">
+      ${_dCard('🛒','待處理採購',pendPO,pendPO?'#E67E22':'var(--text3)','purchase')}
+      ${_dCard('🚚','在途採購',inTransit,'#185FA5','purchase')}
+      ${_dCard('🏢','供應商',supCount,'#6B3FA0','suppliers')}
+      ${isMgr?_dCard('⚠️','低量提醒',low.length,low.length?'#E74C3C':'#3B6D11','inventory'):''}
+    </div>
+    ${pendPO>0?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">🛒 ${pendPO} 筆採購單待處理</b>，請至採購管理確認`,'purchase'):''}
+    ${low.length&&isMgr?_alert('#FFF0E0','#FFCC80',`<b style="color:#E65100;">⚠️ ${low.length} 項料件低於安全庫存</b>，建議跟進採購`,'inventory'):''}
+    `);
+  }
+
+  // ── 業務部 ──
+  if(assigns['sales']){
+    const isMgr=assigns['sales']==='manager'||assigns['sales']==='both';
+    const activeWO=(DB.workorders||[]).filter(w=>w.status==='進行中').length;
+    const custCount=(DB.customers||[]).length;
+    const thisMonth=new Date().getMonth();
+    const mWO=(DB.workorders||[]).filter(w=>new Date(w.created_at||w.open_date).getMonth()===thisMonth).length;
+    const pendWO=(DB.workorders||[]).filter(w=>w.status==='待確認'||w.status==='pending').length;
+    const quoteCount=(DB.quotes||[]).length;
+    sections.push(`
+    <div style="background:linear-gradient(135deg,#185FA5,#534AB7);border-radius:12px;padding:18px 22px;margin-bottom:12px;color:white;">
+      <div style="font-size:11px;opacity:.7;">💼 業務部 · ${isMgr?'主管':'員工'}</div>
+      <div style="font-size:18px;font-weight:700;margin-top:2px;">${greet}，${currentUser}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:10px;">
+      ${_dCard('🏭','進行中工單',activeWO,'#534AB7','orders')}
+      ${_dCard('📋','本月工單',mWO,'#185FA5','orders')}
+      ${_dCard('🤝','客戶數',custCount,'#3B6D11','customers')}
+      ${_dCard('📄','詢價單',quoteCount,'#0F6E56','quote')}
+      ${pendWO?_dCard('⏳','待確認工單',pendWO,'#E67E22','orders'):''}
+    </div>
+    ${pendWO>0?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">📋 ${pendWO} 筆工單待確認</b>，請至生產工作單處理`,'orders'):''}
+    `);
+  }
+
+  if(!sections.length){
+    sections.push(`<div style="background:var(--bg2);border-radius:12px;padding:32px;text-align:center;color:var(--text3);">
+      <div style="font-size:40px;margin-bottom:12px;">👋</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);">${greet}，${currentUser}</div>
+      <div style="font-size:13px;margin-top:8px;">請聯絡管理員設定您的部門與角色</div>
+    </div>`);
+  }
+
+  el.innerHTML=sections.join('');
+}
+
+// ══ 💼 業務管理儀表板 ══
+function renderSalesDash(){
+  const el=document.getElementById('sales-dash-content');
+  if(!el) return;
+  const {isAdmin, assigns}=getCurrentUserDepts();
+  const isMgr=isAdmin||(assigns['sales']==='manager'||assigns['sales']==='both');
+  const td=new Date().toDateString();
+  const hour=new Date().getHours();
+  const greet=hour<6?'深夜好 🌙':hour<12?'早安 ☀️':hour<14?'午安 🌤':hour<18?'下午好 🌈':'晚安 🌃';
+  const activeWO=(DB.workorders||[]).filter(w=>w.status==='進行中').length;
+  const custCount=(DB.customers||[]).length;
+  const thisMonth=new Date().getMonth();
+  const mWO=(DB.workorders||[]).filter(w=>new Date(w.created_at||w.open_date).getMonth()===thisMonth).length;
+  const pendWO=(DB.workorders||[]).filter(w=>w.status==='待確認'||w.status==='pending').length;
+  const quoteCount=(DB.quotes||[]).length;
+  const doneWO=(DB.workorders||[]).filter(w=>w.status==='已完成').length;
+  el.innerHTML=`
+  <div style="background:linear-gradient(135deg,#185FA5,#534AB7);border-radius:14px;padding:20px 24px;margin-bottom:16px;color:white;">
+    <div style="font-size:11px;opacity:.7;letter-spacing:1px;">💼 業務管理 · ${isMgr?'主管':'員工'}</div>
+    <div style="font-size:20px;font-weight:700;margin-top:4px;">${greet}，${currentUser}</div>
+    <div style="display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;">
+      ${[['進行中工單',activeWO],['本月工單',mWO],['客戶數',custCount],['詢價單',quoteCount]].map(([l,v])=>`
+      <div style="text-align:center;"><div style="font-size:22px;font-weight:800;">${v}</div><div style="font-size:11px;opacity:.75;">${l}</div></div>`).join('<div style="width:1px;background:rgba(255,255,255,.2)"></div>')}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+    ${_dCard('🏭','進行中工單',activeWO,'#534AB7','sales')}
+    ${_dCard('📋','本月工單',mWO,'#185FA5','sales')}
+    ${_dCard('✅','已完成工單',doneWO,'#3B6D11','sales')}
+    ${_dCard('🤝','客戶數',custCount,'#0F6E56','customers')}
+    ${_dCard('📄','詢價單',quoteCount,'#854F0B','quote')}
+    ${pendWO?_dCard('⏳','待確認工單',pendWO,'#E67E22','sales'):''}
+  </div>
+  ${pendWO>0?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">📋 ${pendWO} 筆工單待確認</b>，請至生產工作單處理`,'sales'):''}
+  <div class="two-col" style="margin-top:4px;">
+    <div class="card"><div class="card-hd"><span class="card-title">最近工作單</span><button class="btn btn-primary btn-sm" onclick="goto('sales',document.getElementById('nav-sales'))">查看全部</button></div>
+      <div class="table-wrap"><table><thead><tr><th>工單號</th><th>客戶</th><th>機型</th><th>狀態</th></tr></thead>
+        <tbody>${(DB.workorders||[]).slice(0,5).map(w=>`<tr><td>${w.wo_no||'-'}</td><td>${w.customer||'-'}</td><td>${w.model||'-'}</td><td><span class="badge ${w.status==='已完成'?'b-success':w.status==='進行中'?'b-info':'b-warning'}">${w.status||'-'}</span></td></tr>`).join('')||'<tr class="empty-row"><td colspan="4">尚無工作單</td></tr>'}</tbody>
+      </table></div></div>
+    <div class="card"><div class="card-hd"><span class="card-title">最近詢價單</span><button class="btn btn-primary btn-sm" onclick="goto('quote',document.getElementById('nav-quote'))">查看全部</button></div>
+      <div class="table-wrap"><table><thead><tr><th>單號</th><th>廠商</th><th>狀態</th></tr></thead>
+        <tbody>${(DB.quotes||[]).slice(0,5).map(q=>`<tr><td>${q.quote_no||'-'}</td><td>${q.supplier_name||'-'}</td><td><span class="badge b-info">${q.status==='draft'?'草稿':q.status==='sent'?'已送出':q.status==='replied'?'已回覆':'已下單'}</span></td></tr>`).join('')||'<tr class="empty-row"><td colspan="3">尚無詢價單</td></tr>'}</tbody>
+      </table></div></div>
+  </div>`;
+}
+
+// ══ 🏭 倉庫管理儀表板 ══
+function renderWarehouseDash(){
+  const el=document.getElementById('warehouse-dash-content');
+  if(!el) return;
+  const {isAdmin, assigns}=getCurrentUserDepts();
+  const isMgr=isAdmin||(assigns['warehouse']==='manager'||assigns['warehouse']==='both');
+  const td=new Date().toDateString();
+  const hour=new Date().getHours();
+  const greet=hour<6?'深夜好 🌙':hour<12?'早安 ☀️':hour<14?'午安 🌤':hour<18?'下午好 🌈':'晚安 🌃';
+  const tIn=(DB.inbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+  const tOut=(DB.outbound||[]).filter(r=>new Date(r.created_at).toDateString()===td).length;
+  const pendOB=(DB.outbound||[]).filter(o=>o.status==='pending').length;
+  const pendIB=(DB.inbound||[]).filter(o=>o.status==='pending').length;
+  const matCount=(DB.inventory||[]).length;
+  const low=(DB.inventory||[]).filter(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
+  const locCount=(DB.locations||[]).length;
+  el.innerHTML=`
+  <div style="background:linear-gradient(135deg,#1A5FA5,#0F6E56);border-radius:14px;padding:20px 24px;margin-bottom:16px;color:white;">
+    <div style="font-size:11px;opacity:.7;letter-spacing:1px;">🏭 倉庫管理 · ${isMgr?'主管':'員工'}</div>
+    <div style="font-size:20px;font-weight:700;margin-top:4px;">${greet}，${currentUser}</div>
+    <div style="display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;">
+      ${[['今日入庫',tIn],['今日出庫',tOut],['庫存品項',matCount],['低量警示',low.length]].map(([l,v])=>`
+      <div style="text-align:center;"><div style="font-size:22px;font-weight:800;">${v}</div><div style="font-size:11px;opacity:.75;">${l}</div></div>`).join('<div style="width:1px;background:rgba(255,255,255,.2)"></div>')}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+    ${_dCard('📥','今日入庫',tIn,'#1A5FA5','inbound')}
+    ${_dCard('📤','今日出庫',tOut,'#C0392B','outbound')}
+    ${_dCard('⏳','待入庫單',pendIB,pendIB?'#E67E22':'var(--text3)','inbound')}
+    ${isMgr?_dCard('🔍','待審出庫',pendOB,pendOB?'#E67E22':'var(--text3)','outbound'):''}
+    ${_dCard('📦','庫存品項',matCount,'#3B6D11','inventory')}
+    ${_dCard('⚠️','低量警示',low.length,low.length?'#E74C3C':'#3B6D11','inventory')}
+    ${_dCard('🗂️','倉位數',locCount,'#534AB7','inventory')}
+  </div>
+  ${pendOB>0&&isMgr?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">⏳ ${pendOB} 筆出庫申請待審核</b> — 點此前往處理`,'outbound'):''}
+  ${low.length?_alert('#FEECEC','#F5C6CB',`<b style="color:#C0392B;">⚠️ ${low.length} 項低於安全庫存</b>：${low.slice(0,4).map(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m?.name;}).filter(Boolean).join('、')}${low.length>4?'…':''}`,'inventory'):''}
+  <div class="two-col" style="margin-top:4px;">
+    <div class="card"><div class="card-hd"><span class="card-title">最近入庫單</span><button class="btn btn-primary btn-sm" onclick="goto('inbound',document.getElementById('nav-inbound'))">查看全部</button></div>
+      <div class="table-wrap"><table><thead><tr><th>單號</th><th>品名</th><th>數量</th><th>狀態</th></tr></thead>
+        <tbody>${(DB.inbound||[]).slice(0,5).map(r=>{const m=(DB.materials||[]).find(x=>x.id===r.material_id);return`<tr><td>${r.order_no||'-'}</td><td>${m?.name||'-'}</td><td>${r.plan_qty||0}</td><td><span class="badge ${r.status==='done'?'b-success':'b-warning'}">${r.status==='done'?'已完成':'待入庫'}</span></td></tr>`;}).join('')||'<tr class="empty-row"><td colspan="4">尚無入庫單</td></tr>'}</tbody>
+      </table></div></div>
+    <div class="card"><div class="card-hd"><span class="card-title">低量警示料件</span><button class="btn btn-sm" onclick="goto('inventory',document.getElementById('nav-inventory'))">查看庫存</button></div>
+      <div class="table-wrap"><table><thead><tr><th>品名</th><th>現有庫存</th><th>安全庫存</th></tr></thead>
+        <tbody>${low.slice(0,6).map(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return`<tr><td>${m?.name||'-'}</td><td style="color:var(--red-text);font-weight:700;">${iv.qty}</td><td>${m?.safe_qty||0}</td></tr>`;}).join('')||'<tr class="empty-row"><td colspan="3">庫存正常 ✅</td></tr>'}</tbody>
+      </table></div></div>
+  </div>`;
+}
+
+// ══ 🛒 採購管理儀表板 ══
+function renderPurchaseDash(){
+  const el=document.getElementById('purchase-dash-content');
+  if(!el) return;
+  const {isAdmin, assigns}=getCurrentUserDepts();
+  const isMgr=isAdmin||(assigns['purchase']==='manager'||assigns['purchase']==='both');
+  const hour=new Date().getHours();
+  const greet=hour<6?'深夜好 🌙':hour<12?'早安 ☀️':hour<14?'午安 🌤':hour<18?'下午好 🌈':'晚安 🌃';
+  const pendPO=(DB.purchase||[]).filter(p=>p.status==='pending'||p.status==='draft').length;
+  const inTransit=(DB.purchase||[]).filter(p=>p.status==='ordered').length;
+  const donePO=(DB.purchase||[]).filter(p=>p.status==='received').length;
+  const supCount=(DB.suppliers||[]).length;
+  const low=(DB.inventory||[]).filter(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
+  const orderCount=(DB.orders||[]).length;
+  el.innerHTML=`
+  <div style="background:linear-gradient(135deg,#854F0B,#C0392B);border-radius:14px;padding:20px 24px;margin-bottom:16px;color:white;">
+    <div style="font-size:11px;opacity:.7;letter-spacing:1px;">🛒 採購管理 · ${isMgr?'主管':'員工'}</div>
+    <div style="font-size:20px;font-weight:700;margin-top:4px;">${greet}，${currentUser}</div>
+    <div style="display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;">
+      ${[['待處理採購',pendPO],['在途採購',inTransit],['供應商數',supCount],['低量提醒',low.length]].map(([l,v])=>`
+      <div style="text-align:center;"><div style="font-size:22px;font-weight:800;">${v}</div><div style="font-size:11px;opacity:.75;">${l}</div></div>`).join('<div style="width:1px;background:rgba(255,255,255,.2)"></div>')}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+    ${_dCard('🛒','待處理採購',pendPO,pendPO?'#E67E22':'var(--text3)','purchase')}
+    ${_dCard('🚚','在途採購',inTransit,'#185FA5','purchase')}
+    ${_dCard('✅','已到貨',donePO,'#3B6D11','purchase')}
+    ${_dCard('🏢','供應商',supCount,'#6B3FA0','supplier')}
+    ${_dCard('📑','訂購紀錄',orderCount,'#854F0B','orders')}
+    ${isMgr?_dCard('⚠️','低量提醒',low.length,low.length?'#E74C3C':'#3B6D11','inventory'):''}
+  </div>
+  ${pendPO>0?_alert('#FFF3E0','#FFB74D',`<b style="color:#E65100;">🛒 ${pendPO} 筆採購單待處理</b>，請至採購管理確認`,'purchase'):''}
+  ${low.length&&isMgr?_alert('#FFF0E0','#FFCC80',`<b style="color:#E65100;">⚠️ ${low.length} 項料件低於安全庫存</b>，建議跟進採購`,'inventory'):''}
+  <div class="two-col" style="margin-top:4px;">
+    <div class="card"><div class="card-hd"><span class="card-title">最近採購單</span><button class="btn btn-primary btn-sm" onclick="goto('purchase',document.getElementById('nav-purchase'))">查看全部</button></div>
+      <div class="table-wrap"><table><thead><tr><th>單號</th><th>供應商</th><th>金額</th><th>狀態</th></tr></thead>
+        <tbody>${(DB.purchase||[]).slice(0,5).map(r=>{const stMap={draft:'草稿',pending:'待審核',approved:'已核准',ordered:'在途',received:'已到貨',cancelled:'取消'};return`<tr><td>${r.po_no||'-'}</td><td>${r.supplier||'-'}</td><td>${r.total_amount?'NT$'+Number(r.total_amount).toLocaleString():'-'}</td><td><span class="badge ${r.status==='received'?'b-success':r.status==='ordered'?'b-info':r.status==='cancelled'?'b-danger':'b-warning'}">${stMap[r.status]||r.status||'-'}</span></td></tr>`;}).join('')||'<tr class="empty-row"><td colspan="4">尚無採購單</td></tr>'}</tbody>
+      </table></div></div>
+    <div class="card"><div class="card-hd"><span class="card-title">需補貨料件</span><button class="btn btn-sm" onclick="goto('inventory',document.getElementById('nav-inventory'))">查看庫存</button></div>
+      <div class="table-wrap"><table><thead><tr><th>品名</th><th>現有庫存</th><th>安全庫存</th></tr></thead>
+        <tbody>${low.slice(0,6).map(iv=>{const m=(DB.materials||[]).find(x=>x.id===iv.material_id);return`<tr><td>${m?.name||'-'}</td><td style="color:var(--red-text);font-weight:700;">${iv.qty}</td><td>${m?.safe_qty||0}</td></tr>`;}).join('')||'<tr class="empty-row"><td colspan="3">無低量料件 ✅</td></tr>'}</tbody>
+      </table></div></div>
+  </div>`;
+}
+
 function refreshDash(){
+  renderDeptDash();
+  // 刷新各部門儀表板（如果已開啟）
+  if(document.getElementById('page-sales-dash')?.classList.contains('active')) renderSalesDash();
+  if(document.getElementById('page-warehouse-dash')?.classList.contains('active')) renderWarehouseDash();
+  if(document.getElementById('page-purchase-dash')?.classList.contains('active')) renderPurchaseDash();
   // 倉位使用率已移除
   const td=new Date().toDateString();
   document.getElementById('ds-in').textContent=DB.inbound.filter(r=>new Date(r.created_at).toDateString()===td).length;
@@ -1979,8 +2545,69 @@ function renderReports(){
   document.getElementById('rpt-flow').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><div style="background:var(--green-bg);border-radius:var(--r);padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green-text);">${DB.inbound.length}</div><div style="font-size:11px;color:var(--green);">入庫單總數</div></div><div style="background:var(--red-bg);border-radius:var(--r);padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red-text);">${DB.outbound.length}</div><div style="font-size:11px;color:var(--red);">出庫單總數</div></div></div><div style="font-size:12px;color:var(--text2);">完成入庫：${DB.inbound.filter(r=>r.status==='done').length} 筆 ／ 完成出庫：${DB.outbound.filter(r=>r.status==='done').length} 筆</div>`;
 }
 function renderLog(){
-  const logs=[...DB.actlog].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  document.getElementById('logBody').innerHTML=logs.map(l=>`<tr><td style="white-space:nowrap;">${fdt(l.created_at)}</td><td>${l.operator||'-'}</td><td><span class="badge ${{入庫:'b-success',出庫:'b-danger',設定:'b-info',調整:'b-gray'}[l.action_type]||'b-gray'}">${l.action_type}</span></td><td>${l.description||'-'}</td></tr>`).join('')||'<tr class="empty-row"><td colspan="4">尚無紀錄</td></tr>';
+  _mergeUserExt(); // 確保 DB.users 的 dept_assigns 已解析為 _deptAssigns
+  const {isAdmin, assigns}=getCurrentUserDepts();
+
+  // 取得指定部門的所有使用者名稱
+  function getDeptUserNames(deptId){
+    const names=new Set();
+    (DB.users||[]).forEach(u=>{
+      // 優先讀 _deptAssigns（已解析的 JSON 物件）
+      let da={};
+      try{ da=u._deptAssigns||JSON.parse(u.dept_assigns||'{}'); }catch(e){}
+      if(da[deptId]){ names.add(u.name); return; }
+
+      // fallback：從 localStorage erp_user_roles 讀
+      try{
+        const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+        const lrData=lr[u.name];
+        if(lrData){
+          let lrAssigns={};
+          if(lrData.dept_assigns) lrAssigns=JSON.parse(lrData.dept_assigns);
+          else _parseRolesToAssigns(lrData.roles||lrData.role||'', lrAssigns);
+          if(lrAssigns[deptId]){ names.add(u.name); return; }
+        }
+      }catch(e){}
+
+      // 最後 fallback：從 roles 字串解析
+      const roles=(u.roles||u.role||'');
+      if(roles.split(',').some(r=>{
+        const t=r.trim();
+        return t.startsWith(deptId+'_')||t===deptId;
+      })){ names.add(u.name); }
+    });
+    // 自己一定在
+    names.add(currentUser);
+    return names;
+  }
+
+  let logs=[...DB.actlog].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+
+  if(!isAdmin){
+    // 只保留「自己所屬部門」帳號的 log
+    const allowedNames=new Set([currentUser]);
+    Object.keys(assigns).forEach(deptId=>{
+      getDeptUserNames(deptId).forEach(n=>allowedNames.add(n));
+    });
+    logs=logs.filter(l=>allowedNames.has(l.operator));
+  }
+
+  const titleEl=document.querySelector('#page-actlog .card-title');
+  if(titleEl){
+    if(isAdmin) titleEl.textContent='完整操作紀錄';
+    else{
+      const deptNames={warehouse:'🏭 倉管部',purchase:'🛒 採購部',sales:'💼 業務部'};
+      const myDepts=Object.keys(assigns).map(d=>deptNames[d]||d).join('、');
+      titleEl.textContent=`操作紀錄（${myDepts||'本部門'}）`;
+    }
+  }
+
+  document.getElementById('logBody').innerHTML=logs.map(l=>`<tr>
+    <td style="white-space:nowrap;">${fdt(l.created_at)}</td>
+    <td>${l.operator||'-'}</td>
+    <td><span class="badge ${{入庫:'b-success',出庫:'b-danger',設定:'b-info',調整:'b-gray'}[l.action_type]||'b-gray'}">${l.action_type}</span></td>
+    <td>${l.description||'-'}</td>
+  </tr>`).join('')||'<tr class="empty-row"><td colspan="4">尚無紀錄</td></tr>';
 }
 
 let editingPermRole='admin';
@@ -2586,13 +3213,10 @@ function openModal(type,extraId){
         <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--bg3);margin-bottom:4px;">
           <span style="min-width:110px;font-weight:600;font-size:13px;">${d.icon||''} ${d.name}</span>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
-            <input type="radio" name="f-dept-role" value="${d.id}_manager" style="width:15px;height:15px;accent-color:var(--blue);"> 主管
+            <input type="checkbox" name="f-dept-mgr-${d.id}" id="fmgr-${d.id}" value="${d.id}_manager" style="width:15px;height:15px;accent-color:var(--blue);"> 主管
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
-            <input type="radio" name="f-dept-role" value="${d.id}_staff" style="width:15px;height:15px;accent-color:var(--blue);" ${d.id==='warehouse'?'checked':''}> 員工
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
-            <input type="radio" name="f-dept-role" value="${d.id}_none" style="width:15px;height:15px;"> 無
+            <input type="checkbox" name="f-dept-staff-${d.id}" id="fstf-${d.id}" value="${d.id}_staff" style="width:15px;height:15px;accent-color:var(--blue);" ${d.id==='warehouse'?'checked':''}> 員工
           </label>
         </div>`).join('');
       return`
@@ -2613,9 +3237,14 @@ function openModal(type,extraId){
     }},
     edituser:{t:'編輯使用者',h:(id)=>{
       const u=DB.users?.find(x=>x.id===id);if(!u)return'找不到資料';
+      // 補最新 localStorage 資料
+      try{
+        const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+        if(lr[u.name]) Object.assign(u,lr[u.name]);
+      }catch(e){}
       const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
       let savedAssigns={};
-      try{ savedAssigns=JSON.parse(u.dept_assigns||'{}'); }catch(e){}
+      try{ savedAssigns=u._deptAssigns||JSON.parse(u.dept_assigns||'{}'); }catch(e){}
       // 若舊資料沒有 dept_assigns，從 roles 解析
       if(!Object.keys(savedAssigns).length){
         (u.roles||u.role||'').split(',').forEach(r=>{
@@ -2625,11 +3254,12 @@ function openModal(type,extraId){
       }
       const roleRows=depts.map(d=>{
         const cur=savedAssigns[d.id]||'none';
+        const hasMgr=cur==='manager'||cur==='both';
+        const hasStf=cur==='staff'||cur==='both';
         return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--bg3);margin-bottom:4px;">
           <span style="min-width:110px;font-weight:600;font-size:13px;">${d.icon||''} ${d.name}</span>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="radio" name="f-dept-role" value="${d.id}_manager" style="width:15px;height:15px;accent-color:var(--blue);"${cur==='manager'?' checked':''}> 主管</label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="radio" name="f-dept-role" value="${d.id}_staff" style="width:15px;height:15px;accent-color:var(--blue);"${cur==='staff'?' checked':''}> 員工</label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="radio" name="f-dept-role" value="${d.id}_none" style="width:15px;height:15px;"${cur==='none'?' checked':''}> 無</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="checkbox" id="fmgr-${d.id}" value="${d.id}_manager" style="width:15px;height:15px;accent-color:var(--blue);"${hasMgr?' checked':''}> 主管</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="checkbox" id="fstf-${d.id}" value="${d.id}_staff" style="width:15px;height:15px;accent-color:var(--blue);"${hasStf?' checked':''}> 員工</label>
         </div>`;
       }).join('');
       return`<div class="form-row" style="grid-template-columns:1fr 1fr;gap:12px;">
@@ -2845,13 +3475,22 @@ async function saveAdj(id,matId){
 // ══ 細部權限系統 ══
 const PERM_ITEMS = [["dashboard_view","查看總覽儀表板"],["inbound_view","查看進料管理"],["inbound_add","新增入庫單"],["inbound_exec","執行入庫"],["outbound_view","查看出料管理"],["outbound_add","新增出庫申請"],["outbound_approve","審核出庫"],["outbound_exec","執行出庫"],["inventory_view","查看庫存"],["inventory_adjust","庫存調整"],["locations_view","查看倉位管理"],["locations_edit","新增/編輯倉位"],["purchase_view","查看採購管理"],["purchase_add","新增採購單"],["purchase_approve","審核採購"],["supplier_view","查看供應商"],["supplier_edit","新增/編輯供應商"],["quote_view","查看詢價單"],["quote_edit","新增/編輯詢價單"],["production_view","查看生產排程"],["production_edit","新增/更新工單"],["cost_view","成本計算"],["orders_view","查看訂購紀錄"],["orders_edit","新增/編輯訂購紀錄"],["orders_import","匯入訂購Excel"],["accounting_view","查看/操作核銷"],["reports_view","查看報表分析"],["reports_export","匯出報表"],["users_manage","使用者管理"],["actlog_view","查看操作紀錄"],["sales_view","查看業務管理"],["sales_edit","新增/編輯工作單"],["customers_view","查看客戶管理"],["customers_edit","新增/編輯客戶"]];
 const DEFAULT_PERMS = {
-  "admin":    {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true},
-  "manager":  {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true},
-  "purchase": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":false,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":false,"production_edit":false,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false},
-  "operator": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false},
-  "readonly":  {"dashboard_view":true,"inbound_view":true,"inbound_add":false,"inbound_exec":false,"outbound_view":true,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"locations_view":true,"locations_edit":false,"purchase_view":true,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false},
-  "warehouse": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"locations_view":true,"locations_edit":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":true,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false}
+  "admin":    {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"locations_view":true,"locations_edit":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true,"sales_view":true,"sales_edit":true,"customers_view":true,"customers_edit":true},
+  "manager":  {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true,"sales_view":true,"sales_edit":true,"customers_view":true,"customers_edit":true},
+  "purchase": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":false,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":false,"production_edit":false,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "operator": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "readonly":  {"dashboard_view":true,"inbound_view":true,"inbound_add":false,"inbound_exec":false,"outbound_view":true,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"locations_view":true,"locations_edit":false,"purchase_view":true,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false,"sales_view":true,"sales_edit":false,"customers_view":true,"customers_edit":false},
+  "warehouse": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"locations_view":true,"locations_edit":true,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":true,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "warehouse_manager": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"locations_view":true,"locations_edit":true,"purchase_view":true,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":true,"production_edit":false,"cost_view":false,"orders_view":true,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "warehouse_staff": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":false,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"locations_view":true,"locations_edit":false,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":false,"supplier_edit":false,"quote_view":false,"quote_edit":false,"production_view":true,"production_edit":false,"cost_view":false,"orders_view":false,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "purchase_manager": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":false,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":false,"production_edit":false,"cost_view":true,"orders_view":true,"orders_edit":false,"orders_import":false,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "purchase_staff": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":false,"outbound_view":true,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":true,"purchase_add":true,"purchase_approve":false,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":false,"production_edit":false,"cost_view":false,"orders_view":true,"orders_edit":false,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":false,"users_manage":false,"actlog_view":false,"sales_view":false,"sales_edit":false,"customers_view":false,"customers_edit":false},
+  "sales_manager": {"dashboard_view":true,"inbound_view":false,"inbound_add":false,"inbound_exec":false,"outbound_view":false,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":true,"inventory_adjust":false,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":true,"sales_view":true,"sales_edit":true,"customers_view":true,"customers_edit":true},
+  "sales_staff": {"dashboard_view":true,"inbound_view":false,"inbound_add":false,"inbound_exec":false,"outbound_view":false,"outbound_add":false,"outbound_approve":false,"outbound_exec":false,"inventory_view":false,"inventory_adjust":false,"purchase_view":false,"purchase_add":false,"purchase_approve":false,"supplier_view":true,"supplier_edit":false,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":false,"cost_view":false,"orders_view":true,"orders_edit":true,"orders_import":false,"accounting_view":false,"reports_view":true,"reports_export":true,"users_manage":false,"actlog_view":false,"sales_view":true,"sales_edit":true,"customers_view":true,"customers_edit":false},
+  "admin_manager": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true,"sales_view":true,"sales_edit":true,"customers_view":true,"customers_edit":true},
+  "admin_staff": {"dashboard_view":true,"inbound_view":true,"inbound_add":true,"inbound_exec":true,"outbound_view":true,"outbound_add":true,"outbound_approve":true,"outbound_exec":true,"inventory_view":true,"inventory_adjust":true,"purchase_view":true,"purchase_add":true,"purchase_approve":true,"supplier_view":true,"supplier_edit":true,"quote_view":true,"quote_edit":true,"production_view":true,"production_edit":true,"cost_view":true,"orders_view":true,"orders_edit":true,"orders_import":true,"accounting_view":true,"reports_view":true,"reports_export":true,"users_manage":true,"actlog_view":true,"sales_view":true,"sales_edit":true,"customers_view":true,"customers_edit":true}
 };
+
 let currentUserPerms = null; // null = 用角色預設
 
 // 取得目前使用者的有效權限
@@ -2862,11 +3501,21 @@ function getUserPerms(){
   if(user.perms){
     try{ return JSON.parse(user.perms); }catch(e){}
   }
-  // 多角色合併（取聯集）
+  // 多角色合併（取聯集），支援 dept_id_level 格式
   const roles = (user.roles||user.role||'operator').split(',').map(r=>r.trim());
   const merged = {};
   PERM_ITEMS.forEach(([k])=>{
-    merged[k] = roles.some(r => DEFAULT_PERMS[r]?.[k]);
+    merged[k] = roles.some(r => {
+      // 直接查 DEFAULT_PERMS[r]
+      if(DEFAULT_PERMS[r]?.[k]) return true;
+      // 格式：dept_level（如 warehouse_manager）→ 查 warehouse_manager
+      const parts=r.split('_');
+      if(parts.length===2){
+        const key2=parts[0]+'_'+parts[1];
+        if(DEFAULT_PERMS[key2]?.[k]) return true;
+      }
+      return false;
+    });
   });
   return merged;
 }
@@ -2874,6 +3523,13 @@ function getUserPerms(){
 // 檢查某項權限
 function hasPerm(key){
   if(currentUserRole==='admin') return true;
+  // 檢查是否有 admin 部門
+  const curUser=DB.users?.find(u=>u.name===currentUser);
+  if(curUser){
+    let da={};
+    try{da=curUser._deptAssigns||JSON.parse(curUser.dept_assigns||'{}');}catch(e){}
+    if(da['admin']) return true;
+  }
   const perms = getUserPerms();
   return perms[key] === true;
 }
@@ -3413,8 +4069,29 @@ function renderUsers(){
   document.getElementById('userBody').innerHTML=users.length?users.map((u,i)=>{
     const isMe=u.name===currentUser;
     // 多角色顯示
-    const roles=(u.roles||u.role||'operator').split(',').map(r=>r.trim());
-    const roleBadges=roles.map(r=>`<span class="badge ${roleBadge[r]||'b-gray'}" style="margin-right:3px;">${roleNames[r]||r}</span>`).join('');
+    // 讀最新角色（優先 localStorage）
+    let effectiveRoles=u.roles||u.role||'operator';
+    try{
+      const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+      if(lr[u.name]) effectiveRoles=lr[u.name].roles||lr[u.name].role||effectiveRoles;
+    }catch(e){}
+    const roles=effectiveRoles.split(',').map(r=>r.trim());
+    // 解析部門_角色格式，顯示中文
+    const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+    const roleBadges=roles.map(r=>{
+      const parts=r.split('_');
+      if(parts.length>=2){
+        const deptId=parts[0];
+        const level=parts.slice(1).join('_');
+        const dept=depts.find(d=>d.id===deptId);
+        if(dept){
+          const lbl=level==='manager'?'主管':level==='staff'?'員工':level==='both'?'主管+員工':level;
+          const col=level==='manager'?'b-danger':level==='both'?'b-warning':'b-info';
+          return`<span class="badge ${col}" style="margin-right:3px;">${dept.icon||''} ${dept.name} ${lbl}</span>`;
+        }
+      }
+      return`<span class="badge ${roleBadge[r]||'b-gray'}" style="margin-right:3px;">${roleNames[r]||r}</span>`;
+    }).join('');
     const hasCustomPerm=!!u.perms;
     return`<tr${isMe?' style="background:var(--blue-bg);"':''}>
       <td><div style="display:flex;align-items:center;gap:8px;">
@@ -3449,14 +4126,22 @@ async function saveUser(){
   const phone=document.getElementById('f-uphone')?.value?.trim()||'';
   const email=document.getElementById('f-uemail')?.value?.trim()||'';
   // 讀取每個部門的主管/員工/無
-  const radios=document.querySelectorAll('input[name="f-dept-role"]:checked');
+  // 讀所有 checkbox（主管/員工皆可複選）
   const roles=[];
   const deptAssigns={};
-  radios.forEach(r=>{
-    const [deptId,level]=r.value.split('_');
-    if(level!=='none'){
-      roles.push(deptId+'_'+level);
-      deptAssigns[deptId]=level;
+  const allDepts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+  allDepts.forEach(d=>{
+    const mgr=document.getElementById('fmgr-'+d.id);
+    const stf=document.getElementById('fstf-'+d.id);
+    if(mgr?.checked && stf?.checked){
+      roles.push(d.id+'_manager');roles.push(d.id+'_staff');
+      deptAssigns[d.id]='both';
+    } else if(mgr?.checked){
+      roles.push(d.id+'_manager');
+      deptAssigns[d.id]='manager';
+    } else if(stf?.checked){
+      roles.push(d.id+'_staff');
+      deptAssigns[d.id]='staff';
     }
   });
   if(!roles.length)roles.push('operator');
@@ -3489,9 +4174,14 @@ async function saveUser(){
       }
     }
     await loadT('erp_users');
-    // 補回擴充欄位
     _mergeUserExt();
   } else {rec.id='u'+Date.now();DB.users.push(rec);}
+  // 一定儲存到 localStorage（無論 Supabase 欄位是否存在）
+  try{
+    const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+    lr[name]={role,roles:rolesStr,dept,title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
+    localStorage.setItem('erp_user_roles',JSON.stringify(lr));
+  }catch(e){}
   backupUsersToLocal();
   closeModal();toast(name+' 已新增 ✅','ok');renderUsers();
 }
@@ -3499,8 +4189,18 @@ async function saveUser(){
 function _mergeUserExt(){
   try{
     const ext=JSON.parse(localStorage.getItem('erp_user_ext')||'{}');
+    const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
     (DB.users||[]).forEach(u=>{
-      if(ext[u.name]) Object.assign(u,ext[u.name]);
+      // 優先用 erp_user_roles（最新設定）
+      const roleData=lr[u.name];
+      if(roleData) Object.assign(u, roleData);
+      // 補充 erp_user_ext
+      const extData=ext[u.id]||ext[u.name];
+      if(extData) Object.assign(u, extData);
+      // 解析 dept_assigns
+      if(typeof u.dept_assigns==='string'){
+        try{u._deptAssigns=JSON.parse(u.dept_assigns);}catch(e){}
+      }
     });
   }catch(e){}
 }
@@ -3521,36 +4221,55 @@ async function saveEditUser(id){
   const title=document.getElementById('f-utitle')?.value?.trim()||'';
   const phone=document.getElementById('f-uphone')?.value?.trim()||'';
   const email=document.getElementById('f-uemail')?.value?.trim()||'';
-  const radios=document.querySelectorAll('input[name="f-dept-role"]:checked');
+  // 讀 checkbox（主管/員工可複選）
+  const allDepts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
   const roles=[];const deptAssigns={};
-  radios.forEach(r=>{
-    const [deptId,level]=r.value.split('_');
-    if(level!=='none'){roles.push(deptId+'_'+level);deptAssigns[deptId]=level;}
+  allDepts.forEach(d=>{
+    const mgr=document.getElementById('fmgr-'+d.id);
+    const stf=document.getElementById('fstf-'+d.id);
+    if(mgr?.checked && stf?.checked){
+      roles.push(d.id+'_manager');roles.push(d.id+'_staff');
+      deptAssigns[d.id]='both';
+    } else if(mgr?.checked){
+      roles.push(d.id+'_manager');
+      deptAssigns[d.id]='manager';
+    } else if(stf?.checked){
+      roles.push(d.id+'_staff');
+      deptAssigns[d.id]='staff';
+    }
   });
   if(!roles.length)roles.push('operator');
-  const role=roles.some(r=>r.startsWith('admin'))?'admin':roles[0];
+  const role=deptAssigns['admin']?'admin':roles[0];
   const rolesStr=roles.join(',');
-  const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
   const firstDeptId=Object.keys(deptAssigns)[0]||'';
-  const firstDept=depts.find(d=>d.id===firstDeptId);
+  const firstDept=allDepts.find(d=>d.id===firstDeptId);
   const dept=firstDept?firstDept.name:'';
   if(!name){toast('請填寫姓名','err');return;}
   const updates={name,dept,title,phone,email,role,roles:rolesStr,dept_assigns:JSON.stringify(deptAssigns)};
   if(!isDemo){
     let res=await _db.from('erp_users').update(updates).eq('id',id);
     if(res.error){
+      // 欄位不存在，退回基本欄位
       const basic={name,dept,role,roles:rolesStr};
       res=await _db.from('erp_users').update(basic).eq('id',id);
       if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
-      try{
-        const ext=JSON.parse(localStorage.getItem('erp_user_ext')||'{}');
-        ext[name]={title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
-        localStorage.setItem('erp_user_ext',JSON.stringify(ext));
-      }catch(e){}
     }
+    // 不管成功與否，把擴充欄位存到 localStorage（by id）
+    try{
+      const ext=JSON.parse(localStorage.getItem('erp_user_ext')||'{}');
+      ext[id]={title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
+      ext[name]={title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
+      localStorage.setItem('erp_user_ext',JSON.stringify(ext));
+    }catch(e){}
     await loadT('erp_users');
     _mergeUserExt();
   } else {const u=DB.users.find(x=>x.id===id);if(u)Object.assign(u,updates);}
+  // 一定儲存到 localStorage
+  try{
+    const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+    lr[name]={role,roles:rolesStr,dept,title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
+    localStorage.setItem('erp_user_roles',JSON.stringify(lr));
+  }catch(e){}
   backupUsersToLocal();
   closeModal();toast('使用者已更新 ✅','ok');renderUsers();
 }
@@ -5114,6 +5833,13 @@ function renderMlLog(){
 // ══════════════════════════════════════════════
 // ── 側欄排序：還原已儲存的順序 ──
 function restoreNavOrder(){
+  // 版本控制：結構有更動時清除舊順序
+  const NAV_VER='v3';
+  if(localStorage.getItem('erp_nav_ver')!==NAV_VER){
+    localStorage.removeItem('erp_nav_order');
+    localStorage.setItem('erp_nav_ver',NAV_VER);
+    return;
+  }
   try{
     const saved=JSON.parse(localStorage.getItem('erp_nav_order')||'null');
     if(!saved||!saved.length) return;
@@ -5991,16 +6717,15 @@ let _tt;
 function toast(msg,type='inf'){const e=document.getElementById('toast');e.textContent=msg;e.className=type;e.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>e.style.display='none',2800);}
 
 window.onload=async()=>{
-  const url=localStorage.getItem('erp_url'),key=localStorage.getItem('erp_key'),name=localStorage.getItem('erp_user');
+  initSetupPage();
+  const url=(localStorage.getItem('erp_url')||sessionStorage.getItem('erp_url')||'').trim();
+  const key=(localStorage.getItem('erp_key')||sessionStorage.getItem('erp_key')||'').trim();
+  const name=(localStorage.getItem('erp_user')||'').trim();
   if(url&&key&&name){
-    // 有記憶的資料，自動連線不需要再輸入
-    document.getElementById('supaUrl').value=url;
-    document.getElementById('supaKey').value=key;
-    document.getElementById('userName').value=name;
     const st=document.getElementById('setupStatus');
     const btn=document.getElementById('btnConnect');
-    st.textContent='🔄 偵測到上次連線，自動連線中...';st.className='sstatus ok';
-    btn.disabled=true;btn.textContent='自動連線中...';
+    st.textContent='🔄 自動連線中...';st.className='sstatus ok';
+    btn.disabled=true;btn.textContent='連線中...';
     try{
       if(!window.supabaseLib){
         await new Promise((res,rej)=>{
@@ -6015,19 +6740,28 @@ window.onload=async()=>{
       const{error}=await _db.from('locations').select('id').limit(1);
       if(error)throw error;
       currentUser=name;
-      // 自動連線時略過姓名驗證（已登入過的使用者）
-      currentUser=name;currentUserRole='admin';
-      // 嘗試讀取角色
+      // 正確讀取使用者角色（含 roles 欄位）
       try{
-        const{data:u}=await _db.from('erp_users').select('role').eq('name',name).single();
-        if(u)currentUserRole=u.role||'admin';
+        const{data:u}=await _db.from('erp_users').select('role,roles,dept_assigns').eq('name',name).single();
+        if(u){
+          currentUserRole=u.role||'operator';
+          // 同步到 localStorage 讓 getCurrentUserDepts() 可以正確讀取
+          const lr=JSON.parse(localStorage.getItem('erp_user_roles')||'{}');
+          if(!lr[name]){
+            const roleStr=u.roles||u.role||'operator';
+            lr[name]={role:currentUserRole,roles:roleStr};
+            if(u.dept_assigns) lr[name].dept_assigns=u.dept_assigns;
+            localStorage.setItem('erp_user_roles',JSON.stringify(lr));
+          } else {
+            currentUserRole=lr[name].role||u.role||'operator';
+          }
+        }
       }catch(e){}
       st.textContent='✅ 自動連線成功！';st.className='sstatus ok';
       setTimeout(launchApp,400);
     }catch(e){
-      // 自動連線失敗，讓使用者手動輸入
-      st.textContent='⚠️ 自動連線失敗，請重新確認設定';st.className='sstatus err';
-      btn.disabled=false;btn.textContent='🔗 連線並進入系統（多人共用）';
+      st.textContent='⚠️ 自動連線失敗，請重新輸入名稱';st.className='sstatus err';
+      btn.disabled=false;btn.textContent='進入系統';
     }
   }
 };
