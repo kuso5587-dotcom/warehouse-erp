@@ -122,6 +122,13 @@ tr:hover td{background:var(--bg3);}
 .empty-row td{text-align:center;color:var(--text3);padding:28px;}
 
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;}
+.wo-cust-group{padding:6px 12px 3px;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;border-top:1px solid var(--border2);}
+.wo-cust-group:first-child{border-top:none;}
+.wo-cust-opt{padding:8px 12px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text);transition:background .1s;}
+.wo-cust-opt:hover{background:var(--bg2);}
+.wo-cust-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;white-space:nowrap;}
+.wo-cust-tag.dom{background:#e8f4fd;color:#185FA5;}
+.wo-cust-tag.ovs{background:#fff3e0;color:#e65100;}
 .b-success{background:var(--green-bg);color:var(--green-text);}
 .b-warning{background:var(--amber-bg);color:var(--amber-text);}
 .b-danger{background:var(--red-bg);color:var(--red-text);}
@@ -274,7 +281,7 @@ tr:hover td{background:var(--bg3);}
     </div>
     <button class="sbtn" style="margin-top:4px;" onclick="saveAdvanced()">✅ 儲存並進入系統</button>
   </div>
-  <button class="sdemo" style="margin-top:10px;" onclick="demoMode()">🖥 示範模式（單機體驗）</button></div>
+  <button class="sdemo" style="display:none;" onclick="demoMode()">🖥 示範模式（單機體驗）</button></div>
 </div>
 
 <!-- ══ APP ══ -->
@@ -411,6 +418,8 @@ tr:hover td{background:var(--bg3);}
               <span class="card-title">供應商管理</span>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-sm" onclick="openModal('mngcat')">⚙ 管理分類</button>
+                <button class="btn btn-sm" style="background:#fff3e0;color:#e65100;" onclick="bulkInitSuppliers()">⚡ 初始化分類與供應商</button>
+                <button class="btn btn-sm" style="background:#ffeaea;color:#c0392b;" onclick="clearAllSuppliers()">🗑 清空所有供應商</button>
                 <button class="btn btn-sm" onclick="exportSuppliersExcel()">📥 匯出 Excel</button>
                 <button class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;" onclick="document.getElementById('supImportFile').click()">📤 匯入 Excel</button>
                 <input type="file" id="supImportFile" accept=".xlsx,.xls" style="display:none;" onchange="importSuppliersExcel(this)">
@@ -430,7 +439,7 @@ tr:hover td{background:var(--bg3);}
               </select>
             </div>
             <div class="table-wrap"><table>
-              <thead><tr><th>分類</th><th>供應商</th><th>聯絡人</th><th>電話</th><th>供應品項</th><th>狀態</th><th>操作</th></tr></thead>
+              <thead><tr><th style="width:48px;text-align:center;">#</th><th>分類</th><th>供應商</th><th>聯絡人</th><th>電話</th><th>供應品項</th><th>狀態</th><th>操作</th></tr></thead>
               <tbody id="supBody"></tbody>
             </table></div>
           </div>
@@ -630,7 +639,7 @@ tr:hover td{background:var(--bg3);}
               <div id="userMgmtBtns"></div>
             </div>
             <div class="table-wrap"><table>
-              <thead><tr><th>姓名</th><th>部門</th><th>角色</th><th>操作</th></tr></thead>
+              <thead><tr><th>姓名</th><th>部門</th><th>電話/分機</th><th>角色</th><th>操作</th></tr></thead>
               <tbody id="userBody"><tr class="empty-row"><td colspan="4">載入中...</td></tr></tbody>
             </table></div>
           </div>
@@ -642,7 +651,6 @@ tr:hover td{background:var(--bg3);}
               <div class="card-hd"><span class="card-title">角色權限設定</span></div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <div class="tab-bar" id="roleTabBar" style="flex-wrap:wrap;flex:1;"><div class="tab-item active" id="pt-admin" onclick="switchRole('admin')">👑管理員</div><div class="tab-item" id="pt-manager" onclick="switchRole('manager')">👔主管</div><div class="tab-item" id="pt-purchase" onclick="switchRole('purchase')">🛒採購部</div><div class="tab-item" id="pt-warehouse" onclick="switchRole('warehouse')">🏭倉管部</div><div class="tab-item" id="pt-op" onclick="switchRole('operator')">🔧操作員</div><div class="tab-item" id="pt-read" onclick="switchRole('readonly')">👁唯讀</div></div>
-                <button class="btn btn-sm" onclick="addCustomRole()" title="新增自訂部門/角色">＋ 新增部門</button>
               </div>
               <div id="permList"></div>
               <div style="margin-top:12px;"><button class="btn btn-primary" style="width:100%;" onclick="savePermissions()">💾 儲存此角色權限</button></div>
@@ -761,15 +769,27 @@ tr:hover td{background:var(--bg3);}
                 <button class="btn btn-sm" onclick="exportCustomersCSV()">📥 匯出CSV</button>
               </div>
             </div>
-            <div class="search-row">
-              <input id="custQ" placeholder="搜尋客戶名稱、聯絡人、電話..." oninput="renderCustomers()" style="flex:1;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div class="search-row" style="flex-wrap:wrap;gap:8px;">
+                <input id="custQ" placeholder="搜尋客戶名稱、聯絡人、電話..." oninput="renderCustomers()" style="flex:1;min-width:180px;">
+                <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;">
+                  <button id="cbt-all" onclick="setCustType('')" style="padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:#185FA5;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">全部</button>
+                  <button id="cbt-dom" onclick="setCustType('domestic')" style="padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;">🏠 國內</button>
+                  <button id="cbt-ovs" onclick="setCustType('overseas')" style="padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;">✈️ 國外</button>
+                  <span style="color:var(--border2);align-self:center;">│</span>
+                  <button onclick="toggleCustAlpha('bopomofo')" id="cbt-bopo" style="padding:7px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;">ㄅㄆㄇ</button>
+                  <button onclick="toggleCustAlpha('az')" id="cbt-az" style="padding:7px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;">ABC</button>
+                  <button onclick="clearCustAlpha()" id="cbt-az0" style="padding:7px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;">清除</button>
+                </div>
+              </div>
+              <div id="alpha-picker" style="display:none;flex-wrap:wrap;gap:3px;"></div>
             </div>
             <div class="table-wrap"><table>
               <thead><tr>
-                <th>#</th><th>客戶名稱</th><th>聯絡人</th><th>電話</th><th>傳真</th>
+                <th>#</th><th>類別</th><th>客戶名稱</th><th>聯絡人</th><th>電話</th><th>傳真</th>
                 <th>地址</th><th>統編</th><th>付款條件</th><th>業務負責人</th><th>備註</th><th>操作</th>
               </tr></thead>
-              <tbody id="customersBody"><tr class="empty-row"><td colspan="11">尚無客戶資料</td></tr></tbody>
+              <tbody id="customersBody"><tr class="empty-row"><td colspan="12">尚無客戶資料</td></tr></tbody>
             </table></div>
           </div>
         </div>
@@ -990,6 +1010,7 @@ async function launchApp(){
     Object.keys(saved).forEach(role=>{ DEFAULT_PERMS[role]=Object.assign({},DEFAULT_PERMS[role]||{},saved[role]); });
   }catch(e){}
   applyNavPerms();
+  restoreNavOrder();
   updateLive(true);renderOnline([currentUser]);
   if(!isDemo){
     setupRT();
@@ -1069,11 +1090,284 @@ function seedDemo(){
   DB.inbound=[{id:'ib1',order_no:'IN-2024-156',material_id:'m1',location_id:'A11',plan_qty:500,actual_qty:null,supplier:'台鑫五金',status:'pending',operator:'王小明',created_at:new Date().toISOString()},{id:'ib2',order_no:'IN-2024-155',material_id:'m2',location_id:'A12',plan_qty:200,actual_qty:null,supplier:'大聯電子',status:'pending',operator:'陳美玲',created_at:new Date(Date.now()-3600000).toISOString()},{id:'ib3',order_no:'IN-2024-154',material_id:'m3',location_id:'B11',plan_qty:1000,actual_qty:1000,supplier:'友達電子',status:'done',operator:'王小明',created_at:new Date(Date.now()-86400000).toISOString()}];
   DB.outbound=[{id:'ob1',order_no:'OUT-2024-089',material_id:'m2',location_id:'A12',qty:50,dept:'生產部',priority:'urgent',status:'pending',operator:'林志遠',created_at:new Date().toISOString()},{id:'ob2',order_no:'OUT-2024-088',material_id:'m1',location_id:'A11',qty:100,dept:'維修部',priority:'normal',status:'approved',operator:'林志遠',created_at:new Date(Date.now()-1800000).toISOString()},{id:'ob3',order_no:'OUT-2024-087',material_id:'m5',location_id:'C11',qty:20,dept:'工程部',priority:'low',status:'done',operator:'陳美玲',created_at:new Date(Date.now()-86400000).toISOString()}];
   DB.actlog=[{id:'l1',action_type:'入庫',module:'進料',description:'螺絲M8×20 × 500件 入庫 A-1-1',operator:'王小明',created_at:new Date().toISOString()},{id:'l2',action_type:'出庫',module:'出料',description:'PCB基板 × 50件 出庫申請',operator:'林志遠',created_at:new Date(Date.now()-900000).toISOString()},{id:'l3',action_type:'設定',module:'倉位',description:'新增倉位 C-3-4',operator:currentUser,created_at:new Date(Date.now()-3600000).toISOString()}];
+  DB.sup_categories=[{id:'cat1',name:'銅'},{id:'cat2',name:'鋁'},{id:'cat3',name:'電極'},{id:'cat4',name:'鐵'},{id:'cat5',name:'鎢鋼'},{id:'cat6',name:'銀'},{id:'cat7',name:'機身'},{id:'cat8',name:'變壓器'},{id:'cat9',name:'空油壓'},{id:'cat10',name:'設備'},{id:'cat11',name:'電控'},{id:'cat12',name:'電導線'},{id:'cat13',name:'五金零件'},{id:'cat14',name:'外購'},{id:'cat15',name:'加工'},{id:'cat16',name:'菲施'}];
   DB.suppliers=[
-    {id:'s1',name:'台鑫五金',tax_id:'12345678',contact:'張大衛',phone:'02-2234-5678',items:'螺絲、螺帽',status:'active',created_at:new Date().toISOString()},
-    {id:'s2',name:'大聯電子',tax_id:'23456789',contact:'李明華',phone:'03-3345-6789',items:'PCB、電子零件',status:'active',created_at:new Date().toISOString()},
-    {id:'s3',name:'友達電子',tax_id:'34567890',contact:'陳美鳳',phone:'04-4456-7890',items:'電容、電阻',status:'active',created_at:new Date().toISOString()},
-    {id:'s4',name:'台揚科技',tax_id:'45678901',contact:'王建智',phone:'02-5567-8901',items:'驅動板、模組',status:'watch',created_at:new Date().toISOString()},
+    {id:'s100',name:'信晟',contact:'阮心華',phone:'2281-1773',items:'青銅管.紅銅板(光~最薄6mm止).青銅.鉋銅條.合金銅板',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s101',name:'基圓',contact:'吳江泉(BOSS) 李S / 曹S',phone:'2463-1847',items:'合金銅條、合金銅輪、合金銅板、焊帽、鉋銅 備註:博昌、明倫的供應商',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s102',name:'大易金屬',contact:'張老闆0932-548217曹S',phone:'048-222815048-235217',items:'磷青銅板.紅銅.合金銅條、板.鍛造青銅(猛青銅).鋁板6061-T6 備註:PM1：30上班',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s103',name:'弘典',contact:'林R 阿義 0922-631014',phone:'2486-1298',items:'電極頭.瓷心.合金銅條、合金銅輪、合金銅板、鈹銅、銅鎢、鋁銅棒(電極合金).合金銅頭',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s104',name:'恒誌',contact:'柯綺君',phone:'2280-9696',items:'紅銅板、條；合金板、條；鉋金銅；磷、鋁青銅；鈹銅、鋁圓棒、鋁扁條、青銅板、圓棒 備註:8：30上班 6：00下班',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s105',name:'新環隆',contact:'',phone:'2335-0012',items:'鉋金銅鑄造.T型銅蓋',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s106',name:'松田誠金屬',contact:'陸R. 練S',phone:'02-8686-7999',items:'.圓盤.合金銅系列.鎢銅棒.板.釷鎢.銅座',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s107',name:'詮興電機',contact:'曾穎之',phone:'2407-0658',items:'鉻鋯銅焊帽、電極修整器+刀座+刀片 鉻鋯銅焊帽ψ16*23L(尖、圓型) 備註:PM1：30上班',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s108',name:'金壕金屬',contact:'金慶堂0919-410388',phone:'049-2319789',items:'0.2*1/2H紅銅片、燐青銅片、廢料買賣',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s109',name:'鋁銅旺',contact:'蕭育珅先生',phone:'2538-8808',items:'紅銅板、條；合金板、條；鉋金銅；磷、鋁青銅；鈹銅、銅鎢；鋁圓棒、方條；青銅圓棒',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s110',name:'鑫綠泰',contact:'業務：陳小姐',phone:'04-26931858',items:'鑄鉋合金銅.下銅輪座.下銅輪蓋',status:'active',category_id:'cat1',category:'銅',created_at:new Date().toISOString()},
+    {id:'s111',name:'慶泓',contact:'黃政隆0930-795443',phone:'04-7813136',items:'鑄合金鋁.氣缸頭座',status:'active',category_id:'cat2',category:'鋁',created_at:new Date().toISOString()},
+    {id:'s112',name:'桓欣',contact:'吳桓安先生 0933-083807',phone:'03-4962101',items:'螺帽栓電極組、焊接零件 備註:離心鑄造',status:'active',category_id:'cat3',category:'電極',created_at:new Date().toISOString()},
+    {id:'s113',name:'台金昌',contact:'劉S.顏S.郭S.',phone:'2271-1811',items:'槽鐵.平鐵.角鐵.扁鐵.扁管.H鋼.方管.圓管',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s114',name:'呈豪.松輝 (尚騰）',contact:'藍R.賴廠長. 趙S.藍S',phone:'2496-3220',items:'鐵管 厚鐵管ψ22~ 無縫鋼管.鐵心',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s115',name:'坤泰金屬',contact:'賴先生 0935-706082 李\'S.友婷.育珍.勝莉',phone:'2270-9658',items:'白鐵圓條.方條.白鐵角鐵.白鐵管.SUS304.SUS416(光丸Ø38止). 白鐵板 440C 水刀切割',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s116',name:'堯勝',contact:'',phone:'2281-7022',items:'鐵管 厚鐵管ψ22~',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s117',name:'文陽',contact:'李R.老闆娘陳s. 林S. 曾廠長 0919-046230',phone:'2335-2885',items:'小型入電箱110*1870*190',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s118',name:'益陽',contact:'方耀霆 0986-632531 林錫清 0937-336215 謝S. 黃S.林S',phone:'2491-5685',items:'無縫鋼管.軸心',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s119',name:'翼廷',contact:'陳R.徐S',phone:'2491-9967',items:'電控箱外箱訂製',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s120',name:'彪鉅',contact:'',phone:'2492-7202',items:'槽鐵.平鐵.角鐵.扁鐵.扁管.H鋼.方管.圓管',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s121',name:'進吉',contact:'陳R',phone:'2382-1909',items:'白鐵圓條.扁條.不鏽鋼板.管',status:'active',category_id:'cat4',category:'鐵',created_at:new Date().toISOString()},
+    {id:'s122',name:'大河超硬合金',contact:'楊先生',phone:'04-8819085',items:'碳化鎢生產、加工',status:'active',category_id:'cat5',category:'鎢鋼',created_at:new Date().toISOString()},
+    {id:'s123',name:'承昌',contact:'余\'s',phone:'02-22710333#23',items:'碳化鎢',status:'active',category_id:'cat5',category:'鎢鋼',created_at:new Date().toISOString()},
+    {id:'s124',name:'松峻',contact:'張存誠 0910-420815',phone:'2265-7911',items:'碳化鎢 ※用LINE訂購',status:'active',category_id:'cat5',category:'鎢鋼',created_at:new Date().toISOString()},
+    {id:'s125',name:'中一',contact:'王S.林S#13',phone:'06-2910706',items:'貴金屬.銀片.銀焊條 備註:1點半上班',status:'active',category_id:'cat6',category:'銀',created_at:new Date().toISOString()},
+    {id:'s126',name:'勝宜金屬',contact:'蔡孟宜 0935-155977',phone:'',items:'機身燒焊、金屬焊接加工製造、基座焊接 ※訂購單用MAIL',status:'active',category_id:'cat7',category:'機身',created_at:new Date().toISOString()},
+    {id:'s127',name:'日昇 （台鎰）',contact:'林賢喜-BOSS 0932-583176 會計江S.韋S. 小林 0919-074598',phone:'2533-6983',items:'足踏機身',status:'active',category_id:'cat7',category:'機身',created_at:new Date().toISOString()},
+    {id:'s128',name:'兆田',contact:'陳江讚 0935-379536 陳冠華 0935-337956',phone:'2495-0932',items:'變壓器',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s129',name:'博世力士樂',contact:'王書章',phone:'3707-7620',items:'變頻控制器',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s130',name:'嘉明',contact:'黃R 0935-675061 廖R 0919-081259',phone:'2277-3884',items:'變壓器',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s131',name:'專順電機',contact:'粘育嘉經理 0960-595969 黃冠文 0910-348035',phone:'03-9281688 黏 #105 黃#107',items:'小變壓器、昇壓變壓器',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s132',name:'巃記',contact:'游鈴記 0932-621787 203#林S-接單. 吳S-報價.儲S',phone:'2271-1210',items:'小型變壓器150VA.1000VA 昇壓變壓器(油浸式) 電焊線',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s133',name:'廣德明',contact:'游世國先生',phone:'04-2291-7870',items:'小變壓器、昇壓變壓器',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s134',name:'裕新',contact:'陳連賜 0936-456731. 陳凱威 0988-202647 怡如.葉S.陳S. 設計陳R',phone:'2359-5358',items:'變壓器.昇壓變壓器(油浸式).水流動表、半圓銅蓋、 500平方電導線 備註:PM2：00上班',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s135',name:'金時代',contact:'張先生',phone:'2406-4370 2220-1833',items:'TR變壓器',status:'active',category_id:'cat8',category:'變壓器',created_at:new Date().toISOString()},
+    {id:'s136',name:'中日流體傳動 HINAKA',contact:'陶俐君 小姐',phone:'07-7885090',items:'油壓缸.氣壓缸 備註:8:30AM',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s137',name:'亞德',contact:'高S 0921-759121',phone:'2215-0912',items:'',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s138',name:'亞德客',contact:'王R',phone:'2471-8738',items:'三點組合(使用中油，電磁閥 使用中油ISO VG32油)',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s139',name:'億岡',contact:'薛楝樹',phone:'03-5215168-',items:'分度器座',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s140',name:'允佐',contact:'李武育BOSS 0937-019379 陳信華 0977-074766',phone:'04-7611624 04-7611824',items:'FS閘門凡而.球塞凡而.銅、鐵接頭.油壓管.',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s141',name:'兆鈿',contact:'黃登陽 0932-531156. 謝S 周S',phone:'2693-2921',items:'油壓箱組立',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s142',name:'台灣氣立',contact:'楊金泰 0912-382862',phone:'2320-5828',items:'真空發生器',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s143',name:'台輝(慶誼)',contact:'莊S',phone:'2278-9949',items:'空油壓.電磁閥 備註:阿欽.劉R.陳S. 李S(會計)',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s144',name:'君帆',contact:'蔡課長 0928-715696 邵\'S',phone:'2380-6927 2380-6937',items:'不旋轉氣缸 ， 倍力缸',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s145',name:'品正',contact:'黃R 0937-200579 邱R.謝S',phone:'2337-9501',items:'油壓缸.氣壓缸 備註:週休二日',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s146',name:'商運',contact:'業務-王S 0975-566613 曾S',phone:'2566-8886',items:'線性滑軌',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s147',name:'寧英',contact:'吳榮晃 工程師0955-116063',phone:'2473-8763',items:'電磁閥SMC氣壓缸.OMRON配件',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s148',name:'展誼',contact:'王先生 0909-464-058',phone:'2437-8623',items:'減速馬達組合.臥式油壓馬達 東元 編碼器、分割器、扭力限制器',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s149',name:'康百世˙朝田',contact:'藍宏傑工程師 0911-490868',phone:'2262-7500',items:'油箱、液壓閥、泵、冷卻器、油箱配硬管 備註:1：30上班',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s150',name:'樺晨',contact:'',phone:'22014288',items:'耐油壓管-LINE:22014288',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s151',name:'永隆',contact:'阿興 0921-373153 阿昌 0922-050057',phone:'2215-2080',items:'銅.鐵接頭.油壓管.凡而.氣壓管.卜申',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s152',name:'潭佳精密',contact:'陳董 林意華0976-474177',phone:'2562-1267',items:'分度盤 分割器',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s153',name:'磐龍',contact:'劉先生 0921-866112 蔡副總 0935-771297',phone:'2534-4688',items:'油箱',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s154',name:'立益鑫',contact:'林S-老闆娘',phone:'2487-2168',items:'直流馬達+驅動器',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s155',name:'肇力',contact:'張晏誠 0966-675671 蔡宗志經理(機械手) 0912-899279',phone:'2389-9966',items:'減速馬達組合.臥式油壓馬達 東元',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s156',name:'良禾(玄)',contact:'王小姐.林先生0936-496486',phone:'2271-4055',items:'油壓缸.氣壓缸 備註:週休二日',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s157',name:'辰岱',contact:'曾錠.老闆娘 0936-497465',phone:'2278-1756',items:'油壓缸.油箱組合-馬達',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s158',name:'迅益',contact:'何先生 0989-690169',phone:'2334-5218',items:'油壓方案、承製',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s159',name:'金器',contact:'丁德勝(業務) 0933-163971. 魏S',phone:'2313-1870',items:'三點組合，電磁閥 備註:SMC只有氣壓缸',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s160',name:'銓儀科技 (同瑞德)',contact:'劉S',phone:'2339-6688',items:'油壓錶3.5KG/CM2',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s161',name:'鐘茂',contact:'黃崑縊 0910-885906',phone:'06-656-1688 06-656-9527',items:'銅快速接頭（CH內牙1/2”-母）；白鐵快速接頭（CH內牙1/2”-公）',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s162',name:'順益興',contact:'徐永昌BOSS. 0928-312998 劉小姐',phone:'2224-6359',items:'油壓馬達OMR-315.白鐵水管.空壓調速閥.線性滑軌(小型).黑田電磁閥.線圈. 新轉輪PT1/4-73元、PT3/8-130元',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s163',name:'高鹿',contact:'吳嘉謀-總經理 0921-758852 李R 0918-980359 王R 0978-122026. 朱S 0981-685211 黃S',phone:'2487-4219',items:'水壓開關(調壓式B01A 0.7+3BAR).電磁閥 備註:8:30AM 隔週休.週六不出貨',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s164',name:'鴻達',contact:'林S.簡R 0960-590036',phone:'2462-9196',items:'鴻達(黑田)電磁閥.線圈AS2408→3分*220V,附座AS2410→4分*220V,附座 .TSP2480 *220V附座→6分',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s165',name:'鼎峰',contact:'林有清 0928-312805 徐S 0988-056273 吳S.蕭S.湯S.陳S',phone:'2407-9593',items:'流量閥.冷卻器.減壓閥.抗衡閥',status:'active',category_id:'cat9',category:'空油壓',created_at:new Date().toISOString()},
+    {id:'s166',name:'長誠',contact:'林文夏 0932-574486',phone:'2451-5038',items:'天車維修',status:'active',category_id:'cat10',category:'設備',created_at:new Date().toISOString()},
+    {id:'s167',name:'中大',contact:'楊S.莊S',phone:'2337-7230',items:'電容（1000WVAC-0.5uf）',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s168',name:'乙潁',contact:'蓮英坤',phone:'02-2275-1770',items:'輪焊PLC控制',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s169',name:'佳商',contact:'黃R 0931-559617. 劉S 許S',phone:'2371-9788',items:'Miyachi控制箱.中央控制箱，電導線(標準長為主) 備註:週六半數上班',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s170',name:'偉祥',contact:'張展誌 0960-678-767',phone:'04-2336-6760',items:'高週波金屬加熱機.客製加熱線圈.8000BTU風冷式冷卻機',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s171',name:'兆詠科技',contact:'蔡盛源',phone:'2376-9988',items:'電料.積熱電驛',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s172',name:'創大',contact:'陳鵬宇 0921-338885. 林S',phone:'公司 2371-1076 工廠 2376-4388',items:'電控配件',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s173',name:'協達',contact:'藍瑞駿先生 0932-640030',phone:'2273-0719',items:'電控配線規劃設計、配盤配線',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s174',name:'原聖',contact:'蔡董 0919-187782. 盧R 0932-736743',phone:'07-3540066',items:'NASTOA變頻控制器.NASTOA變頻變壓器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s175',name:'可大',contact:'蘇R 0955-197531 周S',phone:'02-26095929',items:'二極體',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s176',name:'台全行(台賀)',contact:'蕭R 0932-669457 賴 S',phone:'2534-0618',items:'電磁開關、比流器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s177',name:'台灣基恩斯',contact:'業務；黃子譯 0910-383215',phone:'04-2301015 02-2721-8080',items:'紅外線溫度感測器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s178',name:'台灣基恩斯',contact:'莊勳嘉 0932-131-126 簡小姐',phone:'2251-6602 #4107',items:'光電SENSOR',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s179',name:'台灣大昌華嘉',contact:'',phone:'2472-1782',items:'耐撓曲電線、配件',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s180',name:'台灣飛特',contact:'業務 陳永松0937-974157. 吳瑞益 0982-060177. 何S.陳 S',phone:'2335-5293',items:'大東電焊線 月結現金價 電覽線PVC.PVC細芯控制電纜.控制電纜(橡膠).接地線 備註:9點上班',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s181',name:'台裕',contact:'吳維宏 0930-888368',phone:'2234-7491',items:'總代理CHINO 控制器.記錄器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s182',name:'固的來',contact:'李R 0933-922708. 李S.林肯宏',phone:'2276-0708',items:'A1 IC板、電控箱組裝.不鏽鋼電線護管，電容式控制盤為二段式(桌上型除外)',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s183',name:'士研',contact:'廖先生',phone:'2320-9930',items:'近接開關、預置型計數器，數字型限時繼電器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s184',name:'大興計器',contact:'葉先生',phone:'2231-1525',items:'自動控制、儀表.控制盤電流表',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s185',name:'天得',contact:'林R 王S #300 黃清榮經理 0935-024873',phone:'03-2821008',items:'腳踏開關',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s186',name:'安富利',contact:'周宏峰 0970-529668',phone:'2371-9222 #15莊經理 0912272278',items:'歐洲製SCR 銷售Infineon系列產品',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s187',name:'宜福門電子',contact:'廖江常先生 0973-388828',phone:'07-335-7778',items:'流量監控器.電子溫度感應器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s188',name:'寰泰',contact:'蕭小姐Ada Hsiao 0913-105-553',phone:'(02)8973-5030 #182',items:'SCR',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s189',name:'尼爾',contact:'金秀珍-BOSS 0935-581365 蔡S',phone:'02-2693-5533',items:'盤型SCR.SCR NKH90/16A',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s190',name:'峰昌',contact:'#212(小林)業務. 林建中 0931-699642 #211李嘉鴻 0931-867601. #203張S',phone:'2261-2852',items:'紅外線測溫器.CHINO溫控器.測溫器檢修',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s191',name:'建泰',contact:'李先生',phone:'2406-1700',items:'閃碰焊機控制箱IC板 LA-003',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s192',name:'建泰',contact:'李天佑 0970-822929',phone:'2406-1700',items:'IC板、加熱機用控制箱',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s193',name:'惠勇',contact:'業務 呂小姐',phone:'02-2693-1343',items:'突波吸收器、盤式SCR',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s194',name:'振皓科技',contact:'',phone:'2380-2536',items:'光電傳感器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s195',name:'智丞',contact:'陳志成 0932-635657. 莊S',phone:'2231-1719',items:'人機傳輸線.電控配線規劃設計、配盤配線',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s196',name:'暐祥',contact:'呂元中 0988 310 317',phone:'02-2990 8621',items:'三菱PLC基本模組、',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s197',name:'格億',contact:'游格詳0987-978182',phone:'2395-1835',items:'電源供應器、電料',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s198',name:'楊昌企業.',contact:'林科宏0931-375061',phone:'2338-4355',items:'電控配線規劃設計、配盤配線',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s199',name:'極力',contact:'劉清淩經理 0905-770223',phone:'2463-1911',items:'YASKAWA機械手臂中部代理商',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s200',name:'榮山',contact:'林承翰 0917-697699. 張\'S',phone:'2212-2423 工廠 02-2686-0211',items:'金屬插頭ψ24*10P(公)ψ24*10P(母)',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s201',name:'歐迪爾',contact:'許R.李小姐 0921-790904',phone:'02-8512-2893',items:'繼電器模組',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s202',name:'正偉',contact:'張育誠 0910-509595',phone:'2491-0078',items:'繼電器、微動開關，照明燈具、燈管、燈座等電料 備註:PM1:30上班',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s203',name:'汎浩',contact:'江德霖 0958-552545 張S',phone:'02-2799-6010 分機；20',items:'德國製SCR',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s204',name:'津日',contact:'林庭萱 0927-081896 周小姐#309',phone:'02-8665-9877 #307',items:'電解容器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s205',name:'淳鈺',contact:'#203呂S',phone:'02-2995-3938',items:'日本製SCR',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s206',name:'省成',contact:'羅R 0910-421131 0919-088300 電控室-妮娜 會計曾S. 辦公室劉S.謝先生',phone:'2278-0131',items:'輪焊機控制箱用指撥開關.足踏控制器.',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s207',name:'立懋',contact:'謝宇晉-業務. 0919-868017 楊于靚-業助',phone:'2236-3226',items:'OMRON經銷商 備註:PM13：30',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s208',name:'耀迅',contact:'馮耀賢-BOSS 0922-222205. 林經理. 陳S',phone:'02-2760-0390',items:'英國 DYNEX 盤式SCR水冷組件',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s209',name:'聯盛電子',contact:'鄧經理 詹\'S 林\'S#811',phone:'02-2680-1218',items:'電阻',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s210',name:'西門子 SIEMENS',contact:'張經理 0926-088337',phone:'3703-3333#6337',items:'電源模組、馬達、人機、PLC',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s211',name:'誠啟科技',contact:'張傳忠 0923-888890',phone:'2276-3641',items:'',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s212',name:'近德',contact:'陳群豪總經理0932-563142 陳經理',phone:'2278-3857',items:'電控盤配線(歐規)、電料元件',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s213',name:'進銳科技',contact:'陳先生',phone:'02-26270776',items:'#630電路旋轉連接器USA進口',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s214',name:'遠德',contact:'李錫沖 0922-151218',phone:'2426-0536',items:'自動化系統工程設計、伺服驅動系統設計',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s215',name:'錩鋼精密科技',contact:'業務 林小姐',phone:'02-2206-7766',items:'連接器 / 無線通訊 / 自動化控制設備 / 精密模具 台中 T：04-25607272；F：04-25652228；蕭副理0905-026276',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s216',name:'雙匯',contact:'林經國 0937-147103. 王S',phone:'03-668-1389',items:'電解容器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s217',name:'靖聖金屬',contact:'張健偉 廖素卿',phone:'2526-1999',items:'鐵、鋁製電纜線架/線槽',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s218',name:'飛斯妥',contact:'黃S #358',phone:'02-2601-9281 04-24757278',items:'德製真空產生器',status:'active',category_id:'cat11',category:'電控',created_at:new Date().toISOString()},
+    {id:'s219',name:'立頓',contact:'張先生',phone:'0925-128873',items:'電導線製作加工 ※訂購單用MAIL，無傳真',status:'active',category_id:'cat12',category:'電導線',created_at:new Date().toISOString()},
+    {id:'s220',name:'通禹',contact:'0936-291050江仁里 #206 #211 李小姐 #210 徐小姐',phone:'03-450-3366',items:'編織銅線.紅銅鉚釘',status:'active',category_id:'cat12',category:'電導線',created_at:new Date().toISOString()},
+    {id:'s221',name:'鑫達發',contact:'BOSS廖. 0975-135755',phone:'2206-6195',items:'電導線(銅絲).水冷電導線 備註:會計柯.生管蔡S',status:'active',category_id:'cat12',category:'電導線',created_at:new Date().toISOString()},
+    {id:'s222',name:'上弘(原阡霆)',contact:'林昭森-BOSS 0933-541412',phone:'2275-7518',items:'木模製作',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s223',name:'上德印刷',contact:'柯富元 副總 0963-486646 柯淑媚.(小)柯S',phone:'2483-5659',items:'貼紙.訂購單.託外加工單',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s224',name:'主上',contact:'周先生 0987-282-228許R 黃S',phone:'2281-0909',items:'壓花輪 備註:27W',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s225',name:'久進',contact:'林R 0935-773534. 郭S.劉S.林s',phone:'2213-1299',items:'鋼珠、滾錐軸承.軸承座.滾珠軸承.滾筒、座椅滑輪組(50m/m- 插心11m/m)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s226',name:'仟帝',contact:'謝子祥 0939-158889',phone:'2273-8250',items:'交叉滾子導軌.萬向接頭.乾式軸承.聯軸器 備註:1:30PM',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s227',name:'伍全',contact:'鄭小姐',phone:'2319-3832',items:'彈簧.盤形彈簧',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s228',name:'佑力',contact:'黃義雄',phone:'2529-3678',items:'鋸帶(NACHI)30M*10T*0.65*8.0(日製)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s229',name:'保固',contact:'林S.陳S.陳廠長. (大盧)盧明君. (小盧)倉庫. 鞏S. 羅R(司機) 0936-275499',phone:'2406-5996',items:'美紋漆 香蕉水、去漬油 備註:AM9點上班及PM1：30',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s230',name:'偉辰',contact:'0928-330321 鐘春煌.蘇S',phone:'2481-5668',items:'壓克力銘牌 備註:週六上半天班',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s231',name:'億樺',contact:'吳晉豪 0911-772262',phone:'2483-6513',items:'大佶銘板POLY包膠 EPOXY',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s232',name:'全得',contact:'林R.張S',phone:'2213-6725',items:'防塵油封，油圈.O型環 備註:PM1：30上班',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s233',name:'冠睿',contact:'江永耀 0979-106699',phone:'2380-7445',items:'輸送帶設計繪圖',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s234',name:'冠華',contact:'洪石宗.賴R.洪S 0983-300355',phone:'2281-0930',items:'電木.塑鋼.纖維板',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s235',name:'勝界',contact:'李正育.王春露',phone:'2281-9976',items:'耐熱油管.訂製雙頭(橡膠)螺絲 水管.黑尼龍管.熱熔膠.優麗膠',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s236',name:'勤順',contact:'賴榮祥',phone:'2283-1135',items:'螺絲.墊圈.華司.方型鍵.扣環.螺帽',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s237',name:'又盟',contact:'陳S.吳S.林R',phone:'2635-1175',items:'鋁擠型',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s238',name:'召暘印刷',contact:'劉R 0931-031599 陳S',phone:'2492-0059',items:'面板(面膜)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s239',name:'台灣新霆',contact:'陳S.張S(老闆娘)',phone:'2492-6123',items:'手套、打包帶.OPP透明膠帶.PVC布紋膠帶.保鮮膜.氣泡紙.擦拭紙.夾鍊袋',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s240',name:'合晟',contact:'郭慶虎 0954-093538',phone:'2280-5960',items:'電動、氣動工具、離子切割機維修、買賣',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s241',name:'國騰',contact:'許建昌-BOSS. 黃S.李先生',phone:'2261-8839',items:'白鐵彈簧.壓縮彈簧.拉伸彈簧',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s242',name:'天泰興',contact:'吳老闆 0916-811019',phone:'04-7237787',items:'CO2氣體.油品',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s243',name:'奕智',contact:'王先生 0928-968695',phone:'2699-3978',items:'輸送帶製造 備註:8：30上班',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s244',name:'威銓',contact:'陳廠長 0979-853090',phone:'2275-6593',items:'滑台製造，訂製 備註:使用中油ISO VG32油)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s245',name:'安伯特',contact:'林先生',phone:'2536-6839',items:'防滑墊',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s246',name:'寶嘉誠工業',contact:'業務#223黃小姐# 235黃小姐 設計#287莊先生 #232游副課長 賴經理 0921-582-747 江組長 0905-605757',phone:'2335-9935',items:'分度盤',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s247',name:'專聚',contact:'蔡S',phone:'2389-1765',items:'透視型逆止弁(閥).水流計(筆型)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s248',name:'山水水族量販',contact:'劉先生',phone:'07-5508428',items:'RIO 1400 沉水馬達',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s249',name:'峻喬',contact:'',phone:'04-24963393',items:'翼廷專用烤漆廠，有賣鐵樂士',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s250',name:'崧禾',contact:'陳R-老闆.',phone:'2536-2411',items:'乾式軸承',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s251',name:'巨薪',contact:'謝經理 0922-512332. 謝S.黃S',phone:'2271-5311',items:'防塵套.鍊條.白鐵儀表管(ψ8*ψ10).3/8\'\'*300L塑鋼噴噴油管 隔週休',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s252',name:'帝新',contact:'',phone:'02-2311-1047',items:'導電油膏',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s253',name:'得雲',contact:'羅清堂(經理) 0912-330916',phone:'2492-9916',items:'壓縮機.水冷卻機 DWT-2RPSA',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s254',name:'恒宇',contact:'許先生 0933-456484 0912339713 葉小姐',phone:'2493-2199',items:'白鐵齒輪加工製造.鏈輪',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s255',name:'擎原',contact:'許永政 0982-588499 董\'S',phone:'2212-3555',items:'手動工具修理.馬達繞線.離子切割機維修',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s256',name:'新全鋼',contact:'陳小姐',phone:'04-26273223',items:'格柵板成品',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s257',name:'明禮',contact:'',phone:'2271-1789',items:'固定輪ML-303203R-A板',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s258',name:'易銲',contact:'夏R.林S 0933-581881. 陳S',phone:'04-8733300',items:'冷卻水箱*50L(22kg).*100L(33kg).冷卻水箱馬達',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s259',name:'春名',contact:'周S.陳S.何S',phone:'02-82014393',items:'彈簧.盤形彈簧',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s260',name:'晶圓',contact:'丁敏秀 0937-313878. 陳S',phone:'08-7390890',items:'乾燥劑',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s261',name:'有益',contact:'',phone:'03-798-6918',items:'陶瓷配件訂製',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s262',name:'本勝(建勝)',contact:'0935-367325 楊R.邱S 0933-512225',phone:'2212-1813. 2212-9537',items:'沉水馬達',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s263',name:'束圜(日丞)',contact:'陳S',phone:'2566-7133. (張S.2569-2749)',items:'白鐵管束 ψ10-16 ψ12-20 ψ22(束3/4\'\'管用)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s264',name:'桓達科技',contact:'陳\'S #712 游S 台中蔡明益先生0963-372710 台中#713 廖小姐',phone:'02-2269-6789 04-2337-0825',items:'壓力開關(水壓) SQ27 PT1/4 訂貨找台中廖小姐',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s265',name:'欣榮勝',contact:'許錦光',phone:'037-220255 037-220256',items:'水塔上下蓋及配件',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s266',name:'永和順',contact:'施育晟',phone:'04-27085111',items:'.',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s267',name:'泰陽橡膠',contact:'張宏仁0921-766693',phone:'2278-1058',items:'包橡膠 備註:聖創高週波機用',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s268',name:'漢德威',contact:'#13邱惠琦S 施\'S. #11廖先生',phone:'2406-3417',items:'機械尺.把手.門絞鏈.手輪、定位珠',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s269',name:'玉豐',contact:'303#羅S(業務).楊S(總機)',phone:'3502-4890',items:'白鐵螺絲.螺絲.墊圈.',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s270',name:'王冠',contact:'郭BOSS.林S.劉S',phone:'2281-3948',items:'方鍵、齒輪、角牙，齒條，螺母 壓花刀 SKS2合金鋼',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s271',name:'理泰',contact:'蔡靜儀(業務). 黃S.張S',phone:'04-8371901',items:'專業工業陶瓷設計、製造',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s272',name:'瓏輝',contact:'江志盈 0932-633733',phone:'2281-8959',items:'量具系列.德製游標卡尺Mahr',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s273',name:'益佃',contact:'李 店長 0933-563500 徐S.邱S.吳S',phone:'2212-3799',items:'工具箱&五金配件 #740缺氧膠(1KG/瓶)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s274',name:'盛富企業',contact:'林三池 0936-316509 林晃民主任 0930-032261 陳小姐',phone:'2337-5133',items:'壓克力護蓋',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s275',name:'立山銘版',contact:'賴忠和副總 0917-887975 薛小姐',phone:'049-2357782#202',items:'poly貼紙、金屬類銘牌、噴墨類銘牌、線路類(薄膜按鍵，操控面板線路)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s276',name:'精美帆布行',contact:'江聰顏',phone:'04-22139816',items:'廣告帆布、伸縮遮陽雨帆',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s277',name:'義發',contact:'李S 0937-702050',phone:'2482-1627',items:'小信箋印製',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s278',name:'翊瀧',contact:'徐小姐',phone:'2406-9622',items:'不鏽鋼把手 A-42-F-2 絞鏈、雙扣',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s279',name:'聖創(進陞)',contact:'陳董 0925-677759',phone:'2698-1986',items:'各類鑽頭螺絲製造',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s280',name:'能裕銘板',contact:'蕭小姐',phone:'2270-0871 2472-6633',items:'電控面板.大小銘板.POLY灌製.製造銘板(中、英文版)',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s281',name:'華南行',contact:'黃尚奕 0932-626409. 羅S',phone:'2282-3911',items:'老鷹 CAPLEX ATOX M-2,5KG裝(白色)、R68循環油.液壓油',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s282',name:'豪豐塗料',contact:'張志程主任 0938-215960',phone:'2535-6789',items:'美紋漆 香蕉水、去漬油 備註:08:30AM',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s283',name:'通益',contact:'',phone:'2287-5030',items:'工型滑座',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s284',name:'金宏',contact:'曾豐連 0937-214391 宋S.曾S 0918-361139',phone:'2335-4301',items:'蓄壓桶製作',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s285',name:'金旺',contact:'柯金旺R',phone:'0972-613883 0937-741931',items:'廢油回收，R32循環液壓油，R68循環油壓油， 中油液壓油AW32',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s286',name:'金昌水塔',contact:'',phone:'2422-4223',items:'不鏽鋼水塔',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s287',name:'金鈺五金',contact:'林R 0933-493789 魏R 0939-690568',phone:'2279-6632',items:'破布.噴漆.洗手劑.砂輪.',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s288',name:'金震',contact:'張文馨 0928-998465',phone:'2276-7265',items:'開口扳手.工具箱&五金配件；L型六角板手/9支組75元.工具箱/組220元',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s289',name:'鈦瑞',contact:'陳R.梁S',phone:'06-5717291',items:'防震腳',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s290',name:'錏業',contact:'潘小姐',phone:'2276-0168',items:'工程塑膠(板材.圓棒.空心管).壓克力.電木.PC.PVC.PU.PP',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s291',name:'隆盟',contact:'沈聯發 0910-415000. 沈曉卿 0937-715013. 林S.林R',phone:'2481-5000. 2481-5999',items:'方型電扇.排風扇',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s292',name:'駿暐',contact:'吳',phone:'2566-8799',items:'管式過濾器',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s293',name:'駿穎',contact:'陳世杰先生 0912-707881',phone:'2452-2198',items:'德國 MAHLE原廠過濾器及濾心',status:'active',category_id:'cat13',category:'五金零件',created_at:new Date().toISOString()},
+    {id:'s294',name:'中育',contact:'黃育寬 (董事長.議員). 謝S-老闆娘. 林S.(小)謝S',phone:'04-7323833',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s295',name:'中電',contact:'許金龍.江S',phone:'2335-6998',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s296',name:'乙穎',contact:'連英昆 0937-009055',phone:'02-22751770',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s297',name:'偉祥實業',contact:'吳先生 0933-490393',phone:'2336-6760',items:'高週波感應加熱機',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s298',name:'台茂',contact:'簡國明R 0919-080181',phone:'2279-7285',items:'手提式點焊機',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s299',name:'吉冠',contact:'',phone:'2572-1122~4',items:'沖床模具',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s300',name:'君霖',contact:'李美珍',phone:'2495-0919',items:'銅槍夾',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s301',name:'坤泰沖模',contact:'',phone:'04-7583135',items:'沖床模具',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s302',name:'大鎰',contact:'理彩微',phone:'2261-3030 2262-6876',items:'熱鍛沖床',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s303',name:'太興精密',contact:'',phone:'2282-0353',items:'各類型射銷.(SKD61壓鑄用或塑膠射出用)',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s304',name:'尚銘',contact:'吳R',phone:'04-8398678',items:'JL-0全波平送機.振動送料機',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s305',name:'峻易',contact:'李仁水 0936-316898. 鄭S',phone:'2481-1718',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s306',name:'振鴻機械(振太國際機械)',contact:'湯先生 0952-300250',phone:'2277-3659',items:'螺絲震動送料機+送料系統承包製作.',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s307',name:'捲圓',contact:'邱木聯 0932-649412. 陳S(媳).黃S',phone:'2339-6620',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s308',name:'捷文實業有限公司',contact:'鄧小姐 0952-888370',phone:'2522-1898',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s309',name:'春瑞',contact:'蔡先生 0910-529221',phone:'2662-7156',items:'臥式鋸台JR-23',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s310',name:'桂全',contact:'陳小姐 黃S',phone:'048-853814',items:'切斷機 冲床 電動注油器 沖孔模具',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s311',name:'欣榮勝',contact:'許錦光老闆',phone:'037-2202-556',items:'水塔配件及上下蓋加工、水塔透氣帽蓋',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s312',name:'正豐機器',contact:'林志銘 0916-941392',phone:'2406-5932',items:'沖床製造',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s313',name:'源金股',contact:'林清波(若咖) 0910-160-429',phone:'05-226-5454',items:'水塔接頭、塑膠製品',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s314',name:'珈鋐機械',contact:'',phone:'04-24912382',items:'',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s315',name:'益彰',contact:'江祥得先生',phone:'2493-0678',items:'手動鑽床機頭',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s316',name:'羅以技研',contact:'蕭貿火 0909-914-448',phone:'',items:'自動送料設計規劃、製作',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s317',name:'詮興',contact:'曾S 曾R',phone:'2407-0658',items:'懸吊式點焊機.鋁把手',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s318',name:'金昌',contact:'張茂榮 0952-106018',phone:'2533-4211~2',items:'白鐵水塔製造.太陽能保溫桶',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s319',name:'鋐傑',contact:'廖朝基 0932-640126',phone:'2337-1945',items:'閃碰焊機',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s320',name:'鴻隆',contact:'張松霖 0933-540536',phone:'',items:'12ST沖床 WT2',status:'active',category_id:'cat14',category:'外購',created_at:new Date().toISOString()},
+    {id:'s321',name:'侑成刀具',contact:'簡冠宇 0935-256325',phone:'2275-3985',items:'各式刀具、圓刀、齒刀研磨承製',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s322',name:'力利',contact:'謝建鏞 0932-628044',phone:'2493-2682',items:'連續冲模設計製造、沖壓加工.模具',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s323',name:'協原',contact:'#16卓\'S',phone:'2491-0198',items:'雷射切割',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s324',name:'唐商',contact:'詹中北 0921-383630',phone:'2351-1113',items:'NC車床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s325',name:'嘉新全',contact:'0936-869337 林益銓-BOSS. 張S',phone:'2492-7266',items:'板金加工帶料',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s326',name:'嘉泰',contact:'張木權',phone:'2281-0630',items:'',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s327',name:'噴漆(委外)',contact:'謝東宏',phone:'0985-559188',items:'來廠噴漆',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s328',name:'堅泰',contact:'謝R 0972-369839',phone:'2278-0810',items:'銑床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s329',name:'宏杰',contact:'邱R',phone:'2275-2833',items:'搪孔加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s330',name:'宏盛',contact:'王小姐',phone:'2276-3645',items:'水刀切割加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s331',name:'彗隆',contact:'黃國龍 0916-992552',phone:'2279-8595',items:'線切割加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s332',name:'慶豐',contact:'林S-老闆娘. 梁S0933-186877 林廠長 歐小姐',phone:'2278-3046',items:'整機烤漆 (DJ-WT5用藍液體優麗漆K-6252)',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s333',name:'日昌鑫 (原平陽)',contact:'楊R.蕭R',phone:'2279-0478',items:'折床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s334',name:'昆兆益',contact:'業務部205#蔡S. 余小姐#310 生管#703蘇小姐',phone:'2276-9605',items:'雷射切割',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s335',name:'榮俊',contact:'徐榮俊 0933-534-255',phone:'2277-6865 2277-1589',items:'大龍門铣床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s336',name:'正興',contact:'胡先生 0921-312325',phone:'2224-3085',items:'傳統車床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s337',name:'永吉順',contact:'劉景松 0937-786126',phone:'2276-1514',items:'NC車床.油壓缸推板 工帶料 含染黑',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s338',name:'永辰',contact:'張紘宇 0937-202523',phone:'2492-2479',items:'NC铣床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s339',name:'申裕',contact:'張原長先生 0986-396216',phone:'04-2407-2282',items:'合金銅輪加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s340',name:'聯欣',contact:'盧R.郭S.郭R',phone:'2279-0766',items:'折銅',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s341',name:'詰泰(大童)',contact:'童S',phone:'2211-7858',items:'回火熱處理.退火',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s342',name:'輝月鐵工廠',contact:'賴先生/林小姐',phone:'TEL:22705775',items:'摩擦熔接',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s343',name:'金興',contact:'',phone:'2275-7737',items:'電鍍 備註:PM1:30上班',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s344',name:'鈺葉',contact:'葉R',phone:'2275-7689',items:'線切割',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s345',name:'長欣',contact:'謝邦欣 0953-658870',phone:'2277-0882',items:'大CNC铣床加工',status:'active',category_id:'cat15',category:'加工',created_at:new Date().toISOString()},
+    {id:'s346',name:'上泰',contact:'陳R(業務) 0988-175365. 林S',phone:'2319-7996',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s347',name:'中日',contact:'林S(台中)',phone:'2325-1469',items:'發票開軒加',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s348',name:'亞泰',contact:'',phone:'02-29130866',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s349',name:'元祥',contact:'二廠 102#黃S.吳S',phone:'04-7613688',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s350',name:'卡菲斯 快遞',contact:'陳S.董S',phone:'02-29351589',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s351',name:'名祥',contact:'劉S',phone:'2533-6222',items:'砂布花',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s352',name:'嘉手',contact:'李秀蓮.廖R',phone:'2359-2127#10',items:'不優.價比五金行貴',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s353',name:'嘉鐳 (鐙暘)',contact:'劉S.林S.老闆娘',phone:'2437-9959',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s354',name:'國宏',contact:'',phone:'2261-3701',items:'service@dai-lee.com.tw',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s355',name:'國淇',contact:'陳S',phone:'2491-8626',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s356',name:'士溢',contact:'陳太太',phone:'04-8923425',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s357',name:'大鎪',contact:'',phone:'07-3714027',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s358',name:'孜豐',contact:'張S.',phone:'2568-2200',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s359',name:'建發',contact:'黃S',phone:'2382-7028',items:'砂輪',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s360',name:'恒鋐',contact:'王S.阮S',phone:'2280-9790',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s361',name:'慶榮',contact:'張S',phone:'2213-0979',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s362',name:'啟台',contact:'台中分公司 林S',phone:'2359-1919',items:'鋸帶AMADA',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s363',name:'斯貝克',contact:'',phone:'2479-3868',items:'3M膠帶(4930*600*33M)',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s364',name:'晉椿',contact:'洪經理. 李志源234# 0918-586813 劉月春227#',phone:'04-7810000',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s365',name:'東正',contact:'209#國貿部 賴欣妤',phone:'2263-6536',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s366',name:'洽群',contact:'',phone:'2533-7614',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s367',name:'瑩聯',contact:'',phone:'06-2655-111',items:'鋼絲輪',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s368',name:'穩騰',contact:'0932-765677邱R.邱太太. 蘇S',phone:'07-3535-858',items:'螺紋牙套',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s369',name:'肯美特',contact:'205張S.吳S',phone:'049-2260316',items:'含浸液',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s370',name:'萊茵',contact:'許S',phone:'2338-3331',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s371',name:'達勵',contact:'呂函芳.洪慶和',phone:'03-2709696. 02-22995555',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s372',name:'銢錩',contact:'陳R.何S',phone:'2406-6332',items:'噴砂機相關',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s373',name:'鑫峰',contact:'周S(會計)',phone:'2212-1796',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s374',name:'雙城',contact:'李S',phone:'02-25032056',items:'',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()},
+    {id:'s375',name:'駏宬',contact:'',phone:'2483-4788',items:'電料，電控配件',status:'active',category_id:'cat16',category:'菲施',created_at:new Date().toISOString()}
   ];
   DB.purchase=[
     {id:'p1',order_no:'PO-2024-089',supplier_id:'s1',supplier_name:'台鑫五金',material_code:'SCR-M8-020',qty:500,unit_price:5,arrive_date:'2024-01-22',status:'pending',operator:currentUser,created_at:new Date().toISOString()},
@@ -1100,8 +1394,9 @@ function refreshDash(){
   document.getElementById('ds-mat').textContent=DB.inventory.length;
   const low=DB.inventory.filter(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);return m&&iv.qty<m.safe_qty;});
   document.getElementById('dashAlerts').innerHTML=low.slice(0,2).map(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);return`<div class="alert-bar alert-danger">⚠ 低量：${m?.name} 剩 ${iv.qty} ${m?.unit}（安全量 ${m?.safe_qty}）</div>`;}).join('');
-  const logs=[...DB.actlog].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5);
-  document.getElementById('dashAct').innerHTML=logs.length?logs.map(l=>{const c=l.action_type==='入庫'?'var(--green)':l.action_type==='出庫'?'var(--red)':'var(--blue)';return`<div class="act-item"><div class="act-dot" style="background:${c}"></div><div class="act-text"><b>${l.operator}</b>：${l.description}</div><div class="act-time">${ft(l.created_at)}</div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0;">尚無操作紀錄</div>';
+  const WAREHOUSE_TYPES=['入庫','出庫','調整','庫存','倉位'];
+  const logs=[...DB.actlog].filter(l=>WAREHOUSE_TYPES.includes(l.action_type)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
+  document.getElementById('dashAct').innerHTML=logs.length?logs.map(l=>{const c=l.action_type==='入庫'?'var(--green)':l.action_type==='出庫'?'var(--red)':'var(--amber)';return`<div class="act-item"><div class="act-dot" style="background:${c}"></div><div class="act-text"><b>${l.operator}</b>：${l.description}</div><div class="act-time">${ft(l.created_at)}</div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0;">尚無倉庫操作紀錄</div>';
   document.getElementById('dashLow').innerHTML=low.length?low.map(iv=>{const m=DB.materials.find(x=>x.id===iv.material_id);const p=m?.safe_qty?Math.min(100,Math.round(iv.qty/m.safe_qty*100)):100;return`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>${m?.name}</span><span style="color:var(--red);">${iv.qty}/${m?.safe_qty} ${m?.unit}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${p<30?'var(--red)':'var(--amber)'}"></div></div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0;">目前無低量警示 ✅</div>';
 }
 
@@ -1448,27 +1743,45 @@ function renderPO(){
   }).join(''):'<tr class="empty-row"><td colspan="8">尚無採購單，點右上方新增</td></tr>';
 }
 function renderSup(){
-  // 更新分類下拉
+  const PRIORITY=['銅','鋁','電極','鐵','鎢鋼','銀','機身','變壓器','空油壓','設備','電控','電導線','五金零件','外購','加工','菲施'];
   const catSel=document.getElementById('supCatF');
   if(catSel){
     const curCat=catSel.value;
-    const cats=DB.sup_categories||[];
+    const cats=[...(DB.sup_categories||[])].sort((a,b)=>{
+      const ai=PRIORITY.indexOf(a.name),bi=PRIORITY.indexOf(b.name);
+      if(ai>=0&&bi>=0)return ai-bi;
+      if(ai>=0)return-1;if(bi>=0)return 1;
+      return a.name.localeCompare(b.name,'zh-TW');
+    });
     catSel.innerHTML='<option value="">全部分類</option>'+cats.map(c=>`<option value="${c.id}"${c.id===curCat?' selected':''}>${c.name}</option>`).join('');
   }
   const q=(document.getElementById('supQ')?.value||'').toLowerCase();
   const catF=document.getElementById('supCatF')?.value||'';
   const stF=document.getElementById('supStF')?.value||'';
-  const sups=(DB.suppliers||[]).filter(s=>{
+  const filtered=(DB.suppliers||[]).filter(s=>{
     const matchQ=!q||((s.name||'')+(s.contact||'')+(s.items||'')+(s.category||'')).toLowerCase().includes(q);
     const matchCat=!catF||s.category_id===catF;
     const matchSt=!stF||s.status===stF;
     return matchQ&&matchCat&&matchSt;
   });
+  const sups=[...filtered].sort((a,b)=>{
+    const catA=a.category||'',catB=b.category||'';
+    if(catA===catB)return(a.name||'').localeCompare(b.name||'','zh-TW');
+    const ai=PRIORITY.indexOf(catA),bi=PRIORITY.indexOf(catB);
+    if(ai>=0&&bi>=0)return ai-bi;
+    if(ai>=0)return-1;if(bi>=0)return 1;
+    return catA.localeCompare(catB,'zh-TW');
+  });
   const cats=DB.sup_categories||[];
-  document.getElementById('supBody').innerHTML=sups.length?sups.map(s=>{
+  const supTotal=sups.length;
+  // 更新標題筆數
+  const supTitleEl=document.querySelector('#page-sup .card-title');
+  if(supTitleEl)supTitleEl.textContent=`供應商管理（${supTotal} 筆）`;
+  document.getElementById('supBody').innerHTML=supTotal?sups.map((s,i)=>{
     const cat=cats.find(c=>c.id===s.category_id);
     const[bc,bl]={active:['b-success','合作中'],watch:['b-warning','觀察中'],inactive:['b-gray','停止合作']}[s.status]||['b-gray',s.status];
     return`<tr>
+      <td style="text-align:center;color:var(--text3);font-size:12px;">${i+1}</td>
       <td>${cat?`<span class="badge b-info">${cat.name}</span>`:(s.category?`<span class="badge b-gray">${s.category}</span>`:'<span style="color:var(--text3);">-</span>')}</td>
       <td><b>${s.name}</b></td>
       <td>${s.contact||'-'}</td>
@@ -1477,7 +1790,7 @@ function renderSup(){
       <td><span class="badge ${bc}">${bl}</span></td>
       <td><button class="btn btn-sm btn-primary" onclick="openModal('editsup','${s.id}')">✎ 編輯</button></td>
     </tr>`;
-  }).join(''):'<tr class="empty-row"><td colspan="7">尚無符合的供應商</td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="8">尚無符合的供應商</td></tr>';
 }
 
 async function saveNewLoc(){
@@ -2265,32 +2578,72 @@ function openModal(type,extraId){
         <button class="btn btn-primary" onclick="saveEditWO('${id}')">儲存更新</button>
       </div>`;
     }},
-    user:{t:'新增使用者',h:()=>`
-      <div class="form-row">
-        <div class="fg"><label>姓名 *</label><input id="f-uname" placeholder="王小明"></div>
-        <div class="fg"><label>部門</label><input id="f-udept" placeholder="倉儲部"></div>
+    user:{t:'新增使用者',h:()=>{
+      // 讀取目前所有部門（含自訂）
+      const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+      const deptOpts=depts.map(d=>`<option value="${d.id}">${d.icon||''} ${d.name}</option>`).join('');
+      const roleRows=depts.map(d=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--bg3);margin-bottom:4px;">
+          <span style="min-width:110px;font-weight:600;font-size:13px;">${d.icon||''} ${d.name}</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
+            <input type="radio" name="f-dept-role" value="${d.id}_manager" style="width:15px;height:15px;accent-color:var(--blue);"> 主管
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
+            <input type="radio" name="f-dept-role" value="${d.id}_staff" style="width:15px;height:15px;accent-color:var(--blue);" ${d.id==='warehouse'?'checked':''}> 員工
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
+            <input type="radio" name="f-dept-role" value="${d.id}_none" style="width:15px;height:15px;"> 無
+          </label>
+        </div>`).join('');
+      return`
+      <div class="form-row" style="grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fg"><label>姓名 *</label><input id="f-uname" placeholder="王小明" style="width:100%;"></div>
+        <div class="fg"><label>職稱</label><input id="f-utitle" placeholder="例：資材課長" style="width:100%;"></div>
       </div>
-      <div class="fg">
-        <label>角色（可多選）</label>
-        <div id="f-uroles" style="padding:8px;background:var(--bg3);border-radius:var(--r);">
-          <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;"><input type="checkbox" class="role-check" value="admin" style="width:16px;height:16px;"> <span>👑 最高管理員</span></label>
-          <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;"><input type="checkbox" class="role-check" value="manager" style="width:16px;height:16px;"> <span>👔 主管</span></label>
-          <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;"><input type="checkbox" class="role-check" value="purchase" style="width:16px;height:16px;"> <span>🛒 採購人員</span></label>
-          <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;"><input type="checkbox" class="role-check" value="operator" checked style="width:16px;height:16px;"> <span>🔧 操作員</span></label>
-          <label style="display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;"><input type="checkbox" class="role-check" value="readonly" style="width:16px;height:16px;"> <span>👁 唯讀</span></label>
-        </div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fg"><label>電話/分機</label><input id="f-uphone" placeholder="分機 123 或 0912-xxx-xxx" style="width:100%;"></div>
+        <div class="fg"><label>Email</label><input id="f-uemail" placeholder="user@company.com" type="email" style="width:100%;"></div>
       </div>
-      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveUser()">新增使用者</button></div>`},
+      <div class="fg" style="margin-bottom:12px;">
+        <label style="font-weight:600;margin-bottom:8px;display:block;">📋 部門 / 角色設定</label>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">每個部門選擇「主管」或「員工」，對應該部門在<b>權限設定</b>中的設定；選「無」代表無此部門存取權。</div>
+        <div id="f-role-rows">${roleRows}</div>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveUser()">新增使用者</button></div>`;
+    }},
     edituser:{t:'編輯使用者',h:(id)=>{
       const u=DB.users?.find(x=>x.id===id);if(!u)return'找不到資料';
-      const roles=['operator','manager','readonly','admin'];
-      const roleNames={operator:'操作員',manager:'主管',readonly:'唯讀',admin:'最高管理員'};
-      const roleOpts=roles.map(r=>`<option value="${r}"${u.role===r?' selected':''}>${roleNames[r]}</option>`).join('');
-      return`<div class="form-row">
-        <div class="fg"><label>姓名</label><input id="f-uname" value="${u.name||''}"></div>
-        <div class="fg"><label>部門</label><input id="f-udept" value="${u.dept||''}"></div>
+      const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+      let savedAssigns={};
+      try{ savedAssigns=JSON.parse(u.dept_assigns||'{}'); }catch(e){}
+      // 若舊資料沒有 dept_assigns，從 roles 解析
+      if(!Object.keys(savedAssigns).length){
+        (u.roles||u.role||'').split(',').forEach(r=>{
+          const parts=r.trim().split('_');
+          if(parts.length===2) savedAssigns[parts[0]]=parts[1];
+        });
+      }
+      const roleRows=depts.map(d=>{
+        const cur=savedAssigns[d.id]||'none';
+        return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--bg3);margin-bottom:4px;">
+          <span style="min-width:110px;font-weight:600;font-size:13px;">${d.icon||''} ${d.name}</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="radio" name="f-dept-role" value="${d.id}_manager" style="width:15px;height:15px;accent-color:var(--blue);"${cur==='manager'?' checked':''}> 主管</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="radio" name="f-dept-role" value="${d.id}_staff" style="width:15px;height:15px;accent-color:var(--blue);"${cur==='staff'?' checked':''}> 員工</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;"><input type="radio" name="f-dept-role" value="${d.id}_none" style="width:15px;height:15px;"${cur==='none'?' checked':''}> 無</label>
+        </div>`;
+      }).join('');
+      return`<div class="form-row" style="grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fg"><label>姓名</label><input id="f-uname" value="${u.name||''}" style="width:100%;"></div>
+        <div class="fg"><label>職稱</label><input id="f-utitle" value="${u.title||''}" placeholder="例：資材課長" style="width:100%;"></div>
       </div>
-      <div class="fg"><label>角色</label><select id="f-urole">${roleOpts}</select></div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fg"><label>電話/分機</label><input id="f-uphone" value="${u.phone||''}" placeholder="分機 123" style="width:100%;"></div>
+        <div class="fg"><label>Email</label><input id="f-uemail" value="${u.email||''}" placeholder="user@company.com" type="email" style="width:100%;"></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px;">
+        <label style="font-weight:600;margin-bottom:8px;display:block;">📋 部門 / 角色設定</label>
+        <div id="f-role-rows">${roleRows}</div>
+      </div>
       <div class="modal-foot">
         <button class="btn btn-danger" onclick="deleteUser('${id}')">🗑 刪除</button>
         <button class="btn" onclick="closeModal()">取消</button>
@@ -3041,6 +3394,7 @@ function printQuote(id){
 }
 // ── USER MANAGEMENT ──
 function renderUsers(){
+  _mergeUserExt();
   const mgmtBtns=document.getElementById('userMgmtBtns');
   if(mgmtBtns){
     mgmtBtns.innerHTML=currentUserRole==='admin'
@@ -3065,9 +3419,11 @@ function renderUsers(){
     return`<tr${isMe?' style="background:var(--blue-bg);"':''}>
       <td><div style="display:flex;align-items:center;gap:8px;">
         <div style="width:32px;height:32px;border-radius:50%;background:${avatarColors[i%avatarColors.length]};color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${(u.name||'?').slice(-2)}</div>
-        <div><b>${u.name||'-'}</b>${isMe?'<span style="font-size:10px;color:var(--blue);margin-left:6px;">（你）</span>':''}</div>
+        <div><b>${u.name||'-'}</b>${isMe?'<span style="font-size:10px;color:var(--blue);margin-left:6px;">（你）</span>':''}
+        ${u.title?`<div style="font-size:11px;color:var(--text3);">${u.title}</div>`:''}</div>
       </div></td>
       <td>${u.dept||'-'}</td>
+      <td style="white-space:nowrap;">${u.phone||'-'}</td>
       <td>${roleBadges}${hasCustomPerm?'<span style="font-size:10px;color:var(--amber);margin-left:4px;">自訂</span>':''}</td>
       <td style="display:flex;gap:4px;">
         ${isAdmin?`<button class="btn btn-sm btn-primary" onclick="openModal('edituser','${u.id}')">✎ 編輯</button>`:''}
@@ -3089,21 +3445,68 @@ function restoreUsersFromLocal(){
 }
 async function saveUser(){
   const name=document.getElementById('f-uname')?.value?.trim();
-  const dept=document.getElementById('f-udept')?.value?.trim()||'';
-  const checks=document.querySelectorAll('#f-uroles input[type=checkbox]:checked');
-  const roles=Array.from(checks).map(c=>c.value);
+  const title=document.getElementById('f-utitle')?.value?.trim()||'';
+  const phone=document.getElementById('f-uphone')?.value?.trim()||'';
+  const email=document.getElementById('f-uemail')?.value?.trim()||'';
+  // 讀取每個部門的主管/員工/無
+  const radios=document.querySelectorAll('input[name="f-dept-role"]:checked');
+  const roles=[];
+  const deptAssigns={};
+  radios.forEach(r=>{
+    const [deptId,level]=r.value.split('_');
+    if(level!=='none'){
+      roles.push(deptId+'_'+level);
+      deptAssigns[deptId]=level;
+    }
+  });
   if(!roles.length)roles.push('operator');
-  const role=roles.includes('admin')?'admin':roles[0];
+  const role=roles.some(r=>r.startsWith('admin'))?'admin':roles[0];
   const rolesStr=roles.join(',');
+  // 取第一個有設定的部門名稱作為 dept 顯示
+  const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+  const firstDeptId=Object.keys(deptAssigns)[0]||'';
+  const firstDept=depts.find(d=>d.id===firstDeptId);
+  const dept=firstDept?(firstDept.name):'';
   if(!name){toast('請填寫姓名','err');return;}
-  const rec={name,dept,role,roles:rolesStr,created_at:new Date().toISOString()};
+  const rec={name,dept,title,phone,email,role,roles:rolesStr,dept_assigns:JSON.stringify(deptAssigns),created_at:new Date().toISOString()};
   if(!isDemo){
-    const res=await _db.from('erp_users').insert(rec);
-    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    // 嘗試完整欄位，若失敗退回基本欄位
+    let res=await _db.from('erp_users').insert(rec);
+    if(res.error){
+      // 欄位不存在，只存基本欄位，額外資料存 localStorage
+      const basic={name,dept,role,roles:rolesStr,created_at:new Date().toISOString()};
+      res=await _db.from('erp_users').insert(basic);
+      if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+      // 暫存擴充欄位到 localStorage
+      try{
+        const ext=JSON.parse(localStorage.getItem('erp_user_ext')||'{}');
+        ext[name]={title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
+        localStorage.setItem('erp_user_ext',JSON.stringify(ext));
+      }catch(e){}
+      if(!localStorage.getItem('erp_user_ext_hint')){
+        localStorage.setItem('erp_user_ext_hint','1');
+        setTimeout(()=>toast('提示：請在 Supabase erp_users 表加入 title/phone/email/dept_assigns 欄位以永久保存','inf'),1000);
+      }
+    }
     await loadT('erp_users');
+    // 補回擴充欄位
+    _mergeUserExt();
   } else {rec.id='u'+Date.now();DB.users.push(rec);}
   backupUsersToLocal();
   closeModal();toast(name+' 已新增 ✅','ok');renderUsers();
+}
+
+function _mergeUserExt(){
+  try{
+    const ext=JSON.parse(localStorage.getItem('erp_user_ext')||'{}');
+    (DB.users||[]).forEach(u=>{
+      if(ext[u.name]) Object.assign(u,ext[u.name]);
+    });
+  }catch(e){}
+}
+
+function getCustomDepts(){
+  try{ return JSON.parse(localStorage.getItem('erp_custom_depts')||'[]'); }catch(e){ return []; }
 }
 
 function getUserPermsForUser(u){
@@ -3115,18 +3518,38 @@ function getUserPermsForUser(u){
 
 async function saveEditUser(id){
   const name=document.getElementById('f-uname')?.value?.trim();
-  const dept=document.getElementById('f-udept')?.value?.trim()||'';
-  const checks=document.querySelectorAll('#f-uroles input[type=checkbox]:checked');
-  const roles=Array.from(checks).map(c=>c.value);
+  const title=document.getElementById('f-utitle')?.value?.trim()||'';
+  const phone=document.getElementById('f-uphone')?.value?.trim()||'';
+  const email=document.getElementById('f-uemail')?.value?.trim()||'';
+  const radios=document.querySelectorAll('input[name="f-dept-role"]:checked');
+  const roles=[];const deptAssigns={};
+  radios.forEach(r=>{
+    const [deptId,level]=r.value.split('_');
+    if(level!=='none'){roles.push(deptId+'_'+level);deptAssigns[deptId]=level;}
+  });
   if(!roles.length)roles.push('operator');
-  const role=roles.includes('admin')?'admin':roles[0];
+  const role=roles.some(r=>r.startsWith('admin'))?'admin':roles[0];
   const rolesStr=roles.join(',');
+  const depts=[...DEFAULT_DEPARTMENTS,...(getCustomDepts()||[])];
+  const firstDeptId=Object.keys(deptAssigns)[0]||'';
+  const firstDept=depts.find(d=>d.id===firstDeptId);
+  const dept=firstDept?firstDept.name:'';
   if(!name){toast('請填寫姓名','err');return;}
-  const updates={name,dept,role,roles:rolesStr};
+  const updates={name,dept,title,phone,email,role,roles:rolesStr,dept_assigns:JSON.stringify(deptAssigns)};
   if(!isDemo){
-    const res=await _db.from('erp_users').update(updates).eq('id',id);
-    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    let res=await _db.from('erp_users').update(updates).eq('id',id);
+    if(res.error){
+      const basic={name,dept,role,roles:rolesStr};
+      res=await _db.from('erp_users').update(basic).eq('id',id);
+      if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+      try{
+        const ext=JSON.parse(localStorage.getItem('erp_user_ext')||'{}');
+        ext[name]={title,phone,email,dept_assigns:JSON.stringify(deptAssigns)};
+        localStorage.setItem('erp_user_ext',JSON.stringify(ext));
+      }catch(e){}
+    }
     await loadT('erp_users');
+    _mergeUserExt();
   } else {const u=DB.users.find(x=>x.id===id);if(u)Object.assign(u,updates);}
   backupUsersToLocal();
   closeModal();toast('使用者已更新 ✅','ok');renderUsers();
@@ -3864,7 +4287,25 @@ function openSalesForm(id){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="fg"><label>工單號碼 *</label><input id="sf-no" style="${inp}" value="${s?.order_no||''}" placeholder="例：C12D002-04"></div>
       <div class="fg"><label>開單日期</label><input type="date" id="sf-issue-date" style="${inp}" value="${s?.issue_date||today}"></div>
-      <div class="fg"><label>客戶名稱 *</label><input id="sf-customer" style="${inp}" value="${s?.customer||''}" placeholder="客戶公司名稱"></div>
+      <div class="fg" style="position:relative;">
+        <label>客戶名稱 *</label>
+        <div style="position:relative;">
+          <input id="sf-customer" style="${inp}padding-right:36px;" value="${s?.customer||''}" placeholder="搜尋或輸入客戶名稱..." autocomplete="off"
+            oninput="filterWOCust(this.value)" onfocus="showWOCustDrop()" onblur="setTimeout(()=>hideWOCustDrop(),180)">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;">▾</span>
+        </div>
+        <div id="wo-cust-drop" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;box-shadow:0 6px 24px #0003;max-height:260px;overflow-y:auto;margin-top:2px;">
+          ${(()=>{
+            const domestic=(DB.customers||[]).filter(c=>(c.cust_type||'domestic')==='domestic').sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-TW'));
+            const overseas=(DB.customers||[]).filter(c=>c.cust_type==='overseas').sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-TW'));
+            let h='';
+            if(domestic.length) h+='<div class="wo-cust-group">🏠 國內客戶</div>'+domestic.map(c=>'<div class="wo-cust-opt" onmousedown="pickWOCust(this)"><span class="wo-cust-tag dom">國內</span>'+c.name+'</div>').join('');
+            if(overseas.length) h+='<div class="wo-cust-group">✈️ 國外客戶</div>'+overseas.map(c=>'<div class="wo-cust-opt" onmousedown="pickWOCust(this)"><span class="wo-cust-tag ovs">國外</span>'+c.name+'</div>').join('');
+            if(!domestic.length&&!overseas.length) h='<div style="padding:12px;color:var(--text3);text-align:center;font-size:13px;">尚無客戶資料</div>';
+            return h;
+          })()}
+        </div>
+      </div>
       <div class="fg"><label>交貨日期</label><input type="date" id="sf-delivery" style="${inp}" value="${s?.delivery_date||''}"></div>
       <div class="fg"><label>機型</label><input id="sf-model" style="${inp}" value="${s?.model||''}" placeholder="例：DJ-C1000"></div>
       <div class="fg"><label>台數</label><input type="number" id="sf-qty" style="${inp}" value="${s?.qty||1}" min="1"></div>
@@ -4019,34 +4460,92 @@ function printWorkOrder(id){
 
   const w=window.open('','_blank','width=1200,height=820');
 
-  // 寫入 HTML（不含規格/備註文字，之後用 DOM 填入）
+  // ── 建立簽名欄 HTML ──
+  // 簽名欄：一張 table，部門行 + 人員行，欄數以人員為準
+  const personValMap={'接單業務':s.salesperson||'','設計者':s.designer||'','生管':s.production_manager||'','專案負責人':s.pm||'','製表':s.maker||''};
+  const pidMap={'接單業務':'sn-sales','設計者':'sn-design','生管':'sn-pm','專案負責人':'sn-proj','製表':'sn-maker'};
+  const persons=signCfg.person;
+  const depts=signCfg.dept;
+  const colCount=persons.length;
+  // 部門列：把 dept 平均分配到 colCount 格
+  let deptRow='<tr>';
+  for(let i=0;i<colCount;i++){
+    const d=depts[i]||'';
+    deptRow+='<td class="sign-dept-cell">'+
+      '<div class="sign-line"></div>'+
+      '<div class="sign-label">'+d+'</div>'+
+      '</td>';
+  }
+  deptRow+='</tr>';
+  // 人員列
+  let personRow='<tr>';
+  persons.forEach((p,i)=>{
+    const pid=pidMap[p]||('sn-p'+i);
+    const val=personValMap[p]||'';
+    personRow+='<td class="sign-dept-cell">'+
+      '<div class="sign-name" id="'+pid+'">'+val+'</div>'+
+      '<div class="sign-line"></div>'+
+      '<div class="sign-label">'+p+'</div>'+
+      '</td>';
+  });
+  personRow+='</tr>';
+  const signTableHtml='<table class="sign-table">'+deptRow+personRow+'</table>';
+  const deptSignHtml='';
+  const personSignHtml=signTableHtml;
+
+  // ── 表頭 HTML（每頁共用）──
+  const headerHtml=
+    '<h1>大佶（佶榮）機電股份有限公司</h1>'
+    +'<h2 style="letter-spacing:2px;">生產工作通知單　'+(s.order_no||'')+'</h2>'
+    +'<table>'
+    +'<tr>'
+    +'<td class="lbl">工單號碼</td><td style="font-weight:bold;font-size:12pt;width:140px;">'+s.order_no+'</td>'
+    +'<td class="lbl">開單日期</td><td style="width:100px;">'+iRoc+'年'+im+'月'+id2+'日</td>'
+    +'<td class="lbl">機台類型</td><td style="width:88px;"><span class="badge">'+(s.machine_type||'新機')+'</span></td>'
+    +'<td class="lbl">台數</td><td style="font-weight:bold;text-align:center;width:38px;">'+(s.qty||1)+'</td>'
+    +'</tr>'
+    +'<tr>'
+    +'<td class="lbl">客戶名稱</td><td colspan="3" style="font-weight:bold;font-size:12pt;">'+(s.customer||'')+'</td>'
+    +'<td class="lbl">交貨日期</td><td colspan="3" style="font-weight:bold;">'+(s.delivery_date||'')+'</td>'
+    +'</tr>'
+    +'<tr>'
+    +'<td class="lbl">機型</td><td colspan="3">'+(s.model||'')+'</td>'
+    +'<td class="lbl">油漆色號</td><td colspan="3">'+(s.paint_color||'')+'</td>'
+    +'</tr>'
+    +'<tr><td class="lbl">機器名稱</td><td colspan="7">'+(s.machine_name||'')+'</td></tr>'
+    +'</table>';
+
+  // 寫入 HTML
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
   +'<title>生產工作通知單 '+s.order_no+'</title>'
   +'<style>'
   +'*{margin:0;padding:0;box-sizing:border-box;}'
-  +'@page{size:A4 landscape;margin:7mm 9mm;}'
-  +'html,body{font-family:"微軟正黑體","Microsoft JhengHei",Arial,sans-serif;font-size:11pt;color:#000;background:#fff;}'
+  +'@page{size:A4 landscape;margin:7mm;}'
+  +'html,body{font-family:"微軟正黑體","Microsoft JhengHei",Arial,sans-serif;font-size:10pt;color:#000;background:#fff;}'
   +'.no-print{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:7px 12px;background:#f5f5f5;border-bottom:1px solid #ddd;}'
   +'@media print{.no-print{display:none!important;}}'
-  +'.page{padding:5px 8px;display:flex;flex-direction:column;height:calc(100vh - 48px);}'
-  +'@media print{.page{height:183mm;}}'
-  +'h1{font-size:15pt;text-align:center;font-weight:bold;margin-bottom:0;}'
-  +'h2{font-size:10.5pt;text-align:center;letter-spacing:6px;margin-bottom:4px;}'
-  +'table{width:100%;border-collapse:collapse;margin-bottom:3px;}'
-  +'td{border:1px solid #444;padding:2px 5px;vertical-align:middle;font-size:10pt;}'
-  +'.lbl{background:#ebebeb;font-weight:bold;white-space:nowrap;text-align:center;font-size:9pt;width:60px;}'
-  +'.spec-area{flex:1;display:flex;border:1px solid #444;margin-bottom:3px;min-height:0;overflow:hidden;}'
-  +'.spec-hd{background:#d5d5d5;font-weight:bold;font-size:9pt;text-align:center;padding:2px;border-bottom:1px solid #444;}'
-  +'.spec-col-wrap{flex:1;display:flex;flex-direction:column;border-right:1px solid #bbb;}'
-  +'.spec-col-wrap:last-child{border-right:none;}'
-  +'.spec-col{flex:1;padding:4px 7px;font-size:10pt;line-height:1.6;white-space:pre-wrap;overflow:hidden;word-break:break-word;}'
-  +'.sign-wrap{display:flex;border:1px solid #444;margin-bottom:2px;}'
-  +'.sign-box{flex:1;border-right:1px solid #444;text-align:center;padding:2px 3px;}'
-  +'.sign-box:last-child{border-right:none;}'
-  +'.sign-name{font-size:10pt;font-weight:bold;min-height:13px;}'
-  +'.sign-line{border-bottom:1px solid #777;height:22px;margin:1px 5px;}'
-  +'.sign-label{font-size:8.5pt;color:#444;}'
-  +'.badge{display:inline-block;padding:0 5px;border:1px solid #444;border-radius:2px;font-size:9pt;font-weight:bold;}'
+  +'@media screen{.page{display:flex;flex-direction:column;min-height:calc(100vh - 48px);padding:6px 8px;}}'
+  +'@media screen{.page-top{flex:1;min-height:0;}}'
+  +'@media print{.page{display:block;overflow:hidden;}}'
+  +'h1{font-size:14pt;text-align:center;font-weight:bold;margin-bottom:0;}'
+  +'h2{font-size:10pt;text-align:center;letter-spacing:6px;margin-bottom:3px;}'
+  +'table{width:100%;border-collapse:collapse;margin-bottom:2px;}'
+  +'td{border:1px solid #444;padding:2px 5px;vertical-align:middle;font-size:9.5pt;}'
+  +'.lbl{background:#ebebeb;font-weight:bold;white-space:nowrap;text-align:center;font-size:8.5pt;width:58px;}'
+  +'.spec-box{border:1px solid #444;margin-bottom:2px;padding:0;}'
+  +'.spec-hd{background:#d5d5d5;font-weight:bold;font-size:8.5pt;text-align:center;padding:2px 5px;border-bottom:1px solid #444;}'
+  +'.spec-wrap{display:flex;}'
+  +'@media screen{.spec-col{min-height:60mm;max-height:130mm;}}'
+  +'@media print{.spec-col{height:120mm;}}'
+  +'.spec-col{flex:1;padding:5px 7px;white-space:pre-wrap;font-size:9.5pt;line-height:1.55;word-break:break-word;overflow:hidden;}'
+  +'.spec-col-r{border-left:1px solid #bbb;}'
+  +'.sign-table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:2px;}'
+  +'.sign-dept-cell{border:1px solid #444;text-align:center;padding:1px 3px;vertical-align:bottom;height:16mm;}'
+  +'@media print{.sign-dept-cell{height:13mm;}}'
+  +'.sign-name{font-size:9pt;font-weight:bold;display:block;padding-top:2px;}'
+  +'.sign-line{border-bottom:1px solid #777;height:7mm;margin:0 3px 1px;}'
+  +'.sign-label{font-size:8pt;color:#333;display:block;padding-bottom:1px;}'
+  +'.badge{display:inline-block;padding:0 4px;border:1px solid #444;border-radius:2px;font-size:8.5pt;font-weight:bold;}'
   +'</style></head><body>'
   +'<div class="no-print">'
   +'<button onclick="window.print()" style="padding:5px 14px;background:#185FA5;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;">🖨 列印/PDF</button>'
@@ -4060,105 +4559,85 @@ function printWorkOrder(id){
   +'<button onclick="applyNames()" style="padding:3px 9px;background:#555;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">套用</button>'
   +'<span style="font-size:10px;color:#888;margin-left:4px;">列印選「橫向 A4」</span>'
   +'</div>'
-  +'<div class="page">'
-  +'<h1>大佶（佶榮）機電股份有限公司</h1>'
-  +'<h2 style="letter-spacing:2px;">生產工作通知單　'+(s.order_no||'')+'</h2>'
-  +'<table>'
-  +'<tr>'
-  +'<td class="lbl">工單號碼</td><td style="font-weight:bold;font-size:12pt;width:140px;">'+s.order_no+'</td>'
-  +'<td class="lbl">開單日期</td><td style="width:100px;">'+iRoc+'年'+im+'月'+id2+'日</td>'
-  +'<td class="lbl">機台類型</td><td style="width:88px;"><span class="badge">'+(s.machine_type||'新機')+'</span></td>'
-  +'<td class="lbl">台數</td><td style="font-weight:bold;text-align:center;width:38px;">'+(s.qty||1)+'</td>'
-  +'</tr>'
-  +'<tr>'
-  +'<td class="lbl">客戶名稱</td><td colspan="3" style="font-weight:bold;font-size:12pt;">'+(s.customer||'')+'</td>'
-  +'<td class="lbl">交貨日期</td><td colspan="3" style="font-weight:bold;">'+(s.delivery_date||'')+'</td>'
-  +'</tr>'
-  +'<tr>'
-  +'<td class="lbl">機型</td><td colspan="3">'+(s.model||'')+'</td>'
-  +'<td class="lbl">油漆色號</td><td colspan="3">'+(s.paint_color||'')+'</td>'
-  +'</tr>'
-  +'<tr><td class="lbl">機器名稱</td><td colspan="7">'+(s.machine_name||'')+'</td></tr>'
-  +'</table>'
-  +'<div class="spec-area">'
-  +'<div class="spec-col-wrap"><div class="spec-hd">規 格 說 明</div><div class="spec-col" id="col1"></div></div>'
-  +'<div class="spec-col-wrap" id="col2wrap" style="display:none;"><div class="spec-hd">（ 續 ）</div><div class="spec-col" id="col2"></div></div>'
-  +'</div>'
-  +(s.note?'<table style="margin-bottom:3px;"><tr><td class="lbl" style="width:50px;">備註</td><td id="note-td" style="font-size:10pt;"></td></tr></table>':'')
-  +signCfg.dept.map(d=>'<div class="sign-box"><div class="dept-line"></div><div class="sign-label">'+d+'</div></div>').reduce((a,b,i,arr)=>{
-    if(i===0) return '<div class="sign-wrap" style="margin-bottom:2px;">'+b;
-    if(i===arr.length-1) return a+b+'</div>';
-    return a+b;
-  },'')
-  +(()=>{
-    const personValMap={'接單業務':s.salesperson||'','設計者':s.designer||'','生管':s.production_manager||'','專案負責人':s.pm||'','製表':s.maker||''};
-    const pidMap={'接單業務':'sn-sales','設計者':'sn-design','生管':'sn-pm','專案負責人':'sn-proj','製表':'sn-maker'};
-    let html='<div class="sign-wrap">';
-    signCfg.person.forEach((p,i)=>{
-      const pid=pidMap[p]||('sn-p'+i);
-      const val=personValMap[p]||'';
-      html+='<div class="sign-box"><div class="sign-name" id="'+pid+'">'+val+'</div><div class="sign-line"></div><div class="sign-label">'+p+'</div></div>';
-    });
-    return html+'</div>';
-  })()
-  +'</div></body></html>');
+  +'<div id="pages"></div>'
+  +'</body></html>');
   w.document.close();
 
+
   // ─── 用 DOM 直接填入規格與備註（完全不用 template literal）───
+  // ── 用 JS 直接建立頁面內容（不量高度，讓瀏覽器自然分頁）──
   const spec=s.spec_content||'';
-  const noteEl=w.document.getElementById('note-td');
-  if(noteEl) noteEl.textContent=s.note||'';
+  const pages=w.document.getElementById('pages');
 
-  // 雙欄分配：用行數決定，超過30行就分左右欄
-  const fillSpec=()=>{
-    const col1=w.document.getElementById('col1');
-    const col2=w.document.getElementById('col2');
-    const wrap=w.document.getElementById('col2wrap');
-    if(!col1) return;
-    const lines=spec.split('\n');
-    if(lines.length<=30){
-      // 短規格：全放左欄
-      col1.textContent=spec;
-    } else {
-      // 長規格：嘗試用高度切割，若高度為0則平均切割
-      col1.textContent=spec;
-      const area=w.document.querySelector('.spec-area');
-      const avail=area?(area.offsetHeight-30):0;
-      if(avail>50){
-        // 高度正常，用二分法找切割點
-        let lo=0,hi=lines.length;
-        while(lo<hi){
-          const mid=Math.floor((lo+hi)/2);
-          col1.textContent=lines.slice(0,mid).join('\n');
-          if(col1.scrollHeight<=avail) lo=mid+1; else hi=mid;
-        }
-        const cut=Math.max(1,lo-1);
-        if(cut<lines.length){
-          wrap.style.display='flex';
-          col1.textContent=lines.slice(0,cut).join('\n');
-          col2.textContent=lines.slice(cut).join('\n');
-        }
-      } else {
-        // 高度為0（可能還在渲染），平均切割
-        const cut=Math.floor(lines.length/2);
-        wrap.style.display='flex';
-        col1.textContent=lines.slice(0,cut).join('\n');
-        col2.textContent=lines.slice(cut).join('\n');
-      }
-    }
-  };
+  // 第一頁
+  const pg1=w.document.createElement('div');
+  pg1.className='page';
 
-  // 等 DOM 渲染完再填，嘗試兩次確保高度正確
-  w.setTimeout(fillSpec, 100);
-  w.setTimeout(fillSpec, 500);
+  // 上方區域（表頭 + 規格 + 備註）
+  const pgTop=w.document.createElement('div');
+  pgTop.className='page-top';
+  pgTop.innerHTML=headerHtml;
+
+  // 規格說明：JS 切一半，左欄接右欄
+  const specBox=w.document.createElement('div');
+  specBox.className='spec-box';
+  const specHd=w.document.createElement('div');
+  specHd.className='spec-hd';
+  specHd.textContent='規 格 說 明';
+  specBox.appendChild(specHd);
+  const specLines=spec.split('\n');
+  // 9.5pt * 1.55 line-height ≈ 5.9mm/行，128mm 約21行
+  const CHARS_PER_LINE=42;
+  const MAX_VISUAL_LINES=21;
+  let visualCount=0;
+  let cutIdx=specLines.length;
+  for(let i=0;i<specLines.length;i++){
+    const vl=Math.max(1,Math.ceil((specLines[i].length||1)/CHARS_PER_LINE));
+    visualCount+=vl;
+    if(visualCount>MAX_VISUAL_LINES){cutIdx=i;break;}
+  }
+  const leftText=specLines.slice(0,cutIdx).join('\n');
+  const rightText=specLines.slice(cutIdx).join('\n');
+  const specWrap=w.document.createElement('div');
+  specWrap.className='spec-wrap';
+  const colL=w.document.createElement('div');
+  colL.className='spec-col';
+  colL.textContent=leftText;
+  const colR=w.document.createElement('div');
+  colR.className='spec-col spec-col-r';
+  colR.textContent=rightText;
+  specWrap.appendChild(colL);
+  specWrap.appendChild(colR);
+  specBox.appendChild(specWrap);
+  pgTop.appendChild(specBox);
+
+  // 備註
+  if(s.note){
+    const noteTable=w.document.createElement('table');
+    noteTable.style.marginBottom='3px';
+    noteTable.innerHTML='<tr><td class="lbl" style="width:50px;">備註</td><td style="font-size:10pt;">'+
+      s.note.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
+    pgTop.appendChild(noteTable);
+  }
+  pg1.appendChild(pgTop);
+
+  // 簽名欄固定在底部
+  const pgBottom=w.document.createElement('div');
+  pgBottom.className='page-bottom';
+  if(deptSignHtml) pgBottom.insertAdjacentHTML('beforeend', deptSignHtml);
+  pgBottom.insertAdjacentHTML('beforeend', personSignHtml);
+  pg1.appendChild(pgBottom);
+
+  pages.appendChild(pg1);
 
   // 套用簽名函數
   w.applyNames=function(){
     const get=id=>w.document.getElementById(id);
-    get('sn-sales').textContent=get('p-sales').value||'';
-    get('sn-design').textContent=get('p-design').value||'';
-    get('sn-pm').textContent=get('p-pm').value||'';
-    get('sn-proj').textContent=get('p-proj').value||'';
+    const map={'sn-sales':'p-sales','sn-design':'p-design','sn-pm':'p-pm','sn-proj':'p-proj','sn-maker':'p-maker'};
+    Object.entries(map).forEach(([tid,sid])=>{
+      const t=get(tid), s=get(sid);
+      if(t&&s) t.textContent=s.value||'';
+    });
   };
 
   // JPEG 儲存
@@ -4199,17 +4678,131 @@ async function loadCustomersFromDB(){
     DB.customers=data||[];
     DB.customers_loaded=true;
   }catch(e){ DB.customers=DB.customers||[]; }
+  // 補回 localStorage 裡的 cust_type
+  try{
+    const lt=JSON.parse(localStorage.getItem('erp_cust_types')||'{}');
+    (DB.customers||[]).forEach(c=>{
+      if(!c.cust_type && lt[c.id]) c.cust_type=lt[c.id];
+      if(!c.cust_type) c.cust_type='domestic';
+    });
+  }catch(e){}
   renderCustomers();
 }
 
+// ── 客戶字母篩選 ──
+function toggleCustAlpha(mode){
+  const picker=document.getElementById('alpha-picker');
+  if(!picker) return;
+  // 同模式再點：收起
+  if(window._custAlphaMode===mode && picker.style.display==='flex'){
+    picker.style.display='none';
+    window._custAlphaMode='';
+    window._custAlphaLetter='';
+    _alphoBtnStyle();
+    renderCustomers();
+    return;
+  }
+  window._custAlphaMode=mode;
+  window._custAlphaLetter='';
+  _alphoBtnStyle();
+  const letters=mode==='bopomofo'
+    ? ['ㄅ','ㄆ','ㄇ','ㄈ','ㄉ','ㄊ','ㄋ','ㄌ','ㄍ','ㄎ','ㄏ','ㄐ','ㄑ','ㄒ','ㄓ','ㄔ','ㄕ','ㄖ','ㄗ','ㄘ','ㄙ']
+    : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  picker.innerHTML='';
+  letters.forEach(function(l){
+    const b=document.createElement('button');
+    b.textContent=l;
+    b.dataset.al=l;
+    b.style.cssText='padding:5px 9px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;min-width:34px;';
+    b.onclick=function(){ pickAlphaLetter(l); };
+    picker.appendChild(b);
+  });
+  picker.style.display='flex';
+  renderCustomers();
+}
+
+function pickAlphaLetter(letter){
+  window._custAlphaLetter=letter;
+  document.querySelectorAll('#alpha-picker button').forEach(function(b){
+    const on=b.dataset.al===letter;
+    b.style.background=on?'#185FA5':'var(--bg2)';
+    b.style.color=on?'#fff':'var(--text)';
+    b.style.fontWeight=on?'600':'400';
+  });
+  renderCustomers();
+}
+
+function _alphoBtnStyle(){
+  const m=window._custAlphaMode||'';
+  const bp=document.getElementById('cbt-bopo');
+  const az=document.getElementById('cbt-az');
+  if(bp){bp.style.background=m==='bopomofo'?'#185FA5':'var(--bg2)';bp.style.color=m==='bopomofo'?'#fff':'var(--text)';}
+  if(az){az.style.background=m==='az'?'#185FA5':'var(--bg2)';az.style.color=m==='az'?'#fff':'var(--text)';}
+}
+
+function clearCustAlpha(){
+  window._custAlphaMode='';
+  window._custAlphaLetter='';
+  const picker=document.getElementById('alpha-picker');
+  if(picker) picker.style.display='none';
+  _alphoBtnStyle();
+  renderCustomers();
+}
+function setCustType(t){
+  window._custTypeF=t;
+  ['all','dom','ovs'].forEach(k=>{
+    const el=document.getElementById('cbt-'+k);
+    if(!el) return;
+    const active=(k==='all'&&t==='')||(k==='dom'&&t==='domestic')||(k==='ovs'&&t==='overseas');
+    el.style.background=active?'#185FA5':'var(--bg2)';
+    el.style.color=active?'#fff':'var(--text)';
+    el.style.fontWeight=active?'600':'400';
+  });
+  renderCustomers();
+}
 function renderCustomers(){
   const q=(document.getElementById('custQ')?.value||'').toLowerCase();
-  const rows=(DB.customers||[]).filter(c=>
-    !q||[c.name,c.contact,c.phone,c.address,c.salesperson].some(v=>(v||'').toLowerCase().includes(q))
-  );
+  const typeF=window._custTypeF||'';
+  const letter=window._custAlphaLetter||'';
+  const alphaMode=window._custAlphaMode||'';
+  const rows=(DB.customers||[]).filter(c=>{
+    const matchQ=!q||[c.name,c.contact,c.phone,c.address,c.salesperson].some(v=>(v||'').toLowerCase().includes(q));
+    const matchT=!typeF||(c.cust_type||'domestic')===typeF;
+    let matchA=true;
+    if(letter){
+      const first=(c.name||'')[0]||'';
+      if(alphaMode==='az'){
+        matchA=first.toUpperCase()===letter;
+      } else {
+        // 直接字表查詢注音聲母
+        const charBopo={'巴':'ㄅ','把':'ㄅ','白':'ㄅ','百':'ㄅ','柏':'ㄅ','邦':'ㄅ','寶':'ㄅ','北':'ㄅ','本':'ㄅ','比':'ㄅ','必':'ㄅ','博':'ㄅ','布':'ㄅ','步':'ㄅ','幫':'ㄅ','彼':'ㄅ','帕':'ㄆ','派':'ㄆ','盤':'ㄆ','平':'ㄆ','品':'ㄆ','普':'ㄆ','鵬':'ㄆ','彭':'ㄆ','沛':'ㄆ','坡':'ㄆ','拍':'ㄆ','馬':'ㄇ','美':'ㄇ','明':'ㄇ','民':'ㄇ','茂':'ㄇ','敏':'ㄇ','米':'ㄇ','銘':'ㄇ','牧':'ㄇ','木':'ㄇ','慕':'ㄇ','邁':'ㄇ','茗':'ㄇ','蒙':'ㄇ','發':'ㄈ','豐':'ㄈ','峰':'ㄈ','富':'ㄈ','福':'ㄈ','飛':'ㄈ','風':'ㄈ','方':'ㄈ','帆':'ㄈ','凡':'ㄈ','泛':'ㄈ','大':'ㄉ','達':'ㄉ','代':'ㄉ','帶':'ㄉ','丹':'ㄉ','德':'ㄉ','東':'ㄉ','鼎':'ㄉ','都':'ㄉ','頂':'ㄉ','定':'ㄉ','電':'ㄉ','典':'ㄉ','帝':'ㄉ','得':'ㄉ','締':'ㄉ','台':'ㄊ','太':'ㄊ','泰':'ㄊ','通':'ㄊ','統':'ㄊ','廷':'ㄊ','天':'ㄊ','騰':'ㄊ','鐵':'ㄊ','唐':'ㄊ','特':'ㄊ','停':'ㄊ','庭':'ㄊ','南':'ㄋ','能':'ㄋ','年':'ㄋ','寧':'ㄋ','農':'ㄋ','諾':'ㄋ','來':'ㄌ','樂':'ㄌ','聯':'ㄌ','力':'ㄌ','立':'ㄌ','利':'ㄌ','麗':'ㄌ','林':'ㄌ','凌':'ㄌ','領':'ㄌ','綠':'ㄌ','龍':'ㄌ','隆':'ㄌ','路':'ㄌ','陸':'ㄌ','亮':'ㄌ','良':'ㄌ','高':'ㄍ','港':'ㄍ','格':'ㄍ','冠':'ㄍ','廣':'ㄍ','光':'ㄍ','國':'ㄍ','谷':'ㄍ','古':'ㄍ','固':'ㄍ','工':'ㄍ','功':'ㄍ','鞏':'ㄍ','觀':'ㄍ','卡':'ㄎ','凱':'ㄎ','科':'ㄎ','開':'ㄎ','康':'ㄎ','可':'ㄎ','克':'ㄎ','快':'ㄎ','崑':'ㄎ','海':'ㄏ','豪':'ㄏ','好':'ㄏ','和':'ㄏ','合':'ㄏ','恆':'ㄏ','弘':'ㄏ','宏':'ㄏ','虹':'ㄏ','鴻':'ㄏ','皇':'ㄏ','惠':'ㄏ','匯':'ㄏ','華':'ㄏ','輝':'ㄏ','煌':'ㄏ','漢':'ㄏ','翰':'ㄏ','基':'ㄐ','佳':'ㄐ','加':'ㄐ','建':'ㄐ','健':'ㄐ','江':'ㄐ','晶':'ㄐ','精':'ㄐ','金':'ㄐ','進':'ㄐ','久':'ㄐ','巨':'ㄐ','均':'ㄐ','駿':'ㄐ','捷':'ㄐ','嘉':'ㄐ','錦':'ㄐ','京':'ㄐ','景':'ㄐ','鉅':'ㄐ','鏡':'ㄐ','啟':'ㄑ','騏':'ㄑ','麒':'ㄑ','奇':'ㄑ','群':'ㄑ','全':'ㄑ','泉':'ㄑ','慶':'ㄑ','清':'ㄑ','強':'ㄑ','橋':'ㄑ','勤':'ㄑ','乾':'ㄑ','西':'ㄒ','希':'ㄒ','先':'ㄒ','鑫':'ㄒ','星':'ㄒ','興':'ㄒ','信':'ㄒ','翔':'ㄒ','祥':'ㄒ','協':'ㄒ','欣':'ㄒ','新':'ㄒ','雄':'ㄒ','秀':'ㄒ','賢':'ㄒ','詳':'ㄒ','中':'ㄓ','正':'ㄓ','志':'ㄓ','展':'ㄓ','智':'ㄓ','卓':'ㄓ','鐘':'ㄓ','竹':'ㄓ','珠':'ㄓ','專':'ㄓ','兆':'ㄓ','昭':'ㄓ','致':'ㄓ','整':'ㄓ','城':'ㄔ','成':'ㄔ','承':'ㄔ','誠':'ㄔ','馳':'ㄔ','春':'ㄔ','創':'ㄔ','長':'ㄔ','超':'ㄔ','晨':'ㄔ','昌':'ㄔ','盛':'ㄕ','勝':'ㄕ','升':'ㄕ','尚':'ㄕ','深':'ㄕ','生':'ㄕ','時':'ㄕ','石':'ㄕ','世':'ㄕ','順':'ㄕ','碩':'ㄕ','申':'ㄕ','聖':'ㄕ','紳':'ㄕ','日':'ㄖ','潤':'ㄖ','瑞':'ㄖ','榮':'ㄖ','仁':'ㄖ','融':'ㄖ','自':'ㄗ','宗':'ㄗ','總':'ㄗ','尊':'ㄗ','彩':'ㄘ','財':'ㄘ','采':'ㄘ','蒼':'ㄘ','三':'ㄙ','森':'ㄙ','松':'ㄙ','思':'ㄙ','四':'ㄙ','速':'ㄙ','塑':'ㄙ'};
+        matchA=(charBopo[first]===letter);
+      }
+    }
+    return matchQ&&matchT&&matchA;
+  }).sort((a,b)=>{
+    // 字母篩選
+    const letter=window._custAlphaLetter||'';
+    const alphaMode=window._custAlphaMode||'';
+    if(letter){
+      if(alphaMode==='az'){
+        return (a.name||'')[0].toUpperCase().localeCompare((b.name||'')[0].toUpperCase(),'en');
+      } else {
+        return (a.name||'').localeCompare(b.name||'','zh-TW');
+      }
+    }
+    // 預設：國內先，國外後，同類按名稱
+    const ta=a.cust_type||'domestic',tb=b.cust_type||'domestic';
+    if(ta!==tb) return ta==='domestic'?-1:1;
+    return (a.name||'').localeCompare(b.name||'','zh-TW');
+  });
+  const typeLabel={domestic:'<span class="badge b-info" style="font-size:11px;">🏠 國內</span>',overseas:'<span class="badge b-warning" style="font-size:11px;">✈️ 國外</span>'};
+  const titleEl=document.querySelector('#page-customers .card-title');
+  if(titleEl) titleEl.textContent='🤝 客戶管理（'+rows.length+' 筆）';
   document.getElementById('customersBody').innerHTML=rows.length?rows.map((c,i)=>
     '<tr>'
-    +'<td style="color:var(--text3);font-size:12px;">'+(i+1)+'</td>'
+    +'<td style="color:var(--text3);font-size:12px;text-align:center;">'+(i+1)+'</td>'
+    +'<td style="text-align:center;">'+(typeLabel[c.cust_type||'domestic'])+'</td>'
     +'<td style="font-weight:600;">'+(c.name||'-')+'</td>'
     +'<td>'+(c.contact||'-')+'</td>'
     +'<td style="white-space:nowrap;">'+(c.phone||'-')+'</td>'
@@ -4222,7 +4815,7 @@ function renderCustomers(){
     +'<td style="white-space:nowrap;">'
     +'<button class="btn btn-sm" onclick="openCustomerForm(\''+c.id+'\')">✎ 編輯</button></td>'
     +'</tr>'
-  ).join(''):'<tr class="empty-row"><td colspan="11">尚無客戶資料</td></tr>';
+  ).join(''):'<tr class="empty-row"><td colspan="12">尚無客戶資料</td></tr>';
 }
 
 function openCustomerForm(id){
@@ -4236,6 +4829,7 @@ function openCustomerForm(id){
     +'<div style="font-size:16px;font-weight:700;margin-bottom:16px;">🤝 '+(c?'編輯':'新增')+'客戶</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     +'<div class="fg" style="grid-column:1/-1;"><label>客戶名稱 *</label><input id="cf-name" style="'+inp+'" value="'+(c?.name||'')+'" placeholder="公司全名"></div>'
+    +'<div class="fg"><label>客戶類別</label><select id="cf-cust-type" style="'+inp+'"><option value="domestic"'+(c&&c.cust_type==='overseas'?'':' selected')+'>🏠 國內客戶</option><option value="overseas"'+(c&&c.cust_type==='overseas'?' selected':'')+'>✈️ 國外客戶</option></select></div>'
     +'<div class="fg"><label>聯絡人</label><input id="cf-contact" style="'+inp+'" value="'+(c?.contact||'')+'" placeholder="主要聯絡窗口"></div>'
     +'<div class="fg"><label>職稱</label><input id="cf-title" style="'+inp+'" value="'+(c?.contact_title||'')+'" placeholder="例：採購部經理"></div>'
     +'<div class="fg"><label>電話</label><input id="cf-phone" style="'+inp+'" value="'+(c?.phone||'')+'" placeholder="02-XXXX-XXXX"></div>'
@@ -4280,17 +4874,54 @@ async function saveCustomer(id){
     salesperson:  document.getElementById('cf-sales')?.value||'',
     machine_pref: document.getElementById('cf-machine-pref')?.value||'',
     grade:        document.getElementById('cf-grade')?.value||'',
+    cust_type:    document.getElementById('cf-cust-type')?.value||'domestic',
     note:         document.getElementById('cf-note')?.value||'',
   };
   if(!isDemo){
-    if(id){
-      const{error}=await _db.from('customers').update(rec).eq('id',id);
-      if(error){toast('儲存失敗：'+error.message,'err');return;}
-    }else{
-      const{error}=await _db.from('customers').insert([rec]);
-      if(error){toast('儲存失敗：'+error.message,'err');return;}
+    // 嘗試儲存，若 cust_type 欄位不存在則自動移除再重試
+    const trySave=async(data)=>{
+      if(id){
+        return await _db.from('customers').update(data).eq('id',id);
+      }else{
+        return await _db.from('customers').insert([data]);
+      }
+    };
+    let res=await trySave(rec);
+    if(res.error && res.error.message&&res.error.message.includes('cust_type')){
+      // 欄位不存在：先把 cust_type 存到 localStorage 備用，再不帶此欄重試
+      try{
+        const localTypes=JSON.parse(localStorage.getItem('erp_cust_types')||'{}');
+        // 先用 __pending 暫存，reload 後再用 id 對應
+        localTypes['__pending_'+rec.name]=rec.cust_type;
+        localStorage.setItem('erp_cust_types',JSON.stringify(localTypes));
+      }catch(e){}
+      const{cust_type:_,...recWithout}=rec;
+      res=await trySave(recWithout);
     }
+    if(res.error){toast('儲存失敗：'+res.error.message,'err');return;}
+    // 先用 name 把 cust_type 存進 localStorage（以 id 為 key 需要 reload 才知道 id）
+    try{
+      const localTypes=JSON.parse(localStorage.getItem('erp_cust_types')||'{}');
+      if(id){
+        localTypes[id]=rec.cust_type;
+        localStorage.setItem('erp_cust_types',JSON.stringify(localTypes));
+      }
+    }catch(e){}
     await loadCustomersFromDB();
+    // reload 後用 name 對應 id，更新 localStorage key
+    try{
+      const localTypes=JSON.parse(localStorage.getItem('erp_cust_types')||'{}');
+      (DB.customers||[]).forEach(c=>{
+        const pk='__pending_'+c.name;
+        if(localTypes[pk]){localTypes[c.id]=localTypes[pk];delete localTypes[pk];}
+      });
+      localStorage.setItem('erp_cust_types',JSON.stringify(localTypes));
+    }catch(e){}
+    // 提示用戶去 Supabase 加欄位（只提示一次）
+    if(!localStorage.getItem('erp_cust_type_hint')){
+      localStorage.setItem('erp_cust_type_hint','1');
+      setTimeout(()=>toast('提示：請在 Supabase customers 表新增 cust_type (text) 欄位，以永久保存國內/國外分類','inf'),1000);
+    }
   }else{
     if(id){const x=(DB.customers||[]).find(c=>c.id===id);if(x)Object.assign(x,rec);}
     else{rec.id='cust'+Date.now();if(!DB.customers)DB.customers=[];DB.customers.push(rec);}
@@ -4481,6 +5112,35 @@ function renderMlLog(){
 
 
 // ══════════════════════════════════════════════
+// ── 側欄排序：還原已儲存的順序 ──
+function restoreNavOrder(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('erp_nav_order')||'null');
+    if(!saved||!saved.length) return;
+    const sidebar=document.getElementById('sidebar');
+    if(!sidebar) return;
+    const allEls=[...sidebar.querySelectorAll('.nslabel,.nitem')];
+    if(!allEls.length) return;
+    // 用 id 或文字前15字 對應
+    const findEl=(key)=>allEls.find(el=>(el.id&&el.id===key)||(el.textContent.trim().slice(0,15)===key));
+    const ordered=saved.map(k=>findEl(k)).filter(Boolean);
+    if(ordered.length<2) return;
+    // 找父容器和插入點
+    const parent=ordered[0].parentElement;
+    if(!parent) return;
+    const anchor=ordered[0].previousSibling;
+    // 移除這些元素
+    ordered.forEach(el=>{ if(el.parentElement===parent) el.remove(); });
+    // 按儲存順序插回
+    if(anchor&&anchor.parentElement===parent){
+      let ref=anchor;
+      ordered.forEach(el=>{ ref.after(el); ref=el; });
+    } else {
+      ordered.reverse().forEach(el=>parent.prepend(el));
+    }
+  }catch(e){ console.warn('restoreNavOrder error:',e); }
+}
+
 // 側欄排序編輯器
 // ══════════════════════════════════════════════
 function openNavOrderEditor(){
@@ -4649,6 +5309,333 @@ async function deleteCat(id){
   }
   toast('分類已刪除','ok');
   openModal('mngcat');
+}
+
+// ── CLEAR ALL SUPPLIERS ──
+async function clearAllSuppliers(){
+  if(isDemo){toast('示範模式無法操作資料庫','err');return;}
+  const count=(DB.suppliers||[]).length;
+  if(!confirm(`⚠️ 確定要刪除全部 ${count} 筆供應商資料？\n此操作無法復原！`))return;
+  if(!confirm('再次確認：真的要清空所有供應商？'))return;
+  toast('清空中...','inf');
+  // Supabase: delete where id is not null（全刪）
+  const{error}=await _db.from('suppliers').delete().neq('id','00000000-0000-0000-0000-000000000000');
+  if(error){toast('清空失敗：'+error.message,'err');return;}
+  await loadT('suppliers');
+  renderSup();
+  try{await _db.from('activity_log').insert({action_type:'設定',module:'供應商',description:`清空全部供應商（共 ${count} 筆）`,operator:currentUser});}catch(e){}
+  toast(`✅ 已清空 ${count} 筆供應商`,'ok');
+}
+
+// ── BULK SUPPLIER INIT ──
+async function bulkInitSuppliers(){
+  if(isDemo){toast('示範模式無法寫入資料庫','err');return;}
+  if(!confirm('將批次寫入 16 個分類與 276 筆供應商到 Supabase，確定繼續？'))return;
+  toast('初始化中...','inf');
+  const CATS=[{name:'銅'},{name:'鋁'},{name:'電極'},{name:'鐵'},{name:'鎢鋼'},{name:'銀'},{name:'機身'},{name:'變壓器'},{name:'空油壓'},{name:'設備'},{name:'電控'},{name:'電導線'},{name:'五金零件'},{name:'外購'},{name:'加工'},{name:'菲施'}];
+  await loadT('sup_categories');
+  const existCats=DB.sup_categories||[];
+  for(const c of CATS){
+    if(!existCats.some(e=>e.name===c.name)){
+      const r=await _db.from('sup_categories').insert({name:c.name,created_at:new Date().toISOString()}).select().single();
+      if(!r.error&&r.data)existCats.push(r.data);
+    }
+  }
+  await loadT('sup_categories');
+  const catMap={};
+  (DB.sup_categories||[]).forEach(c=>catMap[c.name]=c.id);
+  const SUPS=[
+    {name:'信晟',contact:'阮心華',phone:'2281-1773',items:'青銅管.紅銅板(光~最薄6mm止).青銅.鉋銅條.合金銅板',status:'active',category:'銅'},
+    {name:'基圓',contact:'吳江泉(BOSS) 李S / 曹S',phone:'2463-1847',items:'合金銅條、合金銅輪、合金銅板、焊帽、鉋銅 備註:博昌、明倫的供應商',status:'active',category:'銅'},
+    {name:'大易金屬',contact:'張老闆0932-548217曹S',phone:'048-222815048-235217',items:'磷青銅板.紅銅.合金銅條、板.鍛造青銅(猛青銅).鋁板6061-T6 備註:PM1：30上班',status:'active',category:'銅'},
+    {name:'弘典',contact:'林R 阿義 0922-631014',phone:'2486-1298',items:'電極頭.瓷心.合金銅條、合金銅輪、合金銅板、鈹銅、銅鎢、鋁銅棒(電極合金).合金銅頭',status:'active',category:'銅'},
+    {name:'恒誌',contact:'柯綺君',phone:'2280-9696',items:'紅銅板、條；合金板、條；鉋金銅；磷、鋁青銅；鈹銅、鋁圓棒、鋁扁條、青銅板、圓棒 備註:8：30上班 6：00下班',status:'active',category:'銅'},
+    {name:'新環隆',contact:'',phone:'2335-0012',items:'鉋金銅鑄造.T型銅蓋',status:'active',category:'銅'},
+    {name:'松田誠金屬',contact:'陸R. 練S',phone:'02-8686-7999',items:'.圓盤.合金銅系列.鎢銅棒.板.釷鎢.銅座',status:'active',category:'銅'},
+    {name:'詮興電機',contact:'曾穎之',phone:'2407-0658',items:'鉻鋯銅焊帽、電極修整器+刀座+刀片 鉻鋯銅焊帽ψ16*23L(尖、圓型) 備註:PM1：30上班',status:'active',category:'銅'},
+    {name:'金壕金屬',contact:'金慶堂0919-410388',phone:'049-2319789',items:'0.2*1/2H紅銅片、燐青銅片、廢料買賣',status:'active',category:'銅'},
+    {name:'鋁銅旺',contact:'蕭育珅先生',phone:'2538-8808',items:'紅銅板、條；合金板、條；鉋金銅；磷、鋁青銅；鈹銅、銅鎢；鋁圓棒、方條；青銅圓棒',status:'active',category:'銅'},
+    {name:'鑫綠泰',contact:'業務：陳小姐',phone:'04-26931858',items:'鑄鉋合金銅.下銅輪座.下銅輪蓋',status:'active',category:'銅'},
+    {name:'慶泓',contact:'黃政隆0930-795443',phone:'04-7813136',items:'鑄合金鋁.氣缸頭座',status:'active',category:'鋁'},
+    {name:'桓欣',contact:'吳桓安先生 0933-083807',phone:'03-4962101',items:'螺帽栓電極組、焊接零件 備註:離心鑄造',status:'active',category:'電極'},
+    {name:'台金昌',contact:'劉S.顏S.郭S.',phone:'2271-1811',items:'槽鐵.平鐵.角鐵.扁鐵.扁管.H鋼.方管.圓管',status:'active',category:'鐵'},
+    {name:'呈豪.松輝 (尚騰）',contact:'藍R.賴廠長. 趙S.藍S',phone:'2496-3220',items:'鐵管 厚鐵管ψ22~ 無縫鋼管.鐵心',status:'active',category:'鐵'},
+    {name:'坤泰金屬',contact:'賴先生 0935-706082 李\'S.友婷.育珍.勝莉',phone:'2270-9658',items:'白鐵圓條.方條.白鐵角鐵.白鐵管.SUS304.SUS416(光丸Ø38止). 白鐵板 440C 水刀切割',status:'active',category:'鐵'},
+    {name:'堯勝',contact:'',phone:'2281-7022',items:'鐵管 厚鐵管ψ22~',status:'active',category:'鐵'},
+    {name:'文陽',contact:'李R.老闆娘陳s. 林S. 曾廠長 0919-046230',phone:'2335-2885',items:'小型入電箱110*1870*190',status:'active',category:'鐵'},
+    {name:'益陽',contact:'方耀霆 0986-632531 林錫清 0937-336215 謝S. 黃S.林S',phone:'2491-5685',items:'無縫鋼管.軸心',status:'active',category:'鐵'},
+    {name:'翼廷',contact:'陳R.徐S',phone:'2491-9967',items:'電控箱外箱訂製',status:'active',category:'鐵'},
+    {name:'彪鉅',contact:'',phone:'2492-7202',items:'槽鐵.平鐵.角鐵.扁鐵.扁管.H鋼.方管.圓管',status:'active',category:'鐵'},
+    {name:'進吉',contact:'陳R',phone:'2382-1909',items:'白鐵圓條.扁條.不鏽鋼板.管',status:'active',category:'鐵'},
+    {name:'大河超硬合金',contact:'楊先生',phone:'04-8819085',items:'碳化鎢生產、加工',status:'active',category:'鎢鋼'},
+    {name:'承昌',contact:'余\'s',phone:'02-22710333#23',items:'碳化鎢',status:'active',category:'鎢鋼'},
+    {name:'松峻',contact:'張存誠 0910-420815',phone:'2265-7911',items:'碳化鎢 ※用LINE訂購',status:'active',category:'鎢鋼'},
+    {name:'中一',contact:'王S.林S#13',phone:'06-2910706',items:'貴金屬.銀片.銀焊條 備註:1點半上班',status:'active',category:'銀'},
+    {name:'勝宜金屬',contact:'蔡孟宜 0935-155977',phone:'',items:'機身燒焊、金屬焊接加工製造、基座焊接 ※訂購單用MAIL',status:'active',category:'機身'},
+    {name:'日昇 （台鎰）',contact:'林賢喜-BOSS 0932-583176 會計江S.韋S. 小林 0919-074598',phone:'2533-6983',items:'足踏機身',status:'active',category:'機身'},
+    {name:'兆田',contact:'陳江讚 0935-379536 陳冠華 0935-337956',phone:'2495-0932',items:'變壓器',status:'active',category:'變壓器'},
+    {name:'博世力士樂',contact:'王書章',phone:'3707-7620',items:'變頻控制器',status:'active',category:'變壓器'},
+    {name:'嘉明',contact:'黃R 0935-675061 廖R 0919-081259',phone:'2277-3884',items:'變壓器',status:'active',category:'變壓器'},
+    {name:'專順電機',contact:'粘育嘉經理 0960-595969 黃冠文 0910-348035',phone:'03-9281688 黏 #105 黃#107',items:'小變壓器、昇壓變壓器',status:'active',category:'變壓器'},
+    {name:'巃記',contact:'游鈴記 0932-621787 203#林S-接單. 吳S-報價.儲S',phone:'2271-1210',items:'小型變壓器150VA.1000VA 昇壓變壓器(油浸式) 電焊線',status:'active',category:'變壓器'},
+    {name:'廣德明',contact:'游世國先生',phone:'04-2291-7870',items:'小變壓器、昇壓變壓器',status:'active',category:'變壓器'},
+    {name:'裕新',contact:'陳連賜 0936-456731. 陳凱威 0988-202647 怡如.葉S.陳S. 設計陳R',phone:'2359-5358',items:'變壓器.昇壓變壓器(油浸式).水流動表、半圓銅蓋、 500平方電導線 備註:PM2：00上班',status:'active',category:'變壓器'},
+    {name:'金時代',contact:'張先生',phone:'2406-4370 2220-1833',items:'TR變壓器',status:'active',category:'變壓器'},
+    {name:'中日流體傳動 HINAKA',contact:'陶俐君 小姐',phone:'07-7885090',items:'油壓缸.氣壓缸 備註:8:30AM',status:'active',category:'空油壓'},
+    {name:'亞德',contact:'高S 0921-759121',phone:'2215-0912',items:'',status:'active',category:'空油壓'},
+    {name:'亞德客',contact:'王R',phone:'2471-8738',items:'三點組合(使用中油，電磁閥 使用中油ISO VG32油)',status:'active',category:'空油壓'},
+    {name:'億岡',contact:'薛楝樹',phone:'03-5215168-',items:'分度器座',status:'active',category:'空油壓'},
+    {name:'允佐',contact:'李武育BOSS 0937-019379 陳信華 0977-074766',phone:'04-7611624 04-7611824',items:'FS閘門凡而.球塞凡而.銅、鐵接頭.油壓管.',status:'active',category:'空油壓'},
+    {name:'兆鈿',contact:'黃登陽 0932-531156. 謝S 周S',phone:'2693-2921',items:'油壓箱組立',status:'active',category:'空油壓'},
+    {name:'台灣氣立',contact:'楊金泰 0912-382862',phone:'2320-5828',items:'真空發生器',status:'active',category:'空油壓'},
+    {name:'台輝(慶誼)',contact:'莊S',phone:'2278-9949',items:'空油壓.電磁閥 備註:阿欽.劉R.陳S. 李S(會計)',status:'active',category:'空油壓'},
+    {name:'君帆',contact:'蔡課長 0928-715696 邵\'S',phone:'2380-6927 2380-6937',items:'不旋轉氣缸 ， 倍力缸',status:'active',category:'空油壓'},
+    {name:'品正',contact:'黃R 0937-200579 邱R.謝S',phone:'2337-9501',items:'油壓缸.氣壓缸 備註:週休二日',status:'active',category:'空油壓'},
+    {name:'商運',contact:'業務-王S 0975-566613 曾S',phone:'2566-8886',items:'線性滑軌',status:'active',category:'空油壓'},
+    {name:'寧英',contact:'吳榮晃 工程師0955-116063',phone:'2473-8763',items:'電磁閥SMC氣壓缸.OMRON配件',status:'active',category:'空油壓'},
+    {name:'展誼',contact:'王先生 0909-464-058',phone:'2437-8623',items:'減速馬達組合.臥式油壓馬達 東元 編碼器、分割器、扭力限制器',status:'active',category:'空油壓'},
+    {name:'康百世˙朝田',contact:'藍宏傑工程師 0911-490868',phone:'2262-7500',items:'油箱、液壓閥、泵、冷卻器、油箱配硬管 備註:1：30上班',status:'active',category:'空油壓'},
+    {name:'樺晨',contact:'',phone:'22014288',items:'耐油壓管-LINE:22014288',status:'active',category:'空油壓'},
+    {name:'永隆',contact:'阿興 0921-373153 阿昌 0922-050057',phone:'2215-2080',items:'銅.鐵接頭.油壓管.凡而.氣壓管.卜申',status:'active',category:'空油壓'},
+    {name:'潭佳精密',contact:'陳董 林意華0976-474177',phone:'2562-1267',items:'分度盤 分割器',status:'active',category:'空油壓'},
+    {name:'磐龍',contact:'劉先生 0921-866112 蔡副總 0935-771297',phone:'2534-4688',items:'油箱',status:'active',category:'空油壓'},
+    {name:'立益鑫',contact:'林S-老闆娘',phone:'2487-2168',items:'直流馬達+驅動器',status:'active',category:'空油壓'},
+    {name:'肇力',contact:'張晏誠 0966-675671 蔡宗志經理(機械手) 0912-899279',phone:'2389-9966',items:'減速馬達組合.臥式油壓馬達 東元',status:'active',category:'空油壓'},
+    {name:'良禾(玄)',contact:'王小姐.林先生0936-496486',phone:'2271-4055',items:'油壓缸.氣壓缸 備註:週休二日',status:'active',category:'空油壓'},
+    {name:'辰岱',contact:'曾錠.老闆娘 0936-497465',phone:'2278-1756',items:'油壓缸.油箱組合-馬達',status:'active',category:'空油壓'},
+    {name:'迅益',contact:'何先生 0989-690169',phone:'2334-5218',items:'油壓方案、承製',status:'active',category:'空油壓'},
+    {name:'金器',contact:'丁德勝(業務) 0933-163971. 魏S',phone:'2313-1870',items:'三點組合，電磁閥 備註:SMC只有氣壓缸',status:'active',category:'空油壓'},
+    {name:'銓儀科技 (同瑞德)',contact:'劉S',phone:'2339-6688',items:'油壓錶3.5KG/CM2',status:'active',category:'空油壓'},
+    {name:'鐘茂',contact:'黃崑縊 0910-885906',phone:'06-656-1688 06-656-9527',items:'銅快速接頭（CH內牙1/2”-母）；白鐵快速接頭（CH內牙1/2”-公）',status:'active',category:'空油壓'},
+    {name:'順益興',contact:'徐永昌BOSS. 0928-312998 劉小姐',phone:'2224-6359',items:'油壓馬達OMR-315.白鐵水管.空壓調速閥.線性滑軌(小型).黑田電磁閥.線圈. 新轉輪PT1/4-73元、PT3/8-130元',status:'active',category:'空油壓'},
+    {name:'高鹿',contact:'吳嘉謀-總經理 0921-758852 李R 0918-980359 王R 0978-122026. 朱S 0981-685211 黃S',phone:'2487-4219',items:'水壓開關(調壓式B01A 0.7+3BAR).電磁閥 備註:8:30AM 隔週休.週六不出貨',status:'active',category:'空油壓'},
+    {name:'鴻達',contact:'林S.簡R 0960-590036',phone:'2462-9196',items:'鴻達(黑田)電磁閥.線圈AS2408→3分*220V,附座AS2410→4分*220V,附座 .TSP2480 *220V附座→6分',status:'active',category:'空油壓'},
+    {name:'鼎峰',contact:'林有清 0928-312805 徐S 0988-056273 吳S.蕭S.湯S.陳S',phone:'2407-9593',items:'流量閥.冷卻器.減壓閥.抗衡閥',status:'active',category:'空油壓'},
+    {name:'長誠',contact:'林文夏 0932-574486',phone:'2451-5038',items:'天車維修',status:'active',category:'設備'},
+    {name:'中大',contact:'楊S.莊S',phone:'2337-7230',items:'電容（1000WVAC-0.5uf）',status:'active',category:'電控'},
+    {name:'乙潁',contact:'蓮英坤',phone:'02-2275-1770',items:'輪焊PLC控制',status:'active',category:'電控'},
+    {name:'佳商',contact:'黃R 0931-559617. 劉S 許S',phone:'2371-9788',items:'Miyachi控制箱.中央控制箱，電導線(標準長為主) 備註:週六半數上班',status:'active',category:'電控'},
+    {name:'偉祥',contact:'張展誌 0960-678-767',phone:'04-2336-6760',items:'高週波金屬加熱機.客製加熱線圈.8000BTU風冷式冷卻機',status:'active',category:'電控'},
+    {name:'兆詠科技',contact:'蔡盛源',phone:'2376-9988',items:'電料.積熱電驛',status:'active',category:'電控'},
+    {name:'創大',contact:'陳鵬宇 0921-338885. 林S',phone:'公司 2371-1076 工廠 2376-4388',items:'電控配件',status:'active',category:'電控'},
+    {name:'協達',contact:'藍瑞駿先生 0932-640030',phone:'2273-0719',items:'電控配線規劃設計、配盤配線',status:'active',category:'電控'},
+    {name:'原聖',contact:'蔡董 0919-187782. 盧R 0932-736743',phone:'07-3540066',items:'NASTOA變頻控制器.NASTOA變頻變壓器',status:'active',category:'電控'},
+    {name:'可大',contact:'蘇R 0955-197531 周S',phone:'02-26095929',items:'二極體',status:'active',category:'電控'},
+    {name:'台全行(台賀)',contact:'蕭R 0932-669457 賴 S',phone:'2534-0618',items:'電磁開關、比流器',status:'active',category:'電控'},
+    {name:'台灣基恩斯',contact:'業務；黃子譯 0910-383215',phone:'04-2301015 02-2721-8080',items:'紅外線溫度感測器',status:'active',category:'電控'},
+    {name:'台灣基恩斯',contact:'莊勳嘉 0932-131-126 簡小姐',phone:'2251-6602 #4107',items:'光電SENSOR',status:'active',category:'電控'},
+    {name:'台灣大昌華嘉',contact:'',phone:'2472-1782',items:'耐撓曲電線、配件',status:'active',category:'電控'},
+    {name:'台灣飛特',contact:'業務 陳永松0937-974157. 吳瑞益 0982-060177. 何S.陳 S',phone:'2335-5293',items:'大東電焊線 月結現金價 電覽線PVC.PVC細芯控制電纜.控制電纜(橡膠).接地線 備註:9點上班',status:'active',category:'電控'},
+    {name:'台裕',contact:'吳維宏 0930-888368',phone:'2234-7491',items:'總代理CHINO 控制器.記錄器',status:'active',category:'電控'},
+    {name:'固的來',contact:'李R 0933-922708. 李S.林肯宏',phone:'2276-0708',items:'A1 IC板、電控箱組裝.不鏽鋼電線護管，電容式控制盤為二段式(桌上型除外)',status:'active',category:'電控'},
+    {name:'士研',contact:'廖先生',phone:'2320-9930',items:'近接開關、預置型計數器，數字型限時繼電器',status:'active',category:'電控'},
+    {name:'大興計器',contact:'葉先生',phone:'2231-1525',items:'自動控制、儀表.控制盤電流表',status:'active',category:'電控'},
+    {name:'天得',contact:'林R 王S #300 黃清榮經理 0935-024873',phone:'03-2821008',items:'腳踏開關',status:'active',category:'電控'},
+    {name:'安富利',contact:'周宏峰 0970-529668',phone:'2371-9222 #15莊經理 0912272278',items:'歐洲製SCR 銷售Infineon系列產品',status:'active',category:'電控'},
+    {name:'宜福門電子',contact:'廖江常先生 0973-388828',phone:'07-335-7778',items:'流量監控器.電子溫度感應器',status:'active',category:'電控'},
+    {name:'寰泰',contact:'蕭小姐Ada Hsiao 0913-105-553',phone:'(02)8973-5030 #182',items:'SCR',status:'active',category:'電控'},
+    {name:'尼爾',contact:'金秀珍-BOSS 0935-581365 蔡S',phone:'02-2693-5533',items:'盤型SCR.SCR NKH90/16A',status:'active',category:'電控'},
+    {name:'峰昌',contact:'#212(小林)業務. 林建中 0931-699642 #211李嘉鴻 0931-867601. #203張S',phone:'2261-2852',items:'紅外線測溫器.CHINO溫控器.測溫器檢修',status:'active',category:'電控'},
+    {name:'建泰',contact:'李先生',phone:'2406-1700',items:'閃碰焊機控制箱IC板 LA-003',status:'active',category:'電控'},
+    {name:'建泰',contact:'李天佑 0970-822929',phone:'2406-1700',items:'IC板、加熱機用控制箱',status:'active',category:'電控'},
+    {name:'惠勇',contact:'業務 呂小姐',phone:'02-2693-1343',items:'突波吸收器、盤式SCR',status:'active',category:'電控'},
+    {name:'振皓科技',contact:'',phone:'2380-2536',items:'光電傳感器',status:'active',category:'電控'},
+    {name:'智丞',contact:'陳志成 0932-635657. 莊S',phone:'2231-1719',items:'人機傳輸線.電控配線規劃設計、配盤配線',status:'active',category:'電控'},
+    {name:'暐祥',contact:'呂元中 0988 310 317',phone:'02-2990 8621',items:'三菱PLC基本模組、',status:'active',category:'電控'},
+    {name:'格億',contact:'游格詳0987-978182',phone:'2395-1835',items:'電源供應器、電料',status:'active',category:'電控'},
+    {name:'楊昌企業.',contact:'林科宏0931-375061',phone:'2338-4355',items:'電控配線規劃設計、配盤配線',status:'active',category:'電控'},
+    {name:'極力',contact:'劉清淩經理 0905-770223',phone:'2463-1911',items:'YASKAWA機械手臂中部代理商',status:'active',category:'電控'},
+    {name:'榮山',contact:'林承翰 0917-697699. 張\'S',phone:'2212-2423 工廠 02-2686-0211',items:'金屬插頭ψ24*10P(公)ψ24*10P(母)',status:'active',category:'電控'},
+    {name:'歐迪爾',contact:'許R.李小姐 0921-790904',phone:'02-8512-2893',items:'繼電器模組',status:'active',category:'電控'},
+    {name:'正偉',contact:'張育誠 0910-509595',phone:'2491-0078',items:'繼電器、微動開關，照明燈具、燈管、燈座等電料 備註:PM1:30上班',status:'active',category:'電控'},
+    {name:'汎浩',contact:'江德霖 0958-552545 張S',phone:'02-2799-6010 分機；20',items:'德國製SCR',status:'active',category:'電控'},
+    {name:'津日',contact:'林庭萱 0927-081896 周小姐#309',phone:'02-8665-9877 #307',items:'電解容器',status:'active',category:'電控'},
+    {name:'淳鈺',contact:'#203呂S',phone:'02-2995-3938',items:'日本製SCR',status:'active',category:'電控'},
+    {name:'省成',contact:'羅R 0910-421131 0919-088300 電控室-妮娜 會計曾S. 辦公室劉S.謝先生',phone:'2278-0131',items:'輪焊機控制箱用指撥開關.足踏控制器.',status:'active',category:'電控'},
+    {name:'立懋',contact:'謝宇晉-業務. 0919-868017 楊于靚-業助',phone:'2236-3226',items:'OMRON經銷商 備註:PM13：30',status:'active',category:'電控'},
+    {name:'耀迅',contact:'馮耀賢-BOSS 0922-222205. 林經理. 陳S',phone:'02-2760-0390',items:'英國 DYNEX 盤式SCR水冷組件',status:'active',category:'電控'},
+    {name:'聯盛電子',contact:'鄧經理 詹\'S 林\'S#811',phone:'02-2680-1218',items:'電阻',status:'active',category:'電控'},
+    {name:'西門子 SIEMENS',contact:'張經理 0926-088337',phone:'3703-3333#6337',items:'電源模組、馬達、人機、PLC',status:'active',category:'電控'},
+    {name:'誠啟科技',contact:'張傳忠 0923-888890',phone:'2276-3641',items:'',status:'active',category:'電控'},
+    {name:'近德',contact:'陳群豪總經理0932-563142 陳經理',phone:'2278-3857',items:'電控盤配線(歐規)、電料元件',status:'active',category:'電控'},
+    {name:'進銳科技',contact:'陳先生',phone:'02-26270776',items:'#630電路旋轉連接器USA進口',status:'active',category:'電控'},
+    {name:'遠德',contact:'李錫沖 0922-151218',phone:'2426-0536',items:'自動化系統工程設計、伺服驅動系統設計',status:'active',category:'電控'},
+    {name:'錩鋼精密科技',contact:'業務 林小姐',phone:'02-2206-7766',items:'連接器 / 無線通訊 / 自動化控制設備 / 精密模具 台中 T：04-25607272；F：04-25652228；蕭副理0905-026276',status:'active',category:'電控'},
+    {name:'雙匯',contact:'林經國 0937-147103. 王S',phone:'03-668-1389',items:'電解容器',status:'active',category:'電控'},
+    {name:'靖聖金屬',contact:'張健偉 廖素卿',phone:'2526-1999',items:'鐵、鋁製電纜線架/線槽',status:'active',category:'電控'},
+    {name:'飛斯妥',contact:'黃S #358',phone:'02-2601-9281 04-24757278',items:'德製真空產生器',status:'active',category:'電控'},
+    {name:'立頓',contact:'張先生',phone:'0925-128873',items:'電導線製作加工 ※訂購單用MAIL，無傳真',status:'active',category:'電導線'},
+    {name:'通禹',contact:'0936-291050江仁里 #206 #211 李小姐 #210 徐小姐',phone:'03-450-3366',items:'編織銅線.紅銅鉚釘',status:'active',category:'電導線'},
+    {name:'鑫達發',contact:'BOSS廖. 0975-135755',phone:'2206-6195',items:'電導線(銅絲).水冷電導線 備註:會計柯.生管蔡S',status:'active',category:'電導線'},
+    {name:'上弘(原阡霆)',contact:'林昭森-BOSS 0933-541412',phone:'2275-7518',items:'木模製作',status:'active',category:'五金零件'},
+    {name:'上德印刷',contact:'柯富元 副總 0963-486646 柯淑媚.(小)柯S',phone:'2483-5659',items:'貼紙.訂購單.託外加工單',status:'active',category:'五金零件'},
+    {name:'主上',contact:'周先生 0987-282-228許R 黃S',phone:'2281-0909',items:'壓花輪 備註:27W',status:'active',category:'五金零件'},
+    {name:'久進',contact:'林R 0935-773534. 郭S.劉S.林s',phone:'2213-1299',items:'鋼珠、滾錐軸承.軸承座.滾珠軸承.滾筒、座椅滑輪組(50m/m- 插心11m/m)',status:'active',category:'五金零件'},
+    {name:'仟帝',contact:'謝子祥 0939-158889',phone:'2273-8250',items:'交叉滾子導軌.萬向接頭.乾式軸承.聯軸器 備註:1:30PM',status:'active',category:'五金零件'},
+    {name:'伍全',contact:'鄭小姐',phone:'2319-3832',items:'彈簧.盤形彈簧',status:'active',category:'五金零件'},
+    {name:'佑力',contact:'黃義雄',phone:'2529-3678',items:'鋸帶(NACHI)30M*10T*0.65*8.0(日製)',status:'active',category:'五金零件'},
+    {name:'保固',contact:'林S.陳S.陳廠長. (大盧)盧明君. (小盧)倉庫. 鞏S. 羅R(司機) 0936-275499',phone:'2406-5996',items:'美紋漆 香蕉水、去漬油 備註:AM9點上班及PM1：30',status:'active',category:'五金零件'},
+    {name:'偉辰',contact:'0928-330321 鐘春煌.蘇S',phone:'2481-5668',items:'壓克力銘牌 備註:週六上半天班',status:'active',category:'五金零件'},
+    {name:'億樺',contact:'吳晉豪 0911-772262',phone:'2483-6513',items:'大佶銘板POLY包膠 EPOXY',status:'active',category:'五金零件'},
+    {name:'全得',contact:'林R.張S',phone:'2213-6725',items:'防塵油封，油圈.O型環 備註:PM1：30上班',status:'active',category:'五金零件'},
+    {name:'冠睿',contact:'江永耀 0979-106699',phone:'2380-7445',items:'輸送帶設計繪圖',status:'active',category:'五金零件'},
+    {name:'冠華',contact:'洪石宗.賴R.洪S 0983-300355',phone:'2281-0930',items:'電木.塑鋼.纖維板',status:'active',category:'五金零件'},
+    {name:'勝界',contact:'李正育.王春露',phone:'2281-9976',items:'耐熱油管.訂製雙頭(橡膠)螺絲 水管.黑尼龍管.熱熔膠.優麗膠',status:'active',category:'五金零件'},
+    {name:'勤順',contact:'賴榮祥',phone:'2283-1135',items:'螺絲.墊圈.華司.方型鍵.扣環.螺帽',status:'active',category:'五金零件'},
+    {name:'又盟',contact:'陳S.吳S.林R',phone:'2635-1175',items:'鋁擠型',status:'active',category:'五金零件'},
+    {name:'召暘印刷',contact:'劉R 0931-031599 陳S',phone:'2492-0059',items:'面板(面膜)',status:'active',category:'五金零件'},
+    {name:'台灣新霆',contact:'陳S.張S(老闆娘)',phone:'2492-6123',items:'手套、打包帶.OPP透明膠帶.PVC布紋膠帶.保鮮膜.氣泡紙.擦拭紙.夾鍊袋',status:'active',category:'五金零件'},
+    {name:'合晟',contact:'郭慶虎 0954-093538',phone:'2280-5960',items:'電動、氣動工具、離子切割機維修、買賣',status:'active',category:'五金零件'},
+    {name:'國騰',contact:'許建昌-BOSS. 黃S.李先生',phone:'2261-8839',items:'白鐵彈簧.壓縮彈簧.拉伸彈簧',status:'active',category:'五金零件'},
+    {name:'天泰興',contact:'吳老闆 0916-811019',phone:'04-7237787',items:'CO2氣體.油品',status:'active',category:'五金零件'},
+    {name:'奕智',contact:'王先生 0928-968695',phone:'2699-3978',items:'輸送帶製造 備註:8：30上班',status:'active',category:'五金零件'},
+    {name:'威銓',contact:'陳廠長 0979-853090',phone:'2275-6593',items:'滑台製造，訂製 備註:使用中油ISO VG32油)',status:'active',category:'五金零件'},
+    {name:'安伯特',contact:'林先生',phone:'2536-6839',items:'防滑墊',status:'active',category:'五金零件'},
+    {name:'寶嘉誠工業',contact:'業務#223黃小姐# 235黃小姐 設計#287莊先生 #232游副課長 賴經理 0921-582-747 江組長 0905-605757',phone:'2335-9935',items:'分度盤',status:'active',category:'五金零件'},
+    {name:'專聚',contact:'蔡S',phone:'2389-1765',items:'透視型逆止弁(閥).水流計(筆型)',status:'active',category:'五金零件'},
+    {name:'山水水族量販',contact:'劉先生',phone:'07-5508428',items:'RIO 1400 沉水馬達',status:'active',category:'五金零件'},
+    {name:'峻喬',contact:'',phone:'04-24963393',items:'翼廷專用烤漆廠，有賣鐵樂士',status:'active',category:'五金零件'},
+    {name:'崧禾',contact:'陳R-老闆.',phone:'2536-2411',items:'乾式軸承',status:'active',category:'五金零件'},
+    {name:'巨薪',contact:'謝經理 0922-512332. 謝S.黃S',phone:'2271-5311',items:'防塵套.鍊條.白鐵儀表管(ψ8*ψ10).3/8\'\'*300L塑鋼噴噴油管 隔週休',status:'active',category:'五金零件'},
+    {name:'帝新',contact:'',phone:'02-2311-1047',items:'導電油膏',status:'active',category:'五金零件'},
+    {name:'得雲',contact:'羅清堂(經理) 0912-330916',phone:'2492-9916',items:'壓縮機.水冷卻機 DWT-2RPSA',status:'active',category:'五金零件'},
+    {name:'恒宇',contact:'許先生 0933-456484 0912339713 葉小姐',phone:'2493-2199',items:'白鐵齒輪加工製造.鏈輪',status:'active',category:'五金零件'},
+    {name:'擎原',contact:'許永政 0982-588499 董\'S',phone:'2212-3555',items:'手動工具修理.馬達繞線.離子切割機維修',status:'active',category:'五金零件'},
+    {name:'新全鋼',contact:'陳小姐',phone:'04-26273223',items:'格柵板成品',status:'active',category:'五金零件'},
+    {name:'明禮',contact:'',phone:'2271-1789',items:'固定輪ML-303203R-A板',status:'active',category:'五金零件'},
+    {name:'易銲',contact:'夏R.林S 0933-581881. 陳S',phone:'04-8733300',items:'冷卻水箱*50L(22kg).*100L(33kg).冷卻水箱馬達',status:'active',category:'五金零件'},
+    {name:'春名',contact:'周S.陳S.何S',phone:'02-82014393',items:'彈簧.盤形彈簧',status:'active',category:'五金零件'},
+    {name:'晶圓',contact:'丁敏秀 0937-313878. 陳S',phone:'08-7390890',items:'乾燥劑',status:'active',category:'五金零件'},
+    {name:'有益',contact:'',phone:'03-798-6918',items:'陶瓷配件訂製',status:'active',category:'五金零件'},
+    {name:'本勝(建勝)',contact:'0935-367325 楊R.邱S 0933-512225',phone:'2212-1813. 2212-9537',items:'沉水馬達',status:'active',category:'五金零件'},
+    {name:'束圜(日丞)',contact:'陳S',phone:'2566-7133. (張S.2569-2749)',items:'白鐵管束 ψ10-16 ψ12-20 ψ22(束3/4\'\'管用)',status:'active',category:'五金零件'},
+    {name:'桓達科技',contact:'陳\'S #712 游S 台中蔡明益先生0963-372710 台中#713 廖小姐',phone:'02-2269-6789 04-2337-0825',items:'壓力開關(水壓) SQ27 PT1/4 訂貨找台中廖小姐',status:'active',category:'五金零件'},
+    {name:'欣榮勝',contact:'許錦光',phone:'037-220255 037-220256',items:'水塔上下蓋及配件',status:'active',category:'五金零件'},
+    {name:'永和順',contact:'施育晟',phone:'04-27085111',items:'.',status:'active',category:'五金零件'},
+    {name:'泰陽橡膠',contact:'張宏仁0921-766693',phone:'2278-1058',items:'包橡膠 備註:聖創高週波機用',status:'active',category:'五金零件'},
+    {name:'漢德威',contact:'#13邱惠琦S 施\'S. #11廖先生',phone:'2406-3417',items:'機械尺.把手.門絞鏈.手輪、定位珠',status:'active',category:'五金零件'},
+    {name:'玉豐',contact:'303#羅S(業務).楊S(總機)',phone:'3502-4890',items:'白鐵螺絲.螺絲.墊圈.',status:'active',category:'五金零件'},
+    {name:'王冠',contact:'郭BOSS.林S.劉S',phone:'2281-3948',items:'方鍵、齒輪、角牙，齒條，螺母 壓花刀 SKS2合金鋼',status:'active',category:'五金零件'},
+    {name:'理泰',contact:'蔡靜儀(業務). 黃S.張S',phone:'04-8371901',items:'專業工業陶瓷設計、製造',status:'active',category:'五金零件'},
+    {name:'瓏輝',contact:'江志盈 0932-633733',phone:'2281-8959',items:'量具系列.德製游標卡尺Mahr',status:'active',category:'五金零件'},
+    {name:'益佃',contact:'李 店長 0933-563500 徐S.邱S.吳S',phone:'2212-3799',items:'工具箱&五金配件 #740缺氧膠(1KG/瓶)',status:'active',category:'五金零件'},
+    {name:'盛富企業',contact:'林三池 0936-316509 林晃民主任 0930-032261 陳小姐',phone:'2337-5133',items:'壓克力護蓋',status:'active',category:'五金零件'},
+    {name:'立山銘版',contact:'賴忠和副總 0917-887975 薛小姐',phone:'049-2357782#202',items:'poly貼紙、金屬類銘牌、噴墨類銘牌、線路類(薄膜按鍵，操控面板線路)',status:'active',category:'五金零件'},
+    {name:'精美帆布行',contact:'江聰顏',phone:'04-22139816',items:'廣告帆布、伸縮遮陽雨帆',status:'active',category:'五金零件'},
+    {name:'義發',contact:'李S 0937-702050',phone:'2482-1627',items:'小信箋印製',status:'active',category:'五金零件'},
+    {name:'翊瀧',contact:'徐小姐',phone:'2406-9622',items:'不鏽鋼把手 A-42-F-2 絞鏈、雙扣',status:'active',category:'五金零件'},
+    {name:'聖創(進陞)',contact:'陳董 0925-677759',phone:'2698-1986',items:'各類鑽頭螺絲製造',status:'active',category:'五金零件'},
+    {name:'能裕銘板',contact:'蕭小姐',phone:'2270-0871 2472-6633',items:'電控面板.大小銘板.POLY灌製.製造銘板(中、英文版)',status:'active',category:'五金零件'},
+    {name:'華南行',contact:'黃尚奕 0932-626409. 羅S',phone:'2282-3911',items:'老鷹 CAPLEX ATOX M-2,5KG裝(白色)、R68循環油.液壓油',status:'active',category:'五金零件'},
+    {name:'豪豐塗料',contact:'張志程主任 0938-215960',phone:'2535-6789',items:'美紋漆 香蕉水、去漬油 備註:08:30AM',status:'active',category:'五金零件'},
+    {name:'通益',contact:'',phone:'2287-5030',items:'工型滑座',status:'active',category:'五金零件'},
+    {name:'金宏',contact:'曾豐連 0937-214391 宋S.曾S 0918-361139',phone:'2335-4301',items:'蓄壓桶製作',status:'active',category:'五金零件'},
+    {name:'金旺',contact:'柯金旺R',phone:'0972-613883 0937-741931',items:'廢油回收，R32循環液壓油，R68循環油壓油， 中油液壓油AW32',status:'active',category:'五金零件'},
+    {name:'金昌水塔',contact:'',phone:'2422-4223',items:'不鏽鋼水塔',status:'active',category:'五金零件'},
+    {name:'金鈺五金',contact:'林R 0933-493789 魏R 0939-690568',phone:'2279-6632',items:'破布.噴漆.洗手劑.砂輪.',status:'active',category:'五金零件'},
+    {name:'金震',contact:'張文馨 0928-998465',phone:'2276-7265',items:'開口扳手.工具箱&五金配件；L型六角板手/9支組75元.工具箱/組220元',status:'active',category:'五金零件'},
+    {name:'鈦瑞',contact:'陳R.梁S',phone:'06-5717291',items:'防震腳',status:'active',category:'五金零件'},
+    {name:'錏業',contact:'潘小姐',phone:'2276-0168',items:'工程塑膠(板材.圓棒.空心管).壓克力.電木.PC.PVC.PU.PP',status:'active',category:'五金零件'},
+    {name:'隆盟',contact:'沈聯發 0910-415000. 沈曉卿 0937-715013. 林S.林R',phone:'2481-5000. 2481-5999',items:'方型電扇.排風扇',status:'active',category:'五金零件'},
+    {name:'駿暐',contact:'吳',phone:'2566-8799',items:'管式過濾器',status:'active',category:'五金零件'},
+    {name:'駿穎',contact:'陳世杰先生 0912-707881',phone:'2452-2198',items:'德國 MAHLE原廠過濾器及濾心',status:'active',category:'五金零件'},
+    {name:'中育',contact:'黃育寬 (董事長.議員). 謝S-老闆娘. 林S.(小)謝S',phone:'04-7323833',items:'',status:'active',category:'外購'},
+    {name:'中電',contact:'許金龍.江S',phone:'2335-6998',items:'',status:'active',category:'外購'},
+    {name:'乙穎',contact:'連英昆 0937-009055',phone:'02-22751770',items:'',status:'active',category:'外購'},
+    {name:'偉祥實業',contact:'吳先生 0933-490393',phone:'2336-6760',items:'高週波感應加熱機',status:'active',category:'外購'},
+    {name:'台茂',contact:'簡國明R 0919-080181',phone:'2279-7285',items:'手提式點焊機',status:'active',category:'外購'},
+    {name:'吉冠',contact:'',phone:'2572-1122~4',items:'沖床模具',status:'active',category:'外購'},
+    {name:'君霖',contact:'李美珍',phone:'2495-0919',items:'銅槍夾',status:'active',category:'外購'},
+    {name:'坤泰沖模',contact:'',phone:'04-7583135',items:'沖床模具',status:'active',category:'外購'},
+    {name:'大鎰',contact:'理彩微',phone:'2261-3030 2262-6876',items:'熱鍛沖床',status:'active',category:'外購'},
+    {name:'太興精密',contact:'',phone:'2282-0353',items:'各類型射銷.(SKD61壓鑄用或塑膠射出用)',status:'active',category:'外購'},
+    {name:'尚銘',contact:'吳R',phone:'04-8398678',items:'JL-0全波平送機.振動送料機',status:'active',category:'外購'},
+    {name:'峻易',contact:'李仁水 0936-316898. 鄭S',phone:'2481-1718',items:'',status:'active',category:'外購'},
+    {name:'振鴻機械(振太國際機械)',contact:'湯先生 0952-300250',phone:'2277-3659',items:'螺絲震動送料機+送料系統承包製作.',status:'active',category:'外購'},
+    {name:'捲圓',contact:'邱木聯 0932-649412. 陳S(媳).黃S',phone:'2339-6620',items:'',status:'active',category:'外購'},
+    {name:'捷文實業有限公司',contact:'鄧小姐 0952-888370',phone:'2522-1898',items:'',status:'active',category:'外購'},
+    {name:'春瑞',contact:'蔡先生 0910-529221',phone:'2662-7156',items:'臥式鋸台JR-23',status:'active',category:'外購'},
+    {name:'桂全',contact:'陳小姐 黃S',phone:'048-853814',items:'切斷機 冲床 電動注油器 沖孔模具',status:'active',category:'外購'},
+    {name:'欣榮勝',contact:'許錦光老闆',phone:'037-2202-556',items:'水塔配件及上下蓋加工、水塔透氣帽蓋',status:'active',category:'外購'},
+    {name:'正豐機器',contact:'林志銘 0916-941392',phone:'2406-5932',items:'沖床製造',status:'active',category:'外購'},
+    {name:'源金股',contact:'林清波(若咖) 0910-160-429',phone:'05-226-5454',items:'水塔接頭、塑膠製品',status:'active',category:'外購'},
+    {name:'珈鋐機械',contact:'',phone:'04-24912382',items:'',status:'active',category:'外購'},
+    {name:'益彰',contact:'江祥得先生',phone:'2493-0678',items:'手動鑽床機頭',status:'active',category:'外購'},
+    {name:'羅以技研',contact:'蕭貿火 0909-914-448',phone:'',items:'自動送料設計規劃、製作',status:'active',category:'外購'},
+    {name:'詮興',contact:'曾S 曾R',phone:'2407-0658',items:'懸吊式點焊機.鋁把手',status:'active',category:'外購'},
+    {name:'金昌',contact:'張茂榮 0952-106018',phone:'2533-4211~2',items:'白鐵水塔製造.太陽能保溫桶',status:'active',category:'外購'},
+    {name:'鋐傑',contact:'廖朝基 0932-640126',phone:'2337-1945',items:'閃碰焊機',status:'active',category:'外購'},
+    {name:'鴻隆',contact:'張松霖 0933-540536',phone:'',items:'12ST沖床 WT2',status:'active',category:'外購'},
+    {name:'侑成刀具',contact:'簡冠宇 0935-256325',phone:'2275-3985',items:'各式刀具、圓刀、齒刀研磨承製',status:'active',category:'加工'},
+    {name:'力利',contact:'謝建鏞 0932-628044',phone:'2493-2682',items:'連續冲模設計製造、沖壓加工.模具',status:'active',category:'加工'},
+    {name:'協原',contact:'#16卓\'S',phone:'2491-0198',items:'雷射切割',status:'active',category:'加工'},
+    {name:'唐商',contact:'詹中北 0921-383630',phone:'2351-1113',items:'NC車床加工',status:'active',category:'加工'},
+    {name:'嘉新全',contact:'0936-869337 林益銓-BOSS. 張S',phone:'2492-7266',items:'板金加工帶料',status:'active',category:'加工'},
+    {name:'嘉泰',contact:'張木權',phone:'2281-0630',items:'',status:'active',category:'加工'},
+    {name:'噴漆(委外)',contact:'謝東宏',phone:'0985-559188',items:'來廠噴漆',status:'active',category:'加工'},
+    {name:'堅泰',contact:'謝R 0972-369839',phone:'2278-0810',items:'銑床加工',status:'active',category:'加工'},
+    {name:'宏杰',contact:'邱R',phone:'2275-2833',items:'搪孔加工',status:'active',category:'加工'},
+    {name:'宏盛',contact:'王小姐',phone:'2276-3645',items:'水刀切割加工',status:'active',category:'加工'},
+    {name:'彗隆',contact:'黃國龍 0916-992552',phone:'2279-8595',items:'線切割加工',status:'active',category:'加工'},
+    {name:'慶豐',contact:'林S-老闆娘. 梁S0933-186877 林廠長 歐小姐',phone:'2278-3046',items:'整機烤漆 (DJ-WT5用藍液體優麗漆K-6252)',status:'active',category:'加工'},
+    {name:'日昌鑫 (原平陽)',contact:'楊R.蕭R',phone:'2279-0478',items:'折床加工',status:'active',category:'加工'},
+    {name:'昆兆益',contact:'業務部205#蔡S. 余小姐#310 生管#703蘇小姐',phone:'2276-9605',items:'雷射切割',status:'active',category:'加工'},
+    {name:'榮俊',contact:'徐榮俊 0933-534-255',phone:'2277-6865 2277-1589',items:'大龍門铣床加工',status:'active',category:'加工'},
+    {name:'正興',contact:'胡先生 0921-312325',phone:'2224-3085',items:'傳統車床加工',status:'active',category:'加工'},
+    {name:'永吉順',contact:'劉景松 0937-786126',phone:'2276-1514',items:'NC車床.油壓缸推板 工帶料 含染黑',status:'active',category:'加工'},
+    {name:'永辰',contact:'張紘宇 0937-202523',phone:'2492-2479',items:'NC铣床加工',status:'active',category:'加工'},
+    {name:'申裕',contact:'張原長先生 0986-396216',phone:'04-2407-2282',items:'合金銅輪加工',status:'active',category:'加工'},
+    {name:'聯欣',contact:'盧R.郭S.郭R',phone:'2279-0766',items:'折銅',status:'active',category:'加工'},
+    {name:'詰泰(大童)',contact:'童S',phone:'2211-7858',items:'回火熱處理.退火',status:'active',category:'加工'},
+    {name:'輝月鐵工廠',contact:'賴先生/林小姐',phone:'TEL:22705775',items:'摩擦熔接',status:'active',category:'加工'},
+    {name:'金興',contact:'',phone:'2275-7737',items:'電鍍 備註:PM1:30上班',status:'active',category:'加工'},
+    {name:'鈺葉',contact:'葉R',phone:'2275-7689',items:'線切割',status:'active',category:'加工'},
+    {name:'長欣',contact:'謝邦欣 0953-658870',phone:'2277-0882',items:'大CNC铣床加工',status:'active',category:'加工'},
+    {name:'上泰',contact:'陳R(業務) 0988-175365. 林S',phone:'2319-7996',items:'',status:'active',category:'菲施'},
+    {name:'中日',contact:'林S(台中)',phone:'2325-1469',items:'發票開軒加',status:'active',category:'菲施'},
+    {name:'亞泰',contact:'',phone:'02-29130866',items:'',status:'active',category:'菲施'},
+    {name:'元祥',contact:'二廠 102#黃S.吳S',phone:'04-7613688',items:'',status:'active',category:'菲施'},
+    {name:'卡菲斯 快遞',contact:'陳S.董S',phone:'02-29351589',items:'',status:'active',category:'菲施'},
+    {name:'名祥',contact:'劉S',phone:'2533-6222',items:'砂布花',status:'active',category:'菲施'},
+    {name:'嘉手',contact:'李秀蓮.廖R',phone:'2359-2127#10',items:'不優.價比五金行貴',status:'active',category:'菲施'},
+    {name:'嘉鐳 (鐙暘)',contact:'劉S.林S.老闆娘',phone:'2437-9959',items:'',status:'active',category:'菲施'},
+    {name:'國宏',contact:'',phone:'2261-3701',items:'service@dai-lee.com.tw',status:'active',category:'菲施'},
+    {name:'國淇',contact:'陳S',phone:'2491-8626',items:'',status:'active',category:'菲施'},
+    {name:'士溢',contact:'陳太太',phone:'04-8923425',items:'',status:'active',category:'菲施'},
+    {name:'大鎪',contact:'',phone:'07-3714027',items:'',status:'active',category:'菲施'},
+    {name:'孜豐',contact:'張S.',phone:'2568-2200',items:'',status:'active',category:'菲施'},
+    {name:'建發',contact:'黃S',phone:'2382-7028',items:'砂輪',status:'active',category:'菲施'},
+    {name:'恒鋐',contact:'王S.阮S',phone:'2280-9790',items:'',status:'active',category:'菲施'},
+    {name:'慶榮',contact:'張S',phone:'2213-0979',items:'',status:'active',category:'菲施'},
+    {name:'啟台',contact:'台中分公司 林S',phone:'2359-1919',items:'鋸帶AMADA',status:'active',category:'菲施'},
+    {name:'斯貝克',contact:'',phone:'2479-3868',items:'3M膠帶(4930*600*33M)',status:'active',category:'菲施'},
+    {name:'晉椿',contact:'洪經理. 李志源234# 0918-586813 劉月春227#',phone:'04-7810000',items:'',status:'active',category:'菲施'},
+    {name:'東正',contact:'209#國貿部 賴欣妤',phone:'2263-6536',items:'',status:'active',category:'菲施'},
+    {name:'洽群',contact:'',phone:'2533-7614',items:'',status:'active',category:'菲施'},
+    {name:'瑩聯',contact:'',phone:'06-2655-111',items:'鋼絲輪',status:'active',category:'菲施'},
+    {name:'穩騰',contact:'0932-765677邱R.邱太太. 蘇S',phone:'07-3535-858',items:'螺紋牙套',status:'active',category:'菲施'},
+    {name:'肯美特',contact:'205張S.吳S',phone:'049-2260316',items:'含浸液',status:'active',category:'菲施'},
+    {name:'萊茵',contact:'許S',phone:'2338-3331',items:'',status:'active',category:'菲施'},
+    {name:'達勵',contact:'呂函芳.洪慶和',phone:'03-2709696. 02-22995555',items:'',status:'active',category:'菲施'},
+    {name:'銢錩',contact:'陳R.何S',phone:'2406-6332',items:'噴砂機相關',status:'active',category:'菲施'},
+    {name:'鑫峰',contact:'周S(會計)',phone:'2212-1796',items:'',status:'active',category:'菲施'},
+    {name:'雙城',contact:'李S',phone:'02-25032056',items:'',status:'active',category:'菲施'},
+    {name:'駏宬',contact:'',phone:'2483-4788',items:'電料，電控配件',status:'active',category:'菲施'}
+  ];
+  const ts=new Date().toISOString();
+  const recs=SUPS.map(s=>({name:s.name,contact:s.contact,phone:s.phone,items:s.items,
+    status:s.status,category_id:catMap[s.category]||null,category:s.category,created_at:ts}));
+  let done=0,failed=0;
+  const CHUNK=50;
+  for(let i=0;i<recs.length;i+=CHUNK){
+    const chunk=recs.slice(i,i+CHUNK);
+    const{error}=await _db.from('suppliers').insert(chunk);
+    if(error){failed+=chunk.length;console.error(error);}else done+=chunk.length;
+    toast(`寫入中... ${Math.min(i+CHUNK,recs.length)}/${recs.length}`,'inf');
+  }
+  await loadT('suppliers');renderSup();
+  try{await _db.from('activity_log').insert({action_type:'設定',module:'供應商',description:`批次初始化：${done} 筆供應商`,operator:currentUser});}catch(e){}
+  toast(`✅ 完成！成功 ${done} 筆${failed?' / 失敗 '+failed+' 筆':''}`,done>0?'ok':'err');
 }
 
 // ── ORDERS MODULE ──
@@ -5139,6 +6126,41 @@ async function importSuppliersExcel(input){
   };
 }
 
+
+// ── WO Customer Dropdown ──
+function showWOCustDrop(){
+  const d=document.getElementById('wo-cust-drop');
+  if(d){d.style.display='block';}
+}
+function hideWOCustDrop(){
+  const d=document.getElementById('wo-cust-drop');
+  if(d){d.style.display='none';}
+}
+function pickWOCust(el){
+  const name=el.querySelector('.wo-cust-tag').nextSibling?.textContent?.trim()||el.textContent.replace(/國內|國外/,'').trim();
+  const inp=document.getElementById('sf-customer');
+  if(inp) inp.value=name;
+  hideWOCustDrop();
+}
+function filterWOCust(q){
+  const d=document.getElementById('wo-cust-drop');
+  if(!d) return;
+  d.style.display='block';
+  const ql=q.toLowerCase();
+  d.querySelectorAll('.wo-cust-opt').forEach(el=>{
+    const txt=el.textContent.replace(/國內|國外/,'').trim().toLowerCase();
+    el.style.display=txt.includes(ql)?'flex':'none';
+  });
+  d.querySelectorAll('.wo-cust-group').forEach(grp=>{
+    let next=grp.nextElementSibling;
+    let anyVisible=false;
+    while(next&&next.classList.contains('wo-cust-opt')){
+      if(next.style.display!=='none') anyVisible=true;
+      next=next.nextElementSibling;
+    }
+    grp.style.display=anyVisible?'':'none';
+  });
+}
 </script>
 </body>
 </html>
