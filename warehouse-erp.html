@@ -579,8 +579,7 @@ tr:hover td{background:var(--bg3);}
                 <div class="card-hd">
                   <span class="card-title" id="quoteFormTitle">新增詢價單</span>
                   <div style="display:flex;gap:8px;">
-                    <button class="btn btn-sm" onclick="saveQuoteForm()">💾 儲存</button>
-                    <button class="btn btn-sm" onclick="saveQuoteForm()" style="background:var(--green);color:white;">💾 存檔</button>
+                    <button class="btn btn-sm" onclick="saveQuoteForm()" style="background:var(--green);color:white;">💾 儲存</button>
                     <button class="btn btn-primary btn-sm" onclick="printQuoteForm()">🖨 列印/PDF/JPEG</button>
                     <button class="btn btn-sm" onclick="closeQuoteForm()">✕ 關閉</button>
                   </div>
@@ -1101,18 +1100,18 @@ async function launchApp(){
   }catch(e){}
   applyNavPerms();
   restoreNavOrder();
-  // 根據角色決定預設首頁
+  // 根據角色決定預設首頁：每個部門精準跳轉，不跨界
   const {isAdmin, assigns}=getCurrentUserDepts();
   if(isAdmin){
-    goto('sales-dash', document.getElementById('nav-sales-dash'));
-  } else if(assigns['sales']){
     goto('sales-dash', document.getElementById('nav-sales-dash'));
   } else if(assigns['warehouse']){
     goto('warehouse-dash', document.getElementById('nav-warehouse-dash'));
   } else if(assigns['purchase']){
     goto('purchase-dash', document.getElementById('nav-purchase-dash'));
-  } else {
+  } else if(assigns['sales']){
     goto('sales-dash', document.getElementById('nav-sales-dash'));
+  } else {
+    goto('warehouse-dash', document.getElementById('nav-warehouse-dash'));
   }
   updateLive(true);renderOnline([currentUser]);
   if(!isDemo){
@@ -1647,17 +1646,36 @@ function getCurrentUserDepts(){
 
 // 解析角色字串（如 "sales_manager,warehouse_staff"）到 assigns 物件
 function _parseRolesToAssigns(rolesStr, assigns){
+  // 純角色名 → 部門+level 對應表（涵蓋系統所有已知角色）
+  const PLAIN_ROLE_MAP={
+    warehouse:  {dept:'warehouse', level:'staff'},
+    operator:   {dept:'warehouse', level:'staff'},
+    purchase:   {dept:'purchase',  level:'staff'},
+    sales:      {dept:'sales',     level:'staff'},
+    manager:    {dept:'warehouse', level:'manager'},
+    readonly:   {dept:'warehouse', level:'staff'},
+  };
+  const VALID_LEVELS=['manager','staff','both'];
   (rolesStr||'').split(',').forEach(r=>{
     r=r.trim();
-    if(!r) return;
-    // 支援 dept_level 格式：sales_manager, warehouse_staff, purchase_manager…
-    // 以最後一個 _ 分割，前面全是 dept，後面是 level
+    if(!r||r==='admin') return;
+    // dept_level 格式：warehouse_manager, sales_staff, purchase_manager…
     const lastUs=r.lastIndexOf('_');
     if(lastUs>0){
-      const dept=r.substring(0, lastUs);
-      const level=r.substring(lastUs+1); // manager | staff
+      const dept=r.substring(0,lastUs);
+      const level=r.substring(lastUs+1);
+      if(VALID_LEVELS.includes(level)){
+        if(assigns[dept]&&assigns[dept]!==level) assigns[dept]='both';
+        else assigns[dept]=level;
+        return;
+      }
+    }
+    // 純角色名：查對應表
+    const mapped=PLAIN_ROLE_MAP[r];
+    if(mapped){
+      const {dept,level}=mapped;
       if(assigns[dept]&&assigns[dept]!==level) assigns[dept]='both';
-      else assigns[dept]=level;
+      else if(!assigns[dept]) assigns[dept]=level;
     }
   });
 }
